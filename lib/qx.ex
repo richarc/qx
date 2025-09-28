@@ -318,7 +318,7 @@ defmodule Qx do
       iex> qc = Qx.create_circuit(1) |> Qx.h(0)
       iex> state = Qx.get_state(qc)
       iex> Nx.shape(state)
-      {2, 2}
+      {2}
   """
   defdelegate get_state(circuit), to: Simulation
 

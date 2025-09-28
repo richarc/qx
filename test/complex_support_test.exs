@@ -13,62 +13,57 @@ defmodule ComplexSupportTest do
 
   test "complex matrix creation for Pauli-Y" do
     y_gate = Gates.pauli_y()
-    assert Nx.shape(y_gate) == {2, 2, 2}
+    assert Nx.shape(y_gate) == {2, 2}
 
     # Check Y = [[0, -i], [i, 0]]
     # Element [0,0] should be 0+0i
-    # real part
-    assert Nx.to_number(y_gate[0][0][0]) == 0.0
-    # imaginary part
-    assert Nx.to_number(y_gate[0][0][1]) == 0.0
+    elem_00 = Nx.to_number(y_gate[0][0])
+    assert Complex.real(elem_00) == 0.0
+    assert Complex.imag(elem_00) == 0.0
 
     # Element [0,1] should be 0-1i
-    # real part
-    assert Nx.to_number(y_gate[0][1][0]) == 0.0
-    # imaginary part
-    assert Nx.to_number(y_gate[0][1][1]) == -1.0
+    elem_01 = Nx.to_number(y_gate[0][1])
+    assert Complex.real(elem_01) == 0.0
+    assert Complex.imag(elem_01) == -1.0
 
     # Element [1,0] should be 0+1i
-    # real part
-    assert Nx.to_number(y_gate[1][0][0]) == 0.0
-    # imaginary part
-    assert Nx.to_number(y_gate[1][0][1]) == 1.0
+    elem_10 = Nx.to_number(y_gate[1][0])
+    assert Complex.real(elem_10) == 0.0
+    assert Complex.imag(elem_10) == 1.0
 
     # Element [1,1] should be 0+0i
-    # real part
-    assert Nx.to_number(y_gate[1][1][0]) == 0.0
-    # imaginary part
-    assert Nx.to_number(y_gate[1][1][1]) == 0.0
+    elem_11 = Nx.to_number(y_gate[1][1])
+    assert Complex.real(elem_11) == 0.0
+    assert Complex.imag(elem_11) == 0.0
   end
 
   test "complex matrix creation for S gate" do
     s_gate = Gates.s_gate()
-    assert Nx.shape(s_gate) == {2, 2, 2}
+    assert Nx.shape(s_gate) == {2, 2}
 
     # Check S = [[1, 0], [0, i]]
     # Element [0,0] should be 1+0i
-    # real part
-    assert Nx.to_number(s_gate[0][0][0]) == 1.0
-    # imaginary part
-    assert Nx.to_number(s_gate[0][0][1]) == 0.0
+    elem_00 = Nx.to_number(s_gate[0][0])
+    assert Complex.real(elem_00) == 1.0
+    assert Complex.imag(elem_00) == 0.0
 
     # Element [1,1] should be 0+1i
-    # real part
-    assert Nx.to_number(s_gate[1][1][0]) == 0.0
-    # imaginary part
-    assert Nx.to_number(s_gate[1][1][1]) == 1.0
+    elem_11 = Nx.to_number(s_gate[1][1])
+    assert Complex.real(elem_11) == 0.0
+    assert Complex.imag(elem_11) == 1.0
   end
 
   test "complex matrix creation for T gate" do
     t_gate = Gates.t_gate()
-    assert Nx.shape(t_gate) == {2, 2, 2}
+    assert Nx.shape(t_gate) == {2, 2}
 
     # Element [1,1] should be e^(iπ/4) = cos(π/4) + i*sin(π/4)
     expected_real = :math.cos(:math.pi() / 4)
     expected_imag = :math.sin(:math.pi() / 4)
 
-    actual_real = Nx.to_number(t_gate[1][1][0])
-    actual_imag = Nx.to_number(t_gate[1][1][1])
+    elem_11 = Nx.to_number(t_gate[1][1])
+    actual_real = Complex.real(elem_11)
+    actual_imag = Complex.imag(elem_11)
 
     assert abs(actual_real - expected_real) < 1.0e-6
     assert abs(actual_imag - expected_imag) < 1.0e-6
@@ -79,17 +74,16 @@ defmodule ComplexSupportTest do
 
     # Test RX gate
     rx_gate = Gates.rx(theta)
-    assert Nx.shape(rx_gate) == {2, 2, 2}
+    assert Nx.shape(rx_gate) == {2, 2}
 
     # RX(π/2) should have cos(π/4) and -i*sin(π/4) components
     _cos_val = :math.cos(theta / 2)
     sin_val = :math.sin(theta / 2)
 
     # Element [0,1] should be 0-i*sin(π/4)
-    # real part
-    assert abs(Nx.to_number(rx_gate[0][1][0]) - 0.0) < 1.0e-6
-    # imaginary part
-    assert abs(Nx.to_number(rx_gate[0][1][1]) - -sin_val) < 1.0e-6
+    elem_01 = Nx.to_number(rx_gate[0][1])
+    assert abs(Complex.real(elem_01) - 0.0) < 1.0e-6
+    assert abs(Complex.imag(elem_01) - -sin_val) < 1.0e-6
   end
 
   test "qubit creation with complex coefficients" do
@@ -122,10 +116,10 @@ defmodule ComplexSupportTest do
   test "complex state normalization" do
     # Create unnormalized complex state
     # |ψ⟩ = 2|0⟩ + 2i|1⟩
-    complex_state = Nx.tensor([[2.0, 0.0], [0.0, 2.0]])
+    complex_state = Nx.tensor([C.new(2.0, 0.0), C.new(0.0, 2.0)], type: :c64)
 
-    normalized = Math.normalize_complex(complex_state)
-    probs = Math.complex_probabilities(normalized)
+    normalized = Math.normalize(complex_state)
+    probs = Math.probabilities(normalized)
     total_prob = Nx.sum(probs) |> Nx.to_number()
 
     assert abs(total_prob - 1.0) < 1.0e-6
@@ -133,9 +127,9 @@ defmodule ComplexSupportTest do
 
   test "complex probability calculation" do
     # Create state |ψ⟩ = (1+i)|0⟩ + (1-i)|1⟩ (unnormalized)
-    complex_state = Nx.tensor([[1.0, 1.0], [1.0, -1.0]])
+    complex_state = Nx.tensor([C.new(1.0, 1.0), C.new(1.0, -1.0)], type: :c64)
 
-    probs = Math.complex_probabilities(complex_state)
+    probs = Math.probabilities(complex_state)
     prob_list = Nx.to_flat_list(probs)
 
     # |1+i|² = 1² + 1² = 2
@@ -149,19 +143,19 @@ defmodule ComplexSupportTest do
     final_state = Qx.get_state(qc)
 
     # After Y|0⟩ = i|1⟩, we should have [0+0i, 0+1i]
-    assert Nx.shape(final_state) == {2, 2}
+    assert Nx.shape(final_state) == {2}
 
     # |0⟩ amplitude should be 0+0i
     # real part
-    assert abs(Nx.to_number(final_state[0][0])) < 1.0e-6
+    assert abs(Complex.real(Nx.to_number(final_state[0]))) < 1.0e-6
     # imaginary part
-    assert abs(Nx.to_number(final_state[0][1])) < 1.0e-6
+    assert abs(Complex.imag(Nx.to_number(final_state[0]))) < 1.0e-6
 
     # |1⟩ amplitude should be 0+1i
     # real part should be ~0
-    assert abs(Nx.to_number(final_state[1][0])) < 1.0e-6
+    assert abs(Complex.real(Nx.to_number(final_state[1]))) < 1.0e-6
     # imaginary part should be ±1
-    assert abs(abs(Nx.to_number(final_state[1][1])) - 1.0) < 1.0e-6
+    assert abs(abs(Complex.imag(Nx.to_number(final_state[1]))) - 1.0) < 1.0e-6
   end
 
   test "S gate on |1⟩ produces i|1⟩" do
@@ -169,17 +163,17 @@ defmodule ComplexSupportTest do
     final_state = Qx.get_state(qc)
 
     # After X|0⟩ = |1⟩, then S|1⟩ = i|1⟩
-    assert Nx.shape(final_state) == {2, 2}
+    assert Nx.shape(final_state) == {2}
 
     # |0⟩ amplitude should be 0+0i
-    assert abs(Nx.to_number(final_state[0][0])) < 1.0e-6
-    assert abs(Nx.to_number(final_state[0][1])) < 1.0e-6
+    assert abs(Complex.real(Nx.to_number(final_state[0]))) < 1.0e-6
+    assert abs(Complex.imag(Nx.to_number(final_state[0]))) < 1.0e-6
 
     # |1⟩ amplitude should be 0+1i
     # real part should be ~0
-    assert abs(Nx.to_number(final_state[1][0])) < 1.0e-6
+    assert abs(Complex.real(Nx.to_number(final_state[1]))) < 1.0e-6
     # |imaginary part| should be 1
-    assert abs(abs(Nx.to_number(final_state[1][1])) - 1.0) < 1.0e-6
+    assert abs(abs(Complex.imag(Nx.to_number(final_state[1]))) - 1.0) < 1.0e-6
   end
 
   test "T gate application" do
@@ -190,8 +184,8 @@ defmodule ComplexSupportTest do
     expected_real = :math.cos(:math.pi() / 4)
     expected_imag = :math.sin(:math.pi() / 4)
 
-    actual_real = Nx.to_number(final_state[1][0])
-    actual_imag = Nx.to_number(final_state[1][1])
+    actual_real = Complex.real(Nx.to_number(final_state[1]))
+    actual_imag = Complex.imag(Nx.to_number(final_state[1]))
 
     assert abs(actual_real - expected_real) < 1.0e-6
     assert abs(actual_imag - expected_imag) < 1.0e-6
@@ -205,10 +199,10 @@ defmodule ComplexSupportTest do
     expected_amp = 1.0 / :math.sqrt(2)
 
     # Both amplitudes should be real and equal
-    amp_0_real = Nx.to_number(final_state[0][0])
-    amp_0_imag = Nx.to_number(final_state[0][1])
-    amp_1_real = Nx.to_number(final_state[1][0])
-    amp_1_imag = Nx.to_number(final_state[1][1])
+    amp_0_real = Complex.real(Nx.to_number(final_state[0]))
+    amp_0_imag = Complex.imag(Nx.to_number(final_state[0]))
+    amp_1_real = Complex.real(Nx.to_number(final_state[1]))
+    amp_1_imag = Complex.imag(Nx.to_number(final_state[1]))
 
     assert abs(amp_0_real - expected_amp) < 1.0e-6
     assert abs(amp_0_imag) < 1.0e-6
@@ -226,14 +220,14 @@ defmodule ComplexSupportTest do
     expected_amp = 1.0 / :math.sqrt(2)
 
     # |0⟩ coefficient should be 1/√2 + 0i
-    amp_0_real = Nx.to_number(final_state[0][0])
-    amp_0_imag = Nx.to_number(final_state[0][1])
+    amp_0_real = Complex.real(Nx.to_number(final_state[0]))
+    amp_0_imag = Complex.imag(Nx.to_number(final_state[0]))
     assert abs(amp_0_real - expected_amp) < 1.0e-6
     assert abs(amp_0_imag) < 1.0e-6
 
     # |1⟩ coefficient should be 0 + (1/√2)i
-    amp_1_real = Nx.to_number(final_state[1][0])
-    amp_1_imag = Nx.to_number(final_state[1][1])
+    amp_1_real = Complex.real(Nx.to_number(final_state[1]))
+    amp_1_imag = Complex.imag(Nx.to_number(final_state[1]))
     assert abs(amp_1_real) < 1.0e-6
     assert abs(amp_1_imag - expected_amp) < 1.0e-6
   end
@@ -248,8 +242,8 @@ defmodule ComplexSupportTest do
     expected_cos = :math.cos(theta / 2)
     expected_sin = :math.sin(theta / 2)
 
-    amp_0_real = Nx.to_number(final_state[0][0])
-    amp_1_real = Nx.to_number(final_state[1][0])
+    amp_0_real = Complex.real(Nx.to_number(final_state[0]))
+    amp_1_real = Complex.real(Nx.to_number(final_state[1]))
 
     assert abs(amp_0_real - expected_cos) < 1.0e-6
     assert abs(amp_1_real - expected_sin) < 1.0e-6
@@ -265,8 +259,8 @@ defmodule ComplexSupportTest do
     expected_real = :math.cos(phi)
     expected_imag = :math.sin(phi)
 
-    amp_1_real = Nx.to_number(final_state[1][0])
-    amp_1_imag = Nx.to_number(final_state[1][1])
+    amp_1_real = Complex.real(Nx.to_number(final_state[1]))
+    amp_1_imag = Complex.imag(Nx.to_number(final_state[1]))
 
     assert abs(amp_1_real - expected_real) < 1.0e-6
     assert abs(amp_1_imag - expected_imag) < 1.0e-6
@@ -280,12 +274,12 @@ defmodule ComplexSupportTest do
     expected_amp = 1.0 / :math.sqrt(2)
 
     # |00⟩ coefficient
-    amp_00_real = Nx.to_number(final_state[0][0])
-    amp_00_imag = Nx.to_number(final_state[0][1])
+    amp_00_real = Complex.real(Nx.to_number(final_state[0]))
+    amp_00_imag = Complex.imag(Nx.to_number(final_state[0]))
 
     # |11⟩ coefficient
-    amp_11_real = Nx.to_number(final_state[3][0])
-    amp_11_imag = Nx.to_number(final_state[3][1])
+    amp_11_real = Complex.real(Nx.to_number(final_state[3]))
+    amp_11_imag = Complex.imag(Nx.to_number(final_state[3]))
 
     assert abs(amp_00_real - expected_amp) < 1.0e-6
     assert abs(amp_00_imag) < 1.0e-6

@@ -176,22 +176,22 @@ defmodule Qx.Math do
   end
 
   @doc """
-  Creates a complex matrix for quantum gates.
+  Creates a complex matrix for quantum gates using c64 tensors.
 
   ## Examples
 
       iex> # Pauli-Y gate matrix
-      iex> Qx.Math.complex_matrix([[0, -1i], [1i, 0]])
+      iex> Qx.Math.complex_matrix([[0, Complex.new(0, -1)], [Complex.new(0, 1), 0]])
   """
   def complex_matrix(matrix) when is_list(matrix) do
     matrix
     |> Enum.map(fn row ->
       Enum.map(row, fn
-        %C{} = c -> [c.re, c.im]
-        val when is_number(val) -> [val, 0.0]
+        %C{} = c -> c
+        val when is_number(val) -> C.new(val, 0.0)
       end)
     end)
-    |> Nx.tensor()
+    |> Nx.tensor(type: :c64)
   end
 
   @doc """
@@ -276,47 +276,6 @@ defmodule Qx.Math do
     end
   end
 
-  @doc """
-  Applies complex matrix multiplication to a complex state vector.
 
-  Both matrix and state are represented as Nx tensors with the last dimension
-  being [real, imag] pairs.
-  """
-  def apply_complex_gate(gate_matrix, state) do
-    # gate_matrix: shape [n, n, 2] where last dim is [real, imag]
-    # state: shape [n, 2] where last dim is [real, imag]
 
-    # Extract real and imaginary parts
-    gate_real = Nx.slice_along_axis(gate_matrix, 0, 1, axis: -1) |> Nx.squeeze(axes: [-1])
-    gate_imag = Nx.slice_along_axis(gate_matrix, 1, 1, axis: -1) |> Nx.squeeze(axes: [-1])
-    state_real = Nx.slice_along_axis(state, 0, 1, axis: -1) |> Nx.squeeze(axes: [-1])
-    state_imag = Nx.slice_along_axis(state, 1, 1, axis: -1) |> Nx.squeeze(axes: [-1])
-
-    # Complex multiplication: (a + bi) * (c + di) = (ac - bd) + (ad + bc)i
-    result_real = Nx.subtract(Nx.dot(gate_real, state_real), Nx.dot(gate_imag, state_imag))
-    result_imag = Nx.add(Nx.dot(gate_real, state_imag), Nx.dot(gate_imag, state_real))
-
-    Nx.stack([result_real, result_imag], axis: -1)
-  end
-
-  @doc """
-  Computes probabilities from complex state vector.
-
-  State is represented as Nx tensor with last dimension being [real, imag] pairs.
-  """
-  def complex_probabilities(complex_state) do
-    # |ψ|² = real² + imag²
-    real_part = Nx.slice_along_axis(complex_state, 0, 1, axis: -1) |> Nx.squeeze(axes: [-1])
-    imag_part = Nx.slice_along_axis(complex_state, 1, 1, axis: -1) |> Nx.squeeze(axes: [-1])
-    Nx.add(Nx.pow(real_part, 2), Nx.pow(imag_part, 2))
-  end
-
-  @doc """
-  Normalizes a complex state vector.
-  """
-  def normalize_complex(complex_state) do
-    probs = complex_probabilities(complex_state)
-    norm = Nx.sqrt(Nx.sum(probs))
-    Nx.divide(complex_state, norm)
-  end
 end

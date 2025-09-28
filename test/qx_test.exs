@@ -117,16 +117,18 @@ defmodule QxTest do
 
   test "get state directly" do
     state = Qx.create_circuit(1) |> Qx.h(0) |> Qx.get_state()
-    assert Nx.shape(state) == {2, 2}
+    assert Nx.shape(state) == {2}
 
-    # Check real parts of amplitudes (complex representation)
-    amp_0_real = Nx.to_number(state[0][0])
-    amp_1_real = Nx.to_number(state[1][0])
+    # Check amplitudes (c64 representation)
+    amp_0 = Nx.to_number(state[0])
+    amp_1 = Nx.to_number(state[1])
     expected_amp = 1.0 / :math.sqrt(2)
 
     # Hadamard should create equal superposition with real coefficients
-    assert abs(amp_0_real - expected_amp) < 0.01
-    assert abs(amp_1_real - expected_amp) < 0.01
+    assert abs(Complex.real(amp_0) - expected_amp) < 0.01
+    assert abs(Complex.real(amp_1) - expected_amp) < 0.01
+    assert abs(Complex.imag(amp_0)) < 0.01
+    assert abs(Complex.imag(amp_1)) < 0.01
   end
 
   test "get probabilities directly" do

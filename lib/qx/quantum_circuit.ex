@@ -209,8 +209,8 @@ defmodule Qx.QuantumCircuit do
 
       iex> qc = Qx.QuantumCircuit.new(1, 0)
       iex> state = Qx.QuantumCircuit.get_state(qc)
-      iex> Nx.to_flat_list(state)
-      [1.0, 0.0]
+      iex> Nx.shape(state)
+      {2}
   """
   def get_state(%__MODULE__{} = circuit) do
     circuit.state
@@ -229,10 +229,10 @@ defmodule Qx.QuantumCircuit do
   ## Examples
 
       iex> qc = Qx.QuantumCircuit.new(1, 0)
-      iex> new_state = Nx.tensor([0.0, 1.0])
+      iex> new_state = Nx.tensor([Complex.new(0.0, 0.0), Complex.new(1.0, 0.0)], type: :c64)
       iex> qc = Qx.QuantumCircuit.set_state(qc, new_state)
-      iex> Nx.to_flat_list(qc.state)
-      [0.0, 1.0]
+      iex> Nx.shape(qc.state)
+      {2}
   """
   def set_state(%__MODULE__{} = circuit, state) do
     expected_size = trunc(:math.pow(2, circuit.num_qubits))
@@ -339,18 +339,20 @@ defmodule Qx.QuantumCircuit do
 
   # Private helper function to create complex basis states
   defp complex_basis_state(index, dimension) do
-    # Create state vector with complex representation [real, imag] for each amplitude
+    # Create state vector with c64 complex representation
+    alias Complex, as: C
+
     state_data =
       for i <- 0..(dimension - 1) do
         if i == index do
           # |i⟩ state has amplitude 1+0i
-          [1.0, 0.0]
+          C.new(1.0, 0.0)
         else
           # other states have amplitude 0+0i
-          [0.0, 0.0]
+          C.new(0.0, 0.0)
         end
       end
 
-    Nx.tensor(state_data)
+    Nx.tensor(state_data, type: :c64)
   end
 end
