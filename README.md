@@ -1,0 +1,254 @@
+# Qx - Quantum Computing Simulator for Elixir
+
+Qx is a quantum computing simulator built for Elixir that provides an intuitive API for creating and simulating quantum circuits. It supports up to 20 qubits with statevector simulation using Nx as the computational backend for efficient processing.
+
+## Features
+
+- **Simple API**: Easy-to-use functions for quantum circuit creation and simulation
+- **Up to 20 Qubits**: Supports quantum circuits with up to 20 qubits
+- **Statevector Simulation**: Uses statevector method for accurate quantum state representation
+- **Nx Backend**: Leverages Nx for efficient numerical computations with GPU support
+- **Visualization**: Built-in plotting capabilities with SVG and VegaLite support
+- **Comprehensive Gates**: Supports H, X, Y, Z, S, T, RX, RY, RZ, CNOT, and Toffoli gates
+- **Measurements**: Quantum measurements with classical bit storage
+- **LiveBook Integration**: Works seamlessly with LiveBook for interactive quantum computing
+
+## Installation
+
+Add `qx` to your list of dependencies in `mix.exs`:
+
+```elixir
+def deps do
+  [
+    {:qx, "~> 0.1.0"}
+  ]
+end
+```
+
+Then run:
+
+```bash
+mix deps.get
+```
+
+## Quick Start
+
+### Creating a Bell State
+
+```elixir
+# Create a Bell state (maximally entangled two-qubit state)
+result = Qx.bell_state() |> Qx.run()
+
+# Visualize the results
+Qx.draw(result)
+```
+
+### Basic Circuit Construction
+
+```elixir
+# Create a circuit with 2 qubits and 2 classical bits
+qc = Qx.create_circuit(2, 2)
+     |> Qx.h(0)           # Apply Hadamard gate to qubit 0
+     |> Qx.cx(0, 1)       # Apply CNOT gate (control: 0, target: 1)
+     |> Qx.measure(0, 0)  # Measure qubit 0, store in classical bit 0
+     |> Qx.measure(1, 1)  # Measure qubit 1, store in classical bit 1
+
+# Run the simulation
+result = Qx.run(qc, 1000)  # 1000 measurement shots
+
+# Display results
+IO.inspect(result.counts)
+```
+
+## API Reference
+
+The 'Qx' module implements a handy API for the majority of functions needed to create simple quantum circuits. It is a series of delegations to the following modules:
+- `Qx.Qubit` -
+- `Qx.QuantumCircuit` - Structure and functions for a quantum circuit
+- `Qx.QuantumCircuit` - Structure and functions for a quantum circuit
+- `Qx.Operations` - Gate operations on Qubits
+- `Qx.Simulation` - Simulation and execution of circuits
+
+### Circuit Creation
+
+- `Qx.create_circuit(num_qubits)` - Create circuit with only qubits
+- `Qx.create_circuit(num_qubits, num_classical_bits)` - Create circuit with qubits and classical bits
+
+### Single-Qubit Gates
+
+- `Qx.h(circuit, qubit)` - Hadamard gate (creates superposition)
+- `Qx.x(circuit, qubit)` - Pauli-X gate (bit flip)
+- `Qx.y(circuit, qubit)` - Pauli-Y gate
+- `Qx.z(circuit, qubit)` - Pauli-Z gate (phase flip)
+- `Qx.s(circuit, qubit)` - S gate (phase gate π/2)
+- `Qx.t(circuit, qubit)` - T gate (phase gate π/4)
+
+### Rotation Gates
+
+- `Qx.rx(circuit, qubit, theta)` - Rotation around X-axis
+- `Qx.ry(circuit, qubit, theta)` - Rotation around Y-axis
+- `Qx.rz(circuit, qubit, theta)` - Rotation around Z-axis
+- `Qx.phase(circuit, qubit, phi)` - Phase gate with custom angle
+
+### Multi-Qubit Gates
+
+- `Qx.cx(circuit, control, target)` - CNOT gate
+- `Qx.ccx(circuit, control1, control2, target)` - Toffoli gate (CCNOT)
+
+### Measurements
+
+- `Qx.measure(circuit, qubit, classical_bit)` - Measure qubit and store result
+
+### Simulation
+
+- `Qx.run(circuit)` - Run simulation with default 1024 shots
+- `Qx.run(circuit, shots)` - Run simulation with specified number of shots
+- `Qx.get_state(circuit)` - Get quantum state vector directly
+- `Qx.get_probabilities(circuit)` - Get probability distribution
+
+### Visualization
+
+- `Qx.draw(result)` - Plot probability distribution (VegaLite)
+- `Qx.draw(result, format: :svg)` - Plot as SVG
+- `Qx.draw_counts(result)` - Plot measurement counts
+- `Qx.histogram(probabilities)` - Create probability histogram
+
+### Convenience Functions
+
+- `Qx.bell_state()` - Create Bell state circuit
+- `Qx.ghz_state()` - Create GHZ state circuit
+- `Qx.superposition()` - Create single-qubit superposition
+
+## Examples
+
+### Quantum Teleportation Setup
+
+```elixir
+# Create a quantum teleportation circuit
+qc = Qx.create_circuit(3, 3)
+     |> Qx.h(1)           # Create Bell pair between qubits 1 and 2
+     |> Qx.cx(1, 2)
+     |> Qx.cx(0, 1)       # Bell measurement on qubits 0 and 1
+     |> Qx.h(0)
+     |> Qx.measure(0, 0)  # Measure qubit 0
+     |> Qx.measure(1, 1)  # Measure qubit 1
+
+result = Qx.run(qc)
+Qx.draw_counts(result)
+```
+
+### Grover's Algorithm (Simplified)
+
+```elixir
+# Simplified Grover's algorithm for 2 qubits
+grover = Qx.create_circuit(2)
+         |> Qx.h(0)        # Initialize superposition
+         |> Qx.h(1)
+         # Oracle (flip phase of target state)
+         |> Qx.z(0)
+         |> Qx.z(1)
+         # Diffusion operator
+         |> Qx.h(0)
+         |> Qx.h(1)
+         |> Qx.x(0)
+         |> Qx.x(1)
+         |> Qx.cx(0, 1)
+         |> Qx.x(0)
+         |> Qx.x(1)
+         |> Qx.h(0)
+         |> Qx.h(1)
+
+result = Qx.run(grover)
+Qx.draw(result)
+```
+
+### Working with Quantum States
+
+```elixir
+# Create a 3-qubit GHZ state and examine its properties
+ghz_circuit = Qx.ghz_state()
+
+# Get the quantum state vector
+state = Qx.get_state(ghz_circuit)
+IO.inspect(Nx.to_flat_list(state))
+
+# Get probabilities for all computational basis states
+probs = Qx.get_probabilities(ghz_circuit)
+Qx.histogram(probs)
+```
+
+## Module Structure
+
+The Qx library consists of several modules:
+
+- **`Qx`** - Main API providing convenient functions
+- **`Qx.Qubit`** - Qubit creation and manipulation functions
+- **`Qx.QuantumCircuit`** - Quantum circuit structure and management
+- **`Qx.Operations`** - Quantum gate operations
+- **`Qx.Simulation`** - Circuit execution and simulation engine
+- **`Qx.Draw`** - Visualization and plotting functions
+- **`Qx.Math`** - Core mathematical functions for quantum mechanics
+
+## Requirements
+These are the versions I've developed and tested with
+
+- Elixir 1.18+
+- Nx 0.10+ (for numerical computations)
+- VegaLite 0.1+ (for visualization)
+
+## Limitations
+
+Current version limitations:
+
+- Maximum 20 qubits
+- Statevector simulation only (no density matrix)
+- Ideal gates only (no noise modeling)
+- Limited complex number support for some gates
+
+## Running Examples
+
+The library includes example scripts:
+
+```bash
+# Run basic usage examples
+elixir examples/basic_usage.exs
+
+# Run validation tests
+elixir examples/validation.exs
+```
+
+## Testing
+
+Run the test suite:
+
+```bash
+mix test
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Ensure all tests pass
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.
+
+## Acknowledgments
+
+- Built with [Nx](https://github.com/elixir-nx/nx) for numerical computations
+- Visualization powered by [VegaLite](https://github.com/livebook-dev/vega_lite)
+- Inspired by quantum computing frameworks like Qiskit and Cirq
+
+## Version
+
+Current version: 0.1.0
+
+For detailed API documentation, run:
+
+```bash
+mix docs
+```
