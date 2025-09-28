@@ -295,3 +295,10 @@ The implementation is ready for quantum computing education, research, and algor
 
 **Project Status**: COMPLETE
 **Next Phase**: Production deployment and community feedback
+
+### New Feature: 28 September 2025
+additional features implemented since the last release.
+
+### QX-REQ-025: Complex Number Support
+**Requirement**: Implement support for Complex Numbers in all appropriate calculations. Use the Complex library and the complex support in Nx to handle complex numbers. All functions require a complex value should accept a complex number or a real number that can be converted to a complex number. For example, the Qx.Qubit.new function should accept a complex number or a real number that can be converted to a complex number as follows, Qx.Qubit.new(1.0, 0.0) would convert paramters, 1.0 and 0.0, to their complex form. Qx.Qubit.new should also accept complex numbers as parameters.
+**Status**: Not Implemented

@@ -22,7 +22,8 @@ defmodule Qx.MixProject do
   defp deps do
     [
       {:nx, "~> 0.10"},
-      {:vega_lite, "~> 0.1"}
+      {:vega_lite, "~> 0.1"},
+      {:usage_rules, "~> 0.1"}
     ]
   end
 end
