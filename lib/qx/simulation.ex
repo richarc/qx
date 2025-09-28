@@ -1,12 +1,13 @@
 defmodule Qx.Simulation do
   @moduledoc """
-  Simulation engine for executing quantum circuits and generating probability results.
+  Simulation engine for executing quantum circuits with full complex number support.
 
   This module runs circuit instructions and applies quantum gates to evolve the
   quantum state, then provides measurement probabilities and classical bit results.
+  All quantum states and operations properly support complex number arithmetic.
   """
 
-  alias Qx.{Math, QuantumCircuit}
+  alias Qx.{Math, QuantumCircuit, Gates}
 
   @type simulation_result :: %{
           probabilities: Nx.Tensor.t(),
@@ -35,8 +36,8 @@ defmodule Qx.Simulation do
     # Execute the circuit to get final state
     final_state = execute_circuit(circuit)
 
-    # Calculate probabilities
-    probabilities = Math.probabilities(final_state)
+    # Calculate probabilities from complex state
+    probabilities = Math.complex_probabilities(final_state)
 
     # Perform measurements if any
     {classical_bits, counts} = perform_measurements(circuit, final_state, shots)
@@ -61,7 +62,7 @@ defmodule Qx.Simulation do
       iex> qc = Qx.QuantumCircuit.new(1, 0) |> Qx.Operations.h(0)
       iex> state = Qx.Simulation.get_state(qc)
       iex> Nx.shape(state)
-      {2}
+      {2, 2}
   """
   def get_state(%QuantumCircuit{} = circuit) do
     execute_circuit(circuit)
@@ -82,39 +83,51 @@ defmodule Qx.Simulation do
   """
   def get_probabilities(%QuantumCircuit{} = circuit) do
     final_state = execute_circuit(circuit)
-    Math.probabilities(final_state)
+    Math.complex_probabilities(final_state)
   end
 
   # Private functions
 
   defp execute_circuit(%QuantumCircuit{} = circuit) do
-    initial_state = circuit.state
+    # Convert initial real state to complex representation
+    initial_complex_state = real_state_to_complex(circuit.state)
     instructions = QuantumCircuit.get_instructions(circuit)
 
-    Enum.reduce(instructions, initial_state, fn instruction, state ->
+    Enum.reduce(instructions, initial_complex_state, fn instruction, state ->
       apply_instruction(instruction, state, circuit.num_qubits)
     end)
+  end
+
+  defp real_state_to_complex(real_state) do
+    # Convert [a, b, c, d] to [[a,0], [b,0], [c,0], [d,0]]
+    real_list = Nx.to_flat_list(real_state)
+
+    complex_list =
+      real_list
+      |> Enum.map(fn real_val -> [real_val, 0.0] end)
+
+    Nx.tensor(complex_list)
   end
 
   defp apply_instruction({gate_name, qubits, params}, state, num_qubits) do
     case {gate_name, length(qubits)} do
       {:h, 1} ->
-        apply_hadamard_gate(Enum.at(qubits, 0), state, num_qubits)
+        apply_single_qubit_gate(Gates.hadamard(), Enum.at(qubits, 0), state, num_qubits)
 
       {:x, 1} ->
-        apply_x_gate(Enum.at(qubits, 0), state, num_qubits)
+        apply_single_qubit_gate(Gates.pauli_x(), Enum.at(qubits, 0), state, num_qubits)
 
       {:y, 1} ->
-        apply_y_gate(Enum.at(qubits, 0), state, num_qubits)
+        apply_single_qubit_gate(Gates.pauli_y(), Enum.at(qubits, 0), state, num_qubits)
 
       {:z, 1} ->
-        apply_z_gate(Enum.at(qubits, 0), state, num_qubits)
+        apply_single_qubit_gate(Gates.pauli_z(), Enum.at(qubits, 0), state, num_qubits)
 
       {:s, 1} ->
-        apply_s_gate(Enum.at(qubits, 0), state, num_qubits)
+        apply_single_qubit_gate(Gates.s_gate(), Enum.at(qubits, 0), state, num_qubits)
 
       {:t, 1} ->
-        apply_t_gate(Enum.at(qubits, 0), state, num_qubits)
+        apply_single_qubit_gate(Gates.t_gate(), Enum.at(qubits, 0), state, num_qubits)
 
       {:cx, 2} ->
         apply_cx_gate(Enum.at(qubits, 0), Enum.at(qubits, 1), state, num_qubits)
@@ -129,206 +142,196 @@ defmodule Qx.Simulation do
         )
 
       {:rx, 1} ->
-        apply_rx_gate(Enum.at(qubits, 0), Enum.at(params, 0), state, num_qubits)
+        apply_single_qubit_gate(
+          Gates.rx(Enum.at(params, 0)),
+          Enum.at(qubits, 0),
+          state,
+          num_qubits
+        )
 
       {:ry, 1} ->
-        apply_ry_gate(Enum.at(qubits, 0), Enum.at(params, 0), state, num_qubits)
+        apply_single_qubit_gate(
+          Gates.ry(Enum.at(params, 0)),
+          Enum.at(qubits, 0),
+          state,
+          num_qubits
+        )
 
       {:rz, 1} ->
-        apply_rz_gate(Enum.at(qubits, 0), Enum.at(params, 0), state, num_qubits)
+        apply_single_qubit_gate(
+          Gates.rz(Enum.at(params, 0)),
+          Enum.at(qubits, 0),
+          state,
+          num_qubits
+        )
 
       {:phase, 1} ->
-        apply_phase_gate(Enum.at(qubits, 0), Enum.at(params, 0), state, num_qubits)
+        apply_single_qubit_gate(
+          Gates.phase(Enum.at(params, 0)),
+          Enum.at(qubits, 0),
+          state,
+          num_qubits
+        )
 
       _ ->
         raise "Unsupported gate: #{gate_name} with #{length(qubits)} qubits"
     end
   end
 
-  defp apply_hadamard_gate(target_qubit, state, num_qubits) do
-    gate_matrix =
-      Nx.tensor([
-        [1.0 / :math.sqrt(2), 1.0 / :math.sqrt(2)],
-        [1.0 / :math.sqrt(2), -1.0 / :math.sqrt(2)]
-      ])
-
-    apply_single_qubit_gate(gate_matrix, target_qubit, state, num_qubits)
-  end
-
-  defp apply_x_gate(target_qubit, state, num_qubits) do
-    gate_matrix =
-      Nx.tensor([
-        [0.0, 1.0],
-        [1.0, 0.0]
-      ])
-
-    apply_single_qubit_gate(gate_matrix, target_qubit, state, num_qubits)
-  end
-
-  defp apply_y_gate(target_qubit, state, num_qubits) do
-    # For now, implement Y as iXZ (approximation without complex numbers)
-    state
-    |> apply_z_gate(target_qubit, num_qubits)
-    |> apply_x_gate(target_qubit, num_qubits)
-  end
-
-  defp apply_z_gate(target_qubit, state, num_qubits) do
-    gate_matrix =
-      Nx.tensor([
-        [1.0, 0.0],
-        [0.0, -1.0]
-      ])
-
-    apply_single_qubit_gate(gate_matrix, target_qubit, state, num_qubits)
-  end
-
-  defp apply_s_gate(target_qubit, state, num_qubits) do
-    # S gate approximation (phase π/2 ≈ phase flip for |1⟩)
-    apply_z_gate(target_qubit, state, num_qubits)
-  end
-
-  defp apply_t_gate(target_qubit, state, num_qubits) do
-    # T gate approximation (phase π/4 ≈ partial phase flip)
-    apply_z_gate(target_qubit, state, num_qubits)
-  end
-
-  defp apply_rx_gate(target_qubit, theta, state, num_qubits) do
-    # RX gate approximation using cos/sin
-    cos_half = :math.cos(theta / 2)
-    sin_half = :math.sin(theta / 2)
-
-    gate_matrix =
-      Nx.tensor([
-        [cos_half, -sin_half],
-        [-sin_half, cos_half]
-      ])
-
-    apply_single_qubit_gate(gate_matrix, target_qubit, state, num_qubits)
-  end
-
-  defp apply_ry_gate(target_qubit, theta, state, num_qubits) do
-    cos_half = :math.cos(theta / 2)
-    sin_half = :math.sin(theta / 2)
-
-    gate_matrix =
-      Nx.tensor([
-        [cos_half, -sin_half],
-        [sin_half, cos_half]
-      ])
-
-    apply_single_qubit_gate(gate_matrix, target_qubit, state, num_qubits)
-  end
-
-  defp apply_rz_gate(target_qubit, _theta, state, num_qubits) do
-    # RZ gate approximation as Z gate
-    apply_z_gate(target_qubit, state, num_qubits)
-  end
-
-  defp apply_phase_gate(target_qubit, _phi, state, num_qubits) do
-    # Phase gate approximation as Z gate
-    apply_z_gate(target_qubit, state, num_qubits)
-  end
-
   defp apply_single_qubit_gate(gate_matrix, target_qubit, state, num_qubits) do
     state_size = trunc(:math.pow(2, num_qubits))
-    new_state = Nx.broadcast(0.0, {state_size})
+    new_state = Nx.broadcast(0.0, {state_size, 2})
 
     # Apply gate to each computational basis state
     for i <- 0..(state_size - 1), reduce: new_state do
       acc_state ->
         target_bit = Bitwise.band(Bitwise.bsr(i, target_qubit), 1)
-        amplitude = Nx.to_number(state[i])
+
+        # Get current amplitude as complex number
+        amplitude_real = Nx.to_number(state[i][0])
+        amplitude_imag = Nx.to_number(state[i][1])
 
         cond do
           target_bit == 0 ->
-            # |0⟩ component
-            new_amp_0 = Nx.to_number(gate_matrix[0][0]) * amplitude
-            new_amp_1 = Nx.to_number(gate_matrix[1][0]) * amplitude
+            # |0⟩ component - apply first row of gate matrix
+            gate_00_real = Nx.to_number(gate_matrix[0][0][0])
+            gate_00_imag = Nx.to_number(gate_matrix[0][0][1])
+            gate_10_real = Nx.to_number(gate_matrix[1][0][0])
+            gate_10_imag = Nx.to_number(gate_matrix[1][0][1])
+
+            # Complex multiplication: (gate_element) * (amplitude)
+            # For |0⟩ -> |0⟩
+            new_amp_0_real = gate_00_real * amplitude_real - gate_00_imag * amplitude_imag
+            new_amp_0_imag = gate_00_real * amplitude_imag + gate_00_imag * amplitude_real
+
+            # For |0⟩ -> |1⟩
+            new_amp_1_real = gate_10_real * amplitude_real - gate_10_imag * amplitude_imag
+            new_amp_1_imag = gate_10_real * amplitude_imag + gate_10_imag * amplitude_real
 
             # Add to |0⟩ state (same index)
             acc_state =
-              Nx.put_slice(acc_state, [i], Nx.tensor([Nx.to_number(acc_state[i]) + new_amp_0]))
+              acc_state
+              |> Nx.put_slice(
+                [i, 0],
+                Nx.tensor([[Nx.to_number(acc_state[i][0]) + new_amp_0_real]])
+              )
+              |> Nx.put_slice(
+                [i, 1],
+                Nx.tensor([[Nx.to_number(acc_state[i][1]) + new_amp_0_imag]])
+              )
 
             # Add to |1⟩ state (flip target bit)
             new_index = Bitwise.bxor(i, Bitwise.bsl(1, target_qubit))
 
-            Nx.put_slice(
-              acc_state,
-              [new_index],
-              Nx.tensor([Nx.to_number(acc_state[new_index]) + new_amp_1])
+            acc_state
+            |> Nx.put_slice(
+              [new_index, 0],
+              Nx.tensor([[Nx.to_number(acc_state[new_index][0]) + new_amp_1_real]])
+            )
+            |> Nx.put_slice(
+              [new_index, 1],
+              Nx.tensor([[Nx.to_number(acc_state[new_index][1]) + new_amp_1_imag]])
             )
 
           target_bit == 1 ->
-            # |1⟩ component
-            new_amp_0 = Nx.to_number(gate_matrix[0][1]) * amplitude
-            new_amp_1 = Nx.to_number(gate_matrix[1][1]) * amplitude
+            # |1⟩ component - apply second row of gate matrix
+            gate_01_real = Nx.to_number(gate_matrix[0][1][0])
+            gate_01_imag = Nx.to_number(gate_matrix[0][1][1])
+            gate_11_real = Nx.to_number(gate_matrix[1][1][0])
+            gate_11_imag = Nx.to_number(gate_matrix[1][1][1])
+
+            # For |1⟩ -> |0⟩
+            new_amp_0_real = gate_01_real * amplitude_real - gate_01_imag * amplitude_imag
+            new_amp_0_imag = gate_01_real * amplitude_imag + gate_01_imag * amplitude_real
+
+            # For |1⟩ -> |1⟩
+            new_amp_1_real = gate_11_real * amplitude_real - gate_11_imag * amplitude_imag
+            new_amp_1_imag = gate_11_real * amplitude_imag + gate_11_imag * amplitude_real
 
             # Add to |0⟩ state (flip target bit)
             new_index = Bitwise.bxor(i, Bitwise.bsl(1, target_qubit))
 
             acc_state =
-              Nx.put_slice(
-                acc_state,
-                [new_index],
-                Nx.tensor([
-                  Nx.to_number(acc_state[new_index]) + new_amp_0
-                ])
+              acc_state
+              |> Nx.put_slice(
+                [new_index, 0],
+                Nx.tensor([[Nx.to_number(acc_state[new_index][0]) + new_amp_0_real]])
+              )
+              |> Nx.put_slice(
+                [new_index, 1],
+                Nx.tensor([[Nx.to_number(acc_state[new_index][1]) + new_amp_0_imag]])
               )
 
             # Add to |1⟩ state (same index)
-            Nx.put_slice(acc_state, [i], Nx.tensor([Nx.to_number(acc_state[i]) + new_amp_1]))
+            acc_state
+            |> Nx.put_slice([i, 0], Nx.tensor([[Nx.to_number(acc_state[i][0]) + new_amp_1_real]]))
+            |> Nx.put_slice([i, 1], Nx.tensor([[Nx.to_number(acc_state[i][1]) + new_amp_1_imag]]))
         end
     end
   end
 
   defp apply_cx_gate(control_qubit, target_qubit, state, num_qubits) do
     state_size = trunc(:math.pow(2, num_qubits))
-    new_state = Nx.broadcast(0.0, {state_size})
+    new_state = Nx.broadcast(0.0, {state_size, 2})
 
     # Iterate through all basis states
     for i <- 0..(state_size - 1), reduce: new_state do
       acc_state ->
         control_bit = Bitwise.band(Bitwise.bsr(i, control_qubit), 1)
-        amplitude = Nx.to_number(state[i])
+        amplitude_real = Nx.to_number(state[i][0])
+        amplitude_imag = Nx.to_number(state[i][1])
 
         if control_bit == 1 do
           # Flip target bit
           new_index = Bitwise.bxor(i, Bitwise.bsl(1, target_qubit))
 
-          Nx.put_slice(
-            acc_state,
-            [new_index],
-            Nx.tensor([Nx.to_number(acc_state[new_index]) + amplitude])
+          acc_state
+          |> Nx.put_slice(
+            [new_index, 0],
+            Nx.tensor([[Nx.to_number(acc_state[new_index][0]) + amplitude_real]])
+          )
+          |> Nx.put_slice(
+            [new_index, 1],
+            Nx.tensor([[Nx.to_number(acc_state[new_index][1]) + amplitude_imag]])
           )
         else
           # Keep state unchanged
-          Nx.put_slice(acc_state, [i], Nx.tensor([Nx.to_number(acc_state[i]) + amplitude]))
+          acc_state
+          |> Nx.put_slice([i, 0], Nx.tensor([[Nx.to_number(acc_state[i][0]) + amplitude_real]]))
+          |> Nx.put_slice([i, 1], Nx.tensor([[Nx.to_number(acc_state[i][1]) + amplitude_imag]]))
         end
     end
   end
 
   defp apply_ccx_gate(control1_qubit, control2_qubit, target_qubit, state, num_qubits) do
     state_size = trunc(:math.pow(2, num_qubits))
-    new_state = Nx.broadcast(0.0, {state_size})
+    new_state = Nx.broadcast(0.0, {state_size, 2})
 
     for i <- 0..(state_size - 1), reduce: new_state do
       acc_state ->
         control1_bit = Bitwise.band(Bitwise.bsr(i, control1_qubit), 1)
         control2_bit = Bitwise.band(Bitwise.bsr(i, control2_qubit), 1)
-        amplitude = Nx.to_number(state[i])
+        amplitude_real = Nx.to_number(state[i][0])
+        amplitude_imag = Nx.to_number(state[i][1])
 
         if control1_bit == 1 and control2_bit == 1 do
           # Flip target bit
           new_index = Bitwise.bxor(i, Bitwise.bsl(1, target_qubit))
 
-          Nx.put_slice(
-            acc_state,
-            [new_index],
-            Nx.tensor([Nx.to_number(acc_state[new_index]) + amplitude])
+          acc_state
+          |> Nx.put_slice(
+            [new_index, 0],
+            Nx.tensor([[Nx.to_number(acc_state[new_index][0]) + amplitude_real]])
+          )
+          |> Nx.put_slice(
+            [new_index, 1],
+            Nx.tensor([[Nx.to_number(acc_state[new_index][1]) + amplitude_imag]])
           )
         else
           # Keep state unchanged
-          Nx.put_slice(acc_state, [i], Nx.tensor([Nx.to_number(acc_state[i]) + amplitude]))
+          acc_state
+          |> Nx.put_slice([i, 0], Nx.tensor([[Nx.to_number(acc_state[i][0]) + amplitude_real]]))
+          |> Nx.put_slice([i, 1], Nx.tensor([[Nx.to_number(acc_state[i][1]) + amplitude_imag]]))
         end
     end
   end
@@ -340,7 +343,7 @@ defmodule Qx.Simulation do
       {[], %{}}
     else
       # Get probabilities for all computational basis states
-      probabilities = Math.probabilities(final_state) |> Nx.to_flat_list()
+      probabilities = Math.complex_probabilities(final_state) |> Nx.to_flat_list()
 
       # Generate measurement samples
       samples = generate_samples(probabilities, shots)

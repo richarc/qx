@@ -7,8 +7,6 @@ defmodule Qx.QuantumCircuit do
   for execution.
   """
 
-  alias Qx.Math
-
   @type instruction :: {atom(), list(), list()}
   @type measurement :: {integer(), integer()}
 
@@ -49,10 +47,10 @@ defmodule Qx.QuantumCircuit do
       2
   """
   def new(num_qubits, num_classical_bits) when num_qubits > 0 and num_classical_bits >= 0 do
-    # Initialize all qubits in |0⟩ state
-    # For n qubits, we need a 2^n dimensional state vector
+    # Initialize all qubits in |0⟩ state with complex representation
+    # For n qubits, we need a 2^n dimensional state vector with complex components
     state_size = trunc(:math.pow(2, num_qubits))
-    initial_state = Math.basis_state(0, state_size)
+    initial_state = complex_basis_state(0, state_size)
 
     %__MODULE__{
       num_qubits: num_qubits,
@@ -328,7 +326,7 @@ defmodule Qx.QuantumCircuit do
   """
   def reset(%__MODULE__{} = circuit) do
     state_size = trunc(:math.pow(2, circuit.num_qubits))
-    initial_state = Math.basis_state(0, state_size)
+    initial_state = complex_basis_state(0, state_size)
 
     %{
       circuit
@@ -337,5 +335,22 @@ defmodule Qx.QuantumCircuit do
         measurements: [],
         measured_qubits: MapSet.new()
     }
+  end
+
+  # Private helper function to create complex basis states
+  defp complex_basis_state(index, dimension) do
+    # Create state vector with complex representation [real, imag] for each amplitude
+    state_data =
+      for i <- 0..(dimension - 1) do
+        if i == index do
+          # |i⟩ state has amplitude 1+0i
+          [1.0, 0.0]
+        else
+          # other states have amplitude 0+0i
+          [0.0, 0.0]
+        end
+      end
+
+    Nx.tensor(state_data)
   end
 end
