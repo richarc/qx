@@ -18,16 +18,13 @@ defmodule Qx.Qubit do
 
       iex> Qx.Qubit.new()
       #Nx.Tensor<
-        f32[2][2]
-        [
-          [1.0, 0.0],
-          [0.0, 0.0]
-        ]
+        c64[2]
+        [1.0+0.0i, 0.0+0.0i]
       >
   """
   def new do
-    # |0⟩ state with complex representation [[1+0i], [0+0i]]
-    Nx.tensor([[1.0, 0.0], [0.0, 0.0]])
+    # |0⟩ state with c64 complex representation
+    Nx.tensor([C.new(1.0, 0.0), C.new(0.0, 0.0)], type: :c64)
   end
 
   @doc """
@@ -38,39 +35,35 @@ defmodule Qx.Qubit do
   qubit meets quantum mechanics normalization requirements.
 
   ## Parameters
-    * `alpha` - Coefficient for the |0⟩ state
-    * `beta` - Coefficient for the |1⟩ state
+    * `alpha` - Coefficient for the |0⟩ state (number or Complex)
+    * `beta` - Coefficient for the |1⟩ state (number or Complex)
 
   ## Examples
 
       iex> Qx.Qubit.new(1.0, 1.0)
       #Nx.Tensor<
-        f32[2][2]
-        [
-          [0.7071067690849304, 0.0],
-          [0.7071067690849304, 0.0]
-        ]
+        c64[2]
+        [0.7071067690849304+0.0i, 0.7071067690849304+0.0i]
       >
 
       iex> Qx.Qubit.new(1.0, 0.0)
       #Nx.Tensor<
-        f32[2][2]
-        [
-          [1.0, 0.0],
-          [0.0, 0.0]
-        ]
+        c64[2]
+        [1.0+0.0i, 0.0+0.0i]
       >
   """
   def new(alpha, beta) when is_number(alpha) and is_number(beta) do
-    # Create complex state with real coefficients
-    complex_state = Nx.tensor([[alpha, 0.0], [beta, 0.0]])
-    Math.normalize_complex(complex_state)
+    # Create c64 tensor from real numbers
+    alpha_complex = C.new(alpha, 0.0)
+    beta_complex = C.new(beta, 0.0)
+    state = Nx.tensor([alpha_complex, beta_complex], type: :c64)
+    Math.normalize(state)
   end
 
   def new(%C{} = alpha, %C{} = beta) do
-    # Create complex state with complex coefficients
-    complex_state = Nx.tensor([[alpha.re, alpha.im], [beta.re, beta.im]])
-    Math.normalize_complex(complex_state)
+    # Create c64 tensor from Complex numbers
+    state = Nx.tensor([alpha, beta], type: :c64)
+    Math.normalize(state)
   end
 
   @doc """
@@ -80,16 +73,13 @@ defmodule Qx.Qubit do
 
       iex> Qx.Qubit.one()
       #Nx.Tensor<
-        f32[2][2]
-        [
-          [0.0, 0.0],
-          [1.0, 0.0]
-        ]
+        c64[2]
+        [0.0+0.0i, 1.0+0.0i]
       >
   """
   def one do
-    # |1⟩ state with complex representation [[0+0i], [1+0i]]
-    Nx.tensor([[0.0, 0.0], [1.0, 0.0]])
+    # |1⟩ state with c64 complex representation
+    Nx.tensor([C.new(0.0, 0.0), C.new(1.0, 0.0)], type: :c64)
   end
 
   @doc """
@@ -101,11 +91,8 @@ defmodule Qx.Qubit do
 
       iex> Qx.Qubit.plus()
       #Nx.Tensor<
-        f32[2][2]
-        [
-          [0.7071067690849304, 0.0],
-          [0.7071067690849304, 0.0]
-        ]
+        c64[2]
+        [0.7071067690849304+0.0i, 0.7071067690849304+0.0i]
       >
   """
   def plus do
@@ -121,11 +108,8 @@ defmodule Qx.Qubit do
 
       iex> Qx.Qubit.minus()
       #Nx.Tensor<
-        f32[2][2]
-        [
-          [0.7071067690849304, 0.0],
-          [-0.7071067690849304, 0.0]
-        ]
+        c64[2]
+        [0.7071067690849304+0.0i, -0.7071067690849304+0.0i]
       >
   """
   def minus do
@@ -145,30 +129,30 @@ defmodule Qx.Qubit do
       >
   """
   defn measure_probabilities(qubit) do
-    Math.complex_probabilities(qubit)
+    Math.probabilities(qubit)
   end
 
   @doc """
   Checks if a given state vector represents a valid qubit.
 
   A valid qubit must:
-  1. Have exactly 2 complex components (shape {2, 2})
+  1. Have exactly 2 complex components (shape {2})
   2. Be normalized (|α|² + |β|² = 1)
 
   ## Examples
 
-      iex> valid_qubit = Nx.tensor([0.6, 0.8])
+      iex> valid_qubit = Qx.Qubit.new(0.6, 0.8)
       iex> Qx.Qubit.valid?(valid_qubit)
       true
 
-      iex> invalid_qubit = Nx.tensor([1.0, 1.0])
+      iex> invalid_qubit = Nx.tensor([Complex.new(1.0, 0.0), Complex.new(1.0, 0.0)], type: :c64)
       iex> Qx.Qubit.valid?(invalid_qubit)
       false
   """
   def valid?(state) do
     case Nx.shape(state) do
-      {2, 2} ->
-        probs = Math.complex_probabilities(state)
+      {2} ->
+        probs = Math.probabilities(state)
         norm_squared = Nx.sum(probs) |> Nx.to_number()
         abs(norm_squared - 1.0) < 1.0e-6
 
@@ -187,8 +171,8 @@ defmodule Qx.Qubit do
       #Complex<0.6000000238418579+0.0i>
   """
   def alpha(qubit) do
-    [re, im] = Nx.to_flat_list(qubit[0])
-    C.new(re, im)
+    # Extract the first complex number from c64 tensor
+    Nx.to_number(qubit[0])
   end
 
   @doc """
@@ -201,8 +185,8 @@ defmodule Qx.Qubit do
       #Complex<0.7999999523162842+0.0i>
   """
   def beta(qubit) do
-    [re, im] = Nx.to_flat_list(qubit[1])
-    C.new(re, im)
+    # Extract the second complex number from c64 tensor
+    Nx.to_number(qubit[1])
   end
 
   @doc """

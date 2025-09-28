@@ -23,7 +23,9 @@ defmodule Qx.MixProject do
     [
       {:nx, "~> 0.10"},
       {:vega_lite, "~> 0.1"},
-      {:complex, "~> 0.6"}
+      {:complex, "~> 0.6"},
+      # stop removing this!!!!!!!
+      {:usage_rules, "~> 0.1"}
     ]
   end
 end

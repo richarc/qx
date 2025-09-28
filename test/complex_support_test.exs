@@ -98,7 +98,7 @@ defmodule ComplexSupportTest do
     beta = C.new(0.8, 0.0)
 
     qubit = Qubit.new(alpha, beta)
-    assert Nx.shape(qubit) == {2, 2}
+    assert Nx.shape(qubit) == {2}
     assert Qubit.valid?(qubit)
   end
 
@@ -110,11 +110,11 @@ defmodule ComplexSupportTest do
     beta = C.new(0.0, 0.8)
 
     qubit = Qubit.new(alpha, beta)
-    assert Nx.shape(qubit) == {2, 2}
+    assert Nx.shape(qubit) == {2}
     assert Qubit.valid?(qubit)
 
     # Check normalization: |0.6i|² + |0.8i|² = 0.36 + 0.64 = 1.0
-    probs = Math.complex_probabilities(qubit)
+    probs = Math.probabilities(qubit)
     total_prob = Nx.sum(probs) |> Nx.to_number()
     assert abs(total_prob - 1.0) < 1.0e-6
   end
