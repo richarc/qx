@@ -263,15 +263,18 @@ Qx.draw_counts(result)
 ```
 
 ### QX-REQ-025: Complex Number Support
-**Requirement**: The system shall support full complex number operations for quantum states and gates  
-**Status**: ✅ IMPLEMENTED  
-**Implementation**: 
+**Requirement**: The system shall support full complex number operations for quantum states and gates
+**Status**: ✅ IMPLEMENTED
+**Implementation**:
 - ✅ Replaced real number approximations with proper complex number arithmetic using Complex library
 - ✅ Implemented correct Y, S, T, and rotation gate matrices using complex coefficients
 - ✅ Support arbitrary quantum state preparation with complex amplitudes via Qx.Qubit.new/2
 - ✅ Maintain phase relationships correctly for quantum interference effects
-- ✅ All quantum states now use complex representation with [real, imag] tensor format
-- ✅ Backward compatibility maintained - all existing tests pass with new complex backend
+
+### QX-REQ-026: Circuit Visualization
+**Requirement**: The system shall support a cicuit drawing function using information from the Qx.QuantumCircuit structure, including the list of instructions to visualize the circuit diagram. The digrams should follow as closely as possible to the visulisation and standards used in the IBm Qiskit Python SDK.
+**Status**: To Be Implemented
+**Implementation**:
 
 ## Current Limitations
 
@@ -282,7 +285,7 @@ Qx.draw_counts(result)
 
 ### Future Enhancement Opportunities
 - OpenQASM 3.0 import/export
-- Noise model implementation  
+- Noise model implementation
 - Circuit visualization
 - Performance optimizations for larger circuits
 - Distributed computing support
@@ -303,15 +306,12 @@ The implementation is ready for quantum computing education, research, and algor
 
 ---
 
-**Project Status**: COMPLETE WITH COMPLEX NUMBER ENHANCEMENT  
+**Project Status**: COMPLETE WITH COMPLEX NUMBER ENHANCEMENT
 **Next Phase**: Production deployment and community feedback
 
-### Recent Enhancements (v1.1)
+### Recent Enhancements (v0.1.1)
 - **QX-REQ-025 Completed**: Full complex number support implemented
 - All quantum gates now use proper complex number mathematics
 - Support for arbitrary complex quantum state preparation
 - Maintains backward compatibility with existing code
 - Enhanced accuracy for quantum algorithms requiring phase manipulation
-
-
-

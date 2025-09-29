@@ -63,8 +63,7 @@ IO.inspect(result.counts)
 ## API Reference
 
 The 'Qx' module implements a handy API for the majority of functions needed to create simple quantum circuits. It is a series of delegations to the following modules:
-- `Qx.Qubit` -
-- `Qx.QuantumCircuit` - Structure and functions for a quantum circuit
+- `Qx.Qubit` - Define and initialise individual qubits (not used in circuits)
 - `Qx.QuantumCircuit` - Structure and functions for a quantum circuit
 - `Qx.Operations` - Gate operations on Qubits
 - `Qx.Simulation` - Simulation and execution of circuits
@@ -203,7 +202,6 @@ Current version limitations:
 - Maximum 20 qubits
 - Statevector simulation only (no density matrix)
 - Ideal gates only (no noise modeling)
-- Limited complex number support for some gates
 
 ## Running Examples
 
