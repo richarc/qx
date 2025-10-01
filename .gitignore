@@ -21,3 +21,9 @@ qx-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+# Ignore spec files
+/spec/
+
+# Ignore agents documentation
+AGENTS.md
