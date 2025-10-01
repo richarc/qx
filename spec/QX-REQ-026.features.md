@@ -12,7 +12,11 @@
   - Horizontal gate spacing: 40pt minimum between gates
   - Vertical qubit line spacing: 45pt between adjacent qubit lines
   - Diagram padding: 20pt on all sides
-- **Collision Avoidance**: Multi-qubit gates with vertical connecting lines must not pass through other gates on intermediate qubits; if collision detected, move the multi-qubit gate to the next column
+- **Collision Avoidance**: Gates with vertical connecting lines (multi-qubit gates and measurements) must not pass through or overlap with other gates:
+  - Multi-qubit gates: Check all qubits between control and target for existing gates
+  - Measurement gates: Check all qubits from the measured qubit down to the classical register
+  - If collision detected, move the gate to the next column
+  - When a gate with a vertical line is placed, mark all qubits along its path as occupied
 
 ### F2: Gate Visualization
 - **Single-qubit gates**: Standard rectangular boxes with text labels (H, X, Y, Z, RX, RY, RZ, etc.)
@@ -148,10 +152,13 @@ Lays out gates on appropriate qubit lines with collision avoidance. Rules:
 - For each instruction in order:
   - Place gate symbol on target qubit line in earliest available column
   - For single-qubit gates: Check current column is free on that qubit line
-  - For multi-qubit gates with vertical connectors (CNOT, CX, measurements):
-    - Check all intermediate qubit lines in current column for existing gates
-    - If any gate found in path, move to next column
-    - This ensures vertical lines never cut through other gates
+  - For gates with vertical connectors (CNOT, CZ, CCX, measurements):
+    - Multi-qubit gates: Check all qubit lines between control and target for existing gates
+    - Measurement gates: Check all qubit lines from measured qubit to last qubit (classical register is below)
+    - If any gate found in path, advance to next column and check again
+    - When placed, mark ALL qubits along the vertical path as occupied
+    - This ensures vertical lines never cut through or overlap with other gates
+    - Measurements on different qubits applied sequentially will cascade to different columns
 - Gate rendering:
   - Single-qubit gates: 30pt × 30pt boxes with 10pt text labels, 1.5pt borders
   - Control dots: Filled circles ~4.5pt radius

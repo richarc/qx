@@ -8,8 +8,9 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 - **Up to 20 Qubits**: Supports quantum circuits with up to 20 qubits
 - **Statevector Simulation**: Uses statevector method for accurate quantum state representation
 - **Nx Backend**: Leverages Nx for efficient numerical computations with GPU support
-- **Visualization**: Built-in plotting capabilities with SVG and VegaLite support
-- **Comprehensive Gates**: Supports H, X, Y, Z, S, T, RX, RY, RZ, CNOT, and Toffoli gates
+- **Visualization**: Built-in plotting capabilities with SVG and VegaLite support, plus circuit diagram generation
+- **Circuit Diagrams**: Generate publication-quality SVG circuit diagrams following Qiskit conventions
+- **Comprehensive Gates**: Supports H, X, Y, Z, S, T, RX, RY, RZ, CNOT, CZ, and Toffoli gates
 - **Measurements**: Quantum measurements with classical bit storage
 - **LiveBook Integration**: Works seamlessly with LiveBook for interactive quantum computing
 
@@ -92,11 +93,16 @@ The 'Qx' module implements a handy API for the majority of functions needed to c
 ### Multi-Qubit Gates
 
 - `Qx.cx(circuit, control, target)` - CNOT gate
+- `Qx.cz(circuit, control, target)` - Controlled-Z gate
 - `Qx.ccx(circuit, control1, control2, target)` - Toffoli gate (CCNOT)
 
 ### Measurements
 
 - `Qx.measure(circuit, qubit, classical_bit)` - Measure qubit and store result
+
+### Circuit Visualization
+
+- `Qx.barrier(circuit, qubits)` - Add visual barrier for circuit organization
 
 ### Simulation
 
@@ -107,10 +113,15 @@ The 'Qx' module implements a handy API for the majority of functions needed to c
 
 ### Visualization
 
+**Results Visualization:**
 - `Qx.draw(result)` - Plot probability distribution (VegaLite)
 - `Qx.draw(result, format: :svg)` - Plot as SVG
 - `Qx.draw_counts(result)` - Plot measurement counts
 - `Qx.histogram(probabilities)` - Create probability histogram
+
+**Circuit Diagrams:**
+- `Qx.Draw.circuit(circuit)` - Generate SVG circuit diagram
+- `Qx.Draw.circuit(circuit, title)` - Generate circuit diagram with title
 
 ### Convenience Functions
 
@@ -119,6 +130,31 @@ The 'Qx' module implements a handy API for the majority of functions needed to c
 - `Qx.superposition()` - Create single-qubit superposition
 
 ## Examples
+
+### Circuit Visualization
+
+```elixir
+# Create a Bell state circuit
+circuit = Qx.create_circuit(2, 2)
+          |> Qx.h(0)
+          |> Qx.cx(0, 1)
+          |> Qx.measure(0, 0)
+          |> Qx.measure(1, 1)
+
+# Generate and save circuit diagram
+svg = Qx.Draw.circuit(circuit, "Bell State")
+File.write!("bell_state.svg", svg)
+```
+
+The circuit diagram feature supports:
+- All quantum gates with proper IEEE notation
+- Parametric gates (displays angles like RX(π/2))
+- Multi-qubit gates with collision avoidance
+- Barriers for visual organization
+- Measurements with classical bit connections
+- Publication-quality SVG output
+
+See `examples/circuit_visualization_example.exs` for more examples.
 
 ### Quantum Teleportation Setup
 
@@ -208,10 +244,13 @@ Current version limitations:
 The library includes example scripts:
 
 ```bash
-# Run basic usage examples
+# Run circuit visualization examples
+mix run examples/circuit_visualization_example.exs
+
+# Run basic usage examples (if available)
 elixir examples/basic_usage.exs
 
-# Run validation tests
+# Run validation tests (if available)
 elixir examples/validation.exs
 ```
 

@@ -1,0 +1,65 @@
+# Quantum Circuit Visualization Example
+# Run with: mix run examples/circuit_visualization_example.exs
+
+IO.puts("Quantum Circuit Visualization Demo")
+IO.puts(String.duplicate("=", 60))
+
+# Example 1: Bell State
+IO.puts("\nExample 1: Bell State Circuit")
+bell_circuit = Qx.QuantumCircuit.new(2, 2)
+  |> Qx.Operations.h(0)
+  |> Qx.Operations.cx(0, 1)
+  |> Qx.Operations.measure(0, 0)
+  |> Qx.Operations.measure(1, 1)
+
+svg = Qx.Draw.circuit(bell_circuit, "Bell State")
+File.write!("examples/bell_state.svg", svg)
+IO.puts("→ Generated: examples/bell_state.svg")
+
+# Example 2: Quantum Teleportation
+IO.puts("\nExample 2: Quantum Teleportation Circuit")
+teleport_circuit = Qx.QuantumCircuit.new(3, 3)
+  |> Qx.Operations.h(0)
+  |> Qx.Operations.t(0)
+  |> Qx.Operations.barrier([0, 1, 2])
+  |> Qx.Operations.h(1)
+  |> Qx.Operations.cx(1, 2)
+  |> Qx.Operations.cx(0, 1)
+  |> Qx.Operations.h(1)
+  |> Qx.Operations.barrier([0, 1, 2])
+  |> Qx.Operations.measure(0, 0)
+  |> Qx.Operations.measure(1, 1)
+  |> Qx.Operations.cx(1, 2)
+  |> Qx.Operations.cz(0, 2)
+  |> Qx.Operations.measure(2, 2)
+
+svg = Qx.Draw.circuit(teleport_circuit, "Quantum Teleportation Protocol")
+File.write!("examples/teleportation.svg", svg)
+IO.puts("→ Generated: examples/teleportation.svg")
+
+# Example 3: Grover's Algorithm (simplified)
+IO.puts("\nExample 3: Grover's Algorithm (2-qubit)")
+grover_circuit = Qx.QuantumCircuit.new(2, 2)
+  |> Qx.Operations.h(0)
+  |> Qx.Operations.h(1)
+  |> Qx.Operations.barrier([0, 1])
+  |> Qx.Operations.cz(0, 1)
+  |> Qx.Operations.barrier([0, 1])
+  |> Qx.Operations.h(0)
+  |> Qx.Operations.h(1)
+  |> Qx.Operations.x(0)
+  |> Qx.Operations.x(1)
+  |> Qx.Operations.cz(0, 1)
+  |> Qx.Operations.x(0)
+  |> Qx.Operations.x(1)
+  |> Qx.Operations.h(0)
+  |> Qx.Operations.h(1)
+  |> Qx.Operations.measure(0, 0)
+  |> Qx.Operations.measure(1, 1)
+
+svg = Qx.Draw.circuit(grover_circuit, "Grover's Algorithm")
+File.write!("examples/grover.svg", svg)
+IO.puts("→ Generated: examples/grover.svg")
+
+IO.puts("\n" <> String.duplicate("=", 60))
+IO.puts("Demo complete! Check the examples/ directory for SVG files.")

@@ -258,6 +258,58 @@ defmodule Qx.Operations do
   end
 
   @doc """
+  Applies a controlled-Z (CZ) gate.
+
+  The CZ gate applies a phase of -1 if and only if both qubits are |1⟩.
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `control_qubit` - Control qubit index
+    * `target_qubit` - Target qubit index
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(2, 0)
+      iex> qc = Qx.Operations.cz(qc, 0, 1)
+      iex> [{gate, qubits, _params}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> {gate, qubits}
+      {:cz, [0, 1]}
+  """
+  def cz(%QuantumCircuit{} = circuit, control_qubit, target_qubit) do
+    QuantumCircuit.add_two_qubit_gate(circuit, :cz, control_qubit, target_qubit)
+  end
+
+  @doc """
+  Adds a barrier to the circuit for visualization purposes.
+
+  Barriers are used to group operations and improve circuit readability.
+  They do not affect the quantum state.
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `qubits` - List of qubit indices the barrier spans
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(3, 0)
+      iex> qc = Qx.Operations.barrier(qc, [0, 1, 2])
+      iex> [{gate, qubits, _params}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> {gate, qubits}
+      {:barrier, [0, 1, 2]}
+  """
+  def barrier(%QuantumCircuit{} = circuit, qubits) when is_list(qubits) do
+    # Validate all qubit indices
+    Enum.each(qubits, fn qubit ->
+      if qubit < 0 or qubit >= circuit.num_qubits do
+        raise ArgumentError, "Invalid qubit index #{qubit} for barrier"
+      end
+    end)
+
+    instruction = {:barrier, qubits, []}
+    %{circuit | instructions: circuit.instructions ++ [instruction]}
+  end
+
+  @doc """
   Adds a measurement operation to the circuit.
 
   ## Parameters
