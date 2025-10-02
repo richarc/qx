@@ -289,3 +289,4 @@ For detailed API documentation, run:
 ```bash
 mix docs
 ```
+updated e-mail address to private
