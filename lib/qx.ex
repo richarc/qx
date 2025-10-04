@@ -33,6 +33,9 @@ defmodule Qx do
 
   alias Qx.{QuantumCircuit, Operations, Simulation, Draw}
 
+  @type circuit :: QuantumCircuit.t()
+  @type simulation_result :: Simulation.simulation_result()
+
   @doc """
   Creates a new quantum circuit with specified qubits and classical bits.
 
@@ -48,6 +51,7 @@ defmodule Qx do
       iex> qc.num_classical_bits
       2
   """
+  @spec create_circuit(pos_integer(), non_neg_integer()) :: circuit()
   defdelegate create_circuit(num_qubits, num_classical_bits), to: QuantumCircuit, as: :new
 
   @doc """
@@ -64,6 +68,7 @@ defmodule Qx do
       iex> qc.num_classical_bits
       0
   """
+  @spec create_circuit(pos_integer()) :: circuit()
   defdelegate create_circuit(num_qubits), to: QuantumCircuit, as: :new
 
   @doc """
@@ -81,6 +86,7 @@ defmodule Qx do
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
   """
+  @spec h(circuit(), non_neg_integer()) :: circuit()
   defdelegate h(circuit, qubit), to: Operations
 
   @doc """
@@ -98,6 +104,7 @@ defmodule Qx do
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
   """
+  @spec x(circuit(), non_neg_integer()) :: circuit()
   defdelegate x(circuit, qubit), to: Operations
 
   @doc """
@@ -115,6 +122,7 @@ defmodule Qx do
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
   """
+  @spec y(circuit(), non_neg_integer()) :: circuit()
   defdelegate y(circuit, qubit), to: Operations
 
   @doc """
@@ -132,6 +140,7 @@ defmodule Qx do
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
   """
+  @spec z(circuit(), non_neg_integer()) :: circuit()
   defdelegate z(circuit, qubit), to: Operations
 
   @doc """
@@ -150,6 +159,7 @@ defmodule Qx do
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
   """
+  @spec cx(circuit(), non_neg_integer(), non_neg_integer()) :: circuit()
   defdelegate cx(circuit, control_qubit, target_qubit), to: Operations
 
   @doc """
@@ -169,6 +179,7 @@ defmodule Qx do
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
   """
+  @spec ccx(circuit(), non_neg_integer(), non_neg_integer(), non_neg_integer()) :: circuit()
   defdelegate ccx(circuit, control1, control2, target), to: Operations
 
   @doc """
@@ -184,6 +195,7 @@ defmodule Qx do
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
   """
+  @spec s(circuit(), non_neg_integer()) :: circuit()
   defdelegate s(circuit, qubit), to: Operations
 
   @doc """
@@ -199,6 +211,7 @@ defmodule Qx do
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
   """
+  @spec t(circuit(), non_neg_integer()) :: circuit()
   defdelegate t(circuit, qubit), to: Operations
 
   @doc """
@@ -215,6 +228,7 @@ defmodule Qx do
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
   """
+  @spec rx(circuit(), non_neg_integer(), float()) :: circuit()
   defdelegate rx(circuit, qubit, theta), to: Operations
 
   @doc """
@@ -231,6 +245,7 @@ defmodule Qx do
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
   """
+  @spec ry(circuit(), non_neg_integer(), float()) :: circuit()
   defdelegate ry(circuit, qubit, theta), to: Operations
 
   @doc """
@@ -247,6 +262,7 @@ defmodule Qx do
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
   """
+  @spec rz(circuit(), non_neg_integer(), float()) :: circuit()
   defdelegate rz(circuit, qubit, theta), to: Operations
 
   @doc """
@@ -263,6 +279,7 @@ defmodule Qx do
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
   """
+  @spec phase(circuit(), non_neg_integer(), float()) :: circuit()
   defdelegate phase(circuit, qubit, phi), to: Operations
 
   @doc """
@@ -279,6 +296,7 @@ defmodule Qx do
       iex> length(Qx.QuantumCircuit.get_measurements(qc))
       1
   """
+  @spec measure(circuit(), non_neg_integer(), non_neg_integer()) :: circuit()
   defdelegate measure(circuit, qubit, classical_bit), to: Operations
 
   @doc """
@@ -305,6 +323,7 @@ defmodule Qx do
       iex> Map.has_key?(result, :probabilities)
       true
   """
+  @spec run(circuit(), pos_integer()) :: simulation_result()
   defdelegate run(circuit, shots \\ 1024), to: Simulation
 
   @doc """
@@ -320,6 +339,7 @@ defmodule Qx do
       iex> Nx.shape(state)
       {2}
   """
+  @spec get_state(circuit()) :: Nx.Tensor.t()
   defdelegate get_state(circuit), to: Simulation
 
   @doc """
@@ -335,6 +355,7 @@ defmodule Qx do
       iex> Nx.shape(probs)
       {2}
   """
+  @spec get_probabilities(circuit()) :: Nx.Tensor.t()
   defdelegate get_probabilities(circuit), to: Simulation, as: :get_probabilities
 
   @doc """
@@ -361,6 +382,7 @@ defmodule Qx do
       iex> is_map(plot) or is_binary(plot)
       true
   """
+  @spec draw(simulation_result(), keyword()) :: VegaLite.t() | String.t()
   defdelegate draw(result, options \\ []), to: Draw, as: :plot
 
   @doc """
@@ -378,6 +400,7 @@ defmodule Qx do
       iex> is_map(plot) or is_binary(plot)
       true
   """
+  @spec draw_counts(simulation_result(), keyword()) :: VegaLite.t() | String.t()
   defdelegate draw_counts(result, options \\ []), to: Draw, as: :plot_counts
 
   @doc """
@@ -394,6 +417,7 @@ defmodule Qx do
       iex> is_map(hist) or is_binary(hist)
       true
   """
+  @spec histogram(Nx.Tensor.t(), keyword()) :: VegaLite.t() | String.t()
   defdelegate histogram(probabilities, options \\ []), to: Draw
 
   # Convenience functions for creating common quantum states and circuits
@@ -409,6 +433,7 @@ defmodule Qx do
       iex> bell_circuit.num_qubits
       2
   """
+  @spec bell_state() :: circuit()
   def bell_state do
     create_circuit(2)
     |> h(0)
@@ -426,6 +451,7 @@ defmodule Qx do
       iex> ghz_circuit.num_qubits
       3
   """
+  @spec ghz_state() :: circuit()
   def ghz_state do
     create_circuit(3)
     |> h(0)
@@ -444,6 +470,7 @@ defmodule Qx do
       iex> sup_circuit.num_qubits
       1
   """
+  @spec superposition() :: circuit()
   def superposition do
     create_circuit(1) |> h(0)
   end
@@ -457,6 +484,7 @@ defmodule Qx do
       iex> is_binary(version)
       true
   """
+  @spec version() :: String.t()
   def version do
     case Application.spec(:qx, :vsn) do
       nil -> "unknown"
