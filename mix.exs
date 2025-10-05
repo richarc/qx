@@ -13,7 +13,8 @@ defmodule Qx.MixProject do
       homepage_url: "https://github.com/richarc/qx",
       docs: docs(),
       package: package(),
-      description: "A quantum computing simulator for Elixir with support for up to 20 qubits, statevector simulation, and circuit visualization"
+      description:
+        "A quantum computing simulator for Elixir with support for up to 20 qubits, statevector simulation, and circuit visualization"
     ]
   end
 
@@ -46,8 +47,8 @@ defmodule Qx.MixProject do
       groups_for_modules: [
         "Core API": [Qx],
         "Circuit Building": [Qx.QuantumCircuit, Qx.Operations],
-        "Simulation": [Qx.Simulation],
-        "Visualization": [Qx.Draw],
+        Simulation: [Qx.Simulation],
+        Visualization: [Qx.Draw],
         "Mathematical Functions": [Qx.Math, Qx.Qubit, Qx.Gates]
       ],
       groups_for_extras: [
