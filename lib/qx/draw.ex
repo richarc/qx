@@ -450,26 +450,27 @@ defmodule Qx.Draw do
   # Validates a gate instruction
   defp validate_gate!(gate_name, qubits, _params, num_qubits) do
     # Check if gate is supported
-    supported_gates = [:h, :x, :y, :z, :s, :t, :rx, :ry, :rz, :p, :cx, :cz, :ccx, :barrier]
+    supported_gates = [:h, :x, :y, :z, :s, :t, :rx, :ry, :rz, :p, :cx, :cz, :ccx, :barrier, :measure, :c_if]
 
     unless gate_name in supported_gates do
       raise ArgumentError, "Unsupported gate type: #{gate_name}"
     end
 
-    # Validate qubit indices
-    Enum.each(qubits, fn qubit ->
-      if qubit < 0 or qubit >= num_qubits do
-        raise ArgumentError, "Invalid qubit index #{qubit} for gate #{gate_name}"
-      end
-    end)
+    # Validate qubit indices (skip for c_if which has classical bit indices)
+    unless gate_name == :c_if do
+      Enum.each(qubits, fn qubit ->
+        if qubit < 0 or qubit >= num_qubits do
+          raise ArgumentError, "Invalid qubit index #{qubit} for gate #{gate_name}"
+        end
+      end)
+    end
   end
 
   # Analyzes circuit and creates layout
   defp analyze_circuit(%Qx.QuantumCircuit{} = circuit, title) do
-    # Combine instructions and measurements into a single list
-    all_operations =
-      circuit.instructions ++
-        Enum.map(circuit.measurements, fn {qubit, cbit} -> {:measure, [qubit], [cbit]} end)
+    # Measurements are now in circuit.instructions for proper timeline ordering
+    # So we just use circuit.instructions directly
+    all_operations = circuit.instructions
 
     # Layout gates with collision avoidance
     {gate_layout, num_columns} = layout_gates(all_operations, circuit.num_qubits)
@@ -509,42 +510,84 @@ defmodule Qx.Draw do
       Enum.reduce(operations, initial_state, fn operation, {layout, columns, max_col} ->
         {gate_name, qubits, params} = operation
 
-        # Determine which column this gate should go in
-        column = find_available_column(gate_name, qubits, columns, num_qubits)
+        # Handle c_if by expanding sub-instructions
+        if gate_name == :c_if do
+          # Extract conditional metadata
+          [classical_bit, value] = qubits
+          sub_instructions = params
 
-        # Update columns for affected qubits
-        # For gates with vertical lines, we need to mark ALL qubits along the path as occupied
-        qubits_to_update =
-          if needs_vertical_line?(gate_name) do
-            if gate_name == :measure do
-              # Measurement: mark from measured qubit down to last qubit
-              qubit = hd(qubits)
-              Enum.to_list(qubit..(num_qubits - 1))
-            else
-              # Multi-qubit gate: mark from min to max qubit
-              min_q = Enum.min(qubits)
-              max_q = Enum.max(qubits)
-              Enum.to_list(min_q..max_q)
-            end
-          else
-            # Single-qubit gate: only mark the gate's qubit
-            qubits
-          end
+          # Process each sub-instruction as a conditional gate
+          Enum.reduce(sub_instructions, {layout, columns, max_col}, fn sub_instr, {sub_layout, sub_columns, sub_max_col} ->
+            {sub_gate_name, sub_qubits, sub_params} = sub_instr
 
-        new_columns =
-          Enum.reduce(qubits_to_update, columns, fn qubit, cols ->
-            Map.put(cols, qubit, column + 1)
+            # Find column for this gate
+            column = find_available_column(sub_gate_name, sub_qubits, sub_columns, num_qubits)
+
+            # Update columns - conditionals also need vertical lines to classical register
+            qubits_to_update =
+              if needs_vertical_line?(sub_gate_name) do
+                if sub_gate_name == :measure do
+                  qubit = hd(sub_qubits)
+                  Enum.to_list(qubit..(num_qubits - 1))
+                else
+                  min_q = Enum.min(sub_qubits)
+                  max_q = Enum.max(sub_qubits)
+                  Enum.to_list(min_q..max_q)
+                end
+              else
+                # For conditional gates, mark from gate qubit to last qubit (classical register below)
+                qubit = hd(sub_qubits)
+                Enum.to_list(qubit..(num_qubits - 1))
+              end
+
+            new_columns =
+              Enum.reduce(qubits_to_update, sub_columns, fn qubit, cols ->
+                Map.put(cols, qubit, column + 1)
+              end)
+
+            # Add to layout with conditional metadata
+            gate_info = %{
+              gate: sub_gate_name,
+              qubits: sub_qubits,
+              params: sub_params,
+              column: column,
+              conditional: %{classical_bit: classical_bit, value: value}
+            }
+
+            {[gate_info | sub_layout], new_columns, max(sub_max_col, column)}
           end)
+        else
+          # Regular gate processing
+          column = find_available_column(gate_name, qubits, columns, num_qubits)
 
-        # Add to layout
-        gate_info = %{
-          gate: gate_name,
-          qubits: qubits,
-          params: params,
-          column: column
-        }
+          qubits_to_update =
+            if needs_vertical_line?(gate_name) do
+              if gate_name == :measure do
+                qubit = hd(qubits)
+                Enum.to_list(qubit..(num_qubits - 1))
+              else
+                min_q = Enum.min(qubits)
+                max_q = Enum.max(qubits)
+                Enum.to_list(min_q..max_q)
+              end
+            else
+              qubits
+            end
 
-        {[gate_info | layout], new_columns, max(max_col, column)}
+          new_columns =
+            Enum.reduce(qubits_to_update, columns, fn qubit, cols ->
+              Map.put(cols, qubit, column + 1)
+            end)
+
+          gate_info = %{
+            gate: gate_name,
+            qubits: qubits,
+            params: params,
+            column: column
+          }
+
+          {[gate_info | layout], new_columns, max(max_col, column)}
+        end
       end)
 
     {Enum.reverse(layout), max_column + 1}
@@ -675,17 +718,30 @@ defmodule Qx.Draw do
   end
 
   # Render a single gate
-  defp render_gate(%{gate: gate_name, qubits: qubits, params: params, column: column}, diagram, start_x, start_y) do
+  defp render_gate(gate_info, diagram, start_x, start_y) do
+    %{gate: gate_name, qubits: qubits, params: params, column: column} = gate_info
     gate_x = start_x + column * (@gate_width + @gate_spacing) + @gate_spacing
 
-    case gate_name do
-      :barrier -> render_barrier(qubits, gate_x, start_y, diagram)
-      :measure -> render_measurement(qubits, params, gate_x, start_y, diagram)
-      :cx -> render_cnot(qubits, gate_x, start_y)
-      :cz -> render_controlled_z(qubits, gate_x, start_y)
-      :ccx -> render_toffoli(qubits, gate_x, start_y)
-      _ -> render_single_qubit_gate(gate_name, qubits, params, gate_x, start_y)
-    end
+    # Render the gate itself
+    gate_svg =
+      case gate_name do
+        :barrier -> render_barrier(qubits, gate_x, start_y, diagram)
+        :measure -> render_measurement(qubits, params, gate_x, start_y, diagram)
+        :cx -> render_cnot(qubits, gate_x, start_y)
+        :cz -> render_controlled_z(qubits, gate_x, start_y)
+        :ccx -> render_toffoli(qubits, gate_x, start_y)
+        _ -> render_single_qubit_gate(gate_name, qubits, params, gate_x, start_y)
+      end
+
+    # Add conditional control lines if this gate is conditional
+    conditional_svg =
+      if Map.has_key?(gate_info, :conditional) do
+        render_classical_control(gate_info, gate_x, start_y, diagram)
+      else
+        ""
+      end
+
+    gate_svg <> conditional_svg
   end
 
   # Render barrier
@@ -699,7 +755,7 @@ defmodule Qx.Draw do
   end
 
   # Render measurement
-  defp render_measurement([qubit], [_classical_bit], gate_x, start_y, diagram) do
+  defp render_measurement([qubit, _classical_bit], _params, gate_x, start_y, diagram) do
     qubit_y = start_y + qubit * @qubit_spacing
     classical_y = start_y + diagram.num_qubits * @qubit_spacing + 20 + 1.5
 
@@ -810,6 +866,47 @@ defmodule Qx.Draw do
     """
 
     line_svg <> controls_svg <> target_svg
+  end
+
+  # Render classical control lines for conditional gates
+  defp render_classical_control(gate_info, gate_x, start_y, diagram) do
+    %{qubits: qubits, conditional: %{classical_bit: classical_bit, value: value}} = gate_info
+
+    # Get the qubit position (for single-qubit gates)
+    qubit = hd(qubits)
+    qubit_y = start_y + qubit * @qubit_spacing
+
+    # Classical register position (below all qubits)
+    classical_y = start_y + diagram.num_qubits * @qubit_spacing + 20
+
+    # Calculate positions for double parallel lines
+    line_spacing = 3
+    line1_x = gate_x - line_spacing / 2
+    line2_x = gate_x + line_spacing / 2
+
+    # Start from bottom of gate
+    line_start_y = qubit_y + @gate_height / 2
+
+    # Double vertical lines from gate to classical register
+    lines_svg = """
+      <line x1="#{line1_x}" y1="#{line_start_y}" x2="#{line1_x}" y2="#{classical_y}" stroke="#{@color_classical_line}" stroke-width="#{@line_thickness}"/>
+      <line x1="#{line2_x}" y1="#{line_start_y}" x2="#{line2_x}" y2="#{classical_y}" stroke="#{@color_classical_line}" stroke-width="#{@line_thickness}"/>
+    """
+
+    # Circle on classical register (filled for ==1, hollow for ==0)
+    circle_radius = 5
+    circle_fill = if value == 1, do: @color_classical_line, else: "none"
+
+    circle_svg = """
+      <circle cx="#{gate_x}" cy="#{classical_y}" r="#{circle_radius}" fill="#{circle_fill}" stroke="#{@color_classical_line}" stroke-width="#{@line_thickness}"/>
+    """
+
+    # Label showing which classical bit
+    label_svg = """
+      <text x="#{gate_x + 12}" y="#{classical_y + 4}" font-family="#{@font_family}" font-size="#{@label_font_size}" fill="#000000">c#{classical_bit}</text>
+    """
+
+    lines_svg <> circle_svg <> label_svg
   end
 
   # Render single-qubit gate
