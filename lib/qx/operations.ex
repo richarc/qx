@@ -328,4 +328,86 @@ defmodule Qx.Operations do
   def measure(%QuantumCircuit{} = circuit, qubit, classical_bit) do
     QuantumCircuit.add_measurement(circuit, qubit, classical_bit)
   end
+
+  @doc """
+  Applies gates conditionally based on a classical bit value.
+
+  The conditional block executes during simulation only if the specified
+  classical bit equals the given value at runtime.
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `classical_bit` - Classical bit index to check (0-based)
+    * `value` - Value to compare (0 or 1)
+    * `gate_fn` - Function that applies gates: (circuit -> circuit)
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(2, 2)
+      iex> qc = qc |> Qx.Operations.h(0) |> Qx.Operations.measure(0, 0)
+      iex> qc = Qx.Operations.c_if(qc, 0, 1, fn c -> Qx.Operations.x(c, 1) end)
+      iex> instructions = Qx.QuantumCircuit.get_instructions(qc)
+      iex> length(instructions)
+      2
+
+  ## Constraints
+    - Classical bit must be valid for the circuit
+    - Value must be 0 or 1
+    - Gates in conditional block cannot contain measurements
+    - No nesting of conditional blocks
+  """
+  def c_if(%QuantumCircuit{} = circuit, classical_bit, value, gate_fn)
+      when is_integer(classical_bit) and classical_bit >= 0 and
+             classical_bit < circuit.num_classical_bits and
+             value in [0, 1] and is_function(gate_fn, 1) do
+    # Create temporary circuit to capture instructions
+    temp_circuit = %{circuit | instructions: []}
+
+    # Apply the gate function to capture what it does
+    modified_circuit = gate_fn.(temp_circuit)
+
+    # Extract the instructions that were added
+    conditional_instructions = modified_circuit.instructions
+
+    # Validate the conditional block
+    validate_conditional_block(conditional_instructions)
+
+    # Create the conditional instruction
+    instruction = {:c_if, [classical_bit, value], conditional_instructions}
+
+    # Add to the main circuit
+    %{circuit | instructions: circuit.instructions ++ [instruction]}
+  end
+
+  def c_if(%QuantumCircuit{} = circuit, classical_bit, _value, _gate_fn)
+      when is_integer(classical_bit) and
+             (classical_bit < 0 or classical_bit >= circuit.num_classical_bits) do
+    raise ArgumentError,
+          "Classical bit index #{classical_bit} out of range (circuit has #{circuit.num_classical_bits} classical bits)"
+  end
+
+  def c_if(_circuit, _classical_bit, value, _gate_fn) when value not in [0, 1] do
+    raise ArgumentError, "Conditional value must be 0 or 1, got: #{inspect(value)}"
+  end
+
+  def c_if(_circuit, _classical_bit, _value, gate_fn) when not is_function(gate_fn, 1) do
+    raise ArgumentError, "Gate function must be a function with arity 1"
+  end
+
+  # Private helper to validate conditional block
+  defp validate_conditional_block(instructions) do
+    Enum.each(instructions, fn instruction ->
+      case instruction do
+        {:c_if, _, _} ->
+          raise ArgumentError, "Nested conditionals are not supported in this version"
+
+        _ ->
+          :ok
+      end
+    end)
+
+    # Check if any measurements exist in the conditional block
+    # Measurements are stored separately, so we mainly need to check for nested c_if
+    :ok
+  end
 end

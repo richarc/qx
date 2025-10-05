@@ -195,10 +195,14 @@ defmodule Qx.QuantumCircuit do
     measurement = {qubit, classical_bit}
     measured_qubits = MapSet.put(circuit.measured_qubits, qubit)
 
+    # Also add measurement as an instruction for proper timeline ordering
+    measurement_instruction = {:measure, [qubit, classical_bit], []}
+
     %{
       circuit
       | measurements: circuit.measurements ++ [measurement],
-        measured_qubits: measured_qubits
+        measured_qubits: measured_qubits,
+        instructions: circuit.instructions ++ [measurement_instruction]
     }
   end
 

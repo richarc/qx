@@ -12,6 +12,8 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 - **Circuit Diagrams**: Generate publication-quality SVG circuit diagrams following Qiskit conventions
 - **Comprehensive Gates**: Supports H, X, Y, Z, S, T, RX, RY, RZ, CNOT, CZ, and Toffoli gates
 - **Measurements**: Quantum measurements with classical bit storage
+- **Conditional Operations**: Mid-circuit measurement with classical feedback for quantum teleportation and error correction
+- **OpenQASM 3.0 Compatible**: Conditional operations map to OpenQASM 3.0 for real hardware execution
 - **LiveBook Integration**: Works seamlessly with LiveBook for interactive quantum computing
 
 ## Installation
@@ -99,6 +101,34 @@ The 'Qx' module implements a handy API for the majority of functions needed to c
 ### Measurements
 
 - `Qx.measure(circuit, qubit, classical_bit)` - Measure qubit and store result
+
+### Conditional Operations (Mid-Circuit Measurement with Feedback)
+
+- `Qx.c_if(circuit, classical_bit, value, gate_fn)` - Apply gates conditionally based on classical bit value
+
+Enables quantum error correction, quantum teleportation, and adaptive algorithms through mid-circuit measurements with classical feedback.
+
+**Example:**
+```elixir
+# Quantum teleportation with conditional corrections
+qc = Qx.create_circuit(3, 3)
+     |> Qx.x(0)                    # State to teleport
+     |> Qx.h(1) |> Qx.cx(1, 2)     # Create Bell pair
+     |> Qx.cx(0, 1) |> Qx.h(0)     # Bell measurement
+     |> Qx.measure(0, 0)
+     |> Qx.measure(1, 1)
+     # Conditional corrections based on measurement
+     |> Qx.c_if(1, 1, fn c -> Qx.x(c, 2) end)
+     |> Qx.c_if(0, 1, fn c -> Qx.z(c, 2) end)
+     |> Qx.measure(2, 2)
+
+result = Qx.run(qc, 1000)
+# Qubit 2 now contains the teleported state!
+```
+
+See `examples/conditional_gates_example.exs` for more examples.
+
+**OpenQASM 3.0 Compatibility:** Conditional operations map directly to OpenQASM 3.0 if-statements for execution on real quantum hardware.
 
 ### Circuit Visualization
 

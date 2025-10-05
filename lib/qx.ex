@@ -300,6 +300,44 @@ defmodule Qx do
   defdelegate measure(circuit, qubit, classical_bit), to: Operations
 
   @doc """
+  Applies gates conditionally based on a classical bit value.
+
+  Enables mid-circuit measurement with classical feedback - a key capability
+  for quantum error correction, quantum teleportation, and adaptive algorithms.
+
+  ## Parameters
+    * `circuit` - Quantum circuit
+    * `classical_bit` - Classical bit index to check (must have been measured)
+    * `value` - Value to compare (0 or 1)
+    * `gate_fn` - Function that applies gates when condition is true
+
+  ## Examples
+
+      # Apply X gate to qubit 1 if classical bit 0 equals 1
+      iex> qc = Qx.create_circuit(2, 2)
+      ...> |> Qx.h(0)
+      ...> |> Qx.measure(0, 0)
+      ...> |> Qx.c_if(0, 1, fn c -> Qx.x(c, 1) end)
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      3
+
+      # Multiple gates in conditional block
+      iex> qc = Qx.create_circuit(3, 2)
+      ...> |> Qx.measure(0, 0)
+      ...> |> Qx.c_if(0, 1, fn c ->
+      ...>      c |> Qx.x(1) |> Qx.h(2)
+      ...>    end)
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      2
+
+  ## See Also
+    * OpenQASM 3.0 if-statements for hardware compatibility
+    * Quantum teleportation example in documentation
+  """
+  @spec c_if(circuit(), non_neg_integer(), 0 | 1, (circuit() -> circuit())) :: circuit()
+  defdelegate c_if(circuit, classical_bit, value, gate_fn), to: Operations
+
+  @doc """
   Executes the quantum circuit and returns simulation results.
 
   ## Parameters

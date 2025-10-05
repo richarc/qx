@@ -160,4 +160,177 @@ defmodule QxTest do
     # default shots
     assert result.shots == 1024
   end
+
+  # Conditional execution tests
+  describe "conditional operations" do
+    test "c_if adds conditional instruction to circuit" do
+      qc =
+        Qx.create_circuit(2, 2)
+        |> Qx.h(0)
+        |> Qx.measure(0, 0)
+        |> Qx.c_if(0, 1, fn c -> Qx.x(c, 1) end)
+
+      instructions = Qx.QuantumCircuit.get_instructions(qc)
+      # H, measure, c_if = 3 instructions
+      assert length(instructions) == 3
+      assert {:c_if, [0, 1], _} = List.last(instructions)
+    end
+
+    test "c_if raises error for invalid classical bit" do
+      qc = Qx.create_circuit(2, 1)
+
+      assert_raise ArgumentError, fn ->
+        Qx.c_if(qc, 5, 1, fn c -> Qx.x(c, 1) end)
+      end
+    end
+
+    test "c_if raises error for invalid value" do
+      qc = Qx.create_circuit(2, 2)
+
+      assert_raise ArgumentError, fn ->
+        Qx.c_if(qc, 0, 2, fn c -> Qx.x(c, 1) end)
+      end
+    end
+
+    test "c_if captures multiple gates in conditional block" do
+      qc =
+        Qx.create_circuit(3, 2)
+        |> Qx.measure(0, 0)
+        |> Qx.c_if(0, 1, fn c ->
+          c |> Qx.x(1) |> Qx.h(2)
+        end)
+
+      {:c_if, [0, 1], instructions} =
+        qc |> Qx.QuantumCircuit.get_instructions() |> List.last()
+
+      assert length(instructions) == 2
+      assert {:x, [1], []} in instructions
+      assert {:h, [2], []} in instructions
+    end
+
+    test "executes conditional gate when condition is true" do
+      # Create circuit that measures |1⟩ and conditionally applies X
+      qc =
+        Qx.create_circuit(2, 2)
+        # Set qubit 0 to |1⟩
+        |> Qx.x(0)
+        # Measure (always gets 1)
+        |> Qx.measure(0, 0)
+        |> Qx.c_if(0, 1, fn c -> Qx.x(c, 1) end)
+        |> Qx.measure(1, 1)
+
+      result = Qx.run(qc, 100)
+
+      # All shots should measure classical bits as [1, 1]
+      assert result.counts[[1, 1]] == 100
+    end
+
+    test "skips conditional gate when condition is false" do
+      # Measure |0⟩ and check for c==1 (always false)
+      qc =
+        Qx.create_circuit(2, 2)
+        # Measure |0⟩ (always gets 0)
+        |> Qx.measure(0, 0)
+        |> Qx.c_if(0, 1, fn c -> Qx.x(c, 1) end)
+        |> Qx.measure(1, 1)
+
+      result = Qx.run(qc, 100)
+
+      # All shots should measure classical bits as [0, 0]
+      assert result.counts[[0, 0]] == 100
+    end
+
+    test "conditional gate with value == 0" do
+      # Test checking for classical bit == 0
+      qc =
+        Qx.create_circuit(2, 2)
+        # Qubit 0 starts in |0⟩
+        |> Qx.measure(0, 0)
+        |> Qx.c_if(0, 0, fn c -> Qx.x(c, 1) end)
+        |> Qx.measure(1, 1)
+
+      result = Qx.run(qc, 100)
+
+      # All shots should measure classical bits as [0, 1]
+      assert result.counts[[0, 1]] == 100
+    end
+
+    test "handles probabilistic conditionals correctly" do
+      # H gate creates 50/50 superposition
+      qc =
+        Qx.create_circuit(2, 2)
+        |> Qx.h(0)
+        |> Qx.measure(0, 0)
+        |> Qx.c_if(0, 1, fn c -> Qx.x(c, 1) end)
+        |> Qx.measure(1, 1)
+
+      result = Qx.run(qc, 1000)
+
+      # Should get roughly 50% [0,0] and 50% [1,1]
+      count_00 = Map.get(result.counts, [0, 0], 0)
+      count_11 = Map.get(result.counts, [1, 1], 0)
+
+      assert_in_delta count_00, 500, 100
+      assert_in_delta count_11, 500, 100
+      assert count_00 + count_11 == 1000
+    end
+
+    test "quantum teleportation with conditionals" do
+      # Full teleportation circuit
+      qc =
+        Qx.create_circuit(3, 3)
+        # Prepare |1⟩ to teleport
+        |> Qx.x(0)
+        # Create Bell pair
+        |> Qx.h(1)
+        |> Qx.cx(1, 2)
+        # Bell measurement
+        |> Qx.cx(0, 1)
+        |> Qx.h(0)
+        |> Qx.measure(0, 0)
+        |> Qx.measure(1, 1)
+        # Conditional corrections
+        |> Qx.c_if(1, 1, fn c -> Qx.x(c, 2) end)
+        |> Qx.c_if(0, 1, fn c -> Qx.z(c, 2) end)
+        |> Qx.measure(2, 2)
+
+      result = Qx.run(qc, 100)
+
+      # Qubit 2 should always measure |1⟩
+      total_measure_1 =
+        Enum.reduce(result.counts, 0, fn {bits, count}, acc ->
+          if Enum.at(bits, 2) == 1, do: acc + count, else: acc
+        end)
+
+      assert total_measure_1 == 100
+    end
+
+    test "multiple conditionals in sequence" do
+      qc =
+        Qx.create_circuit(3, 3)
+        |> Qx.x(0)
+        |> Qx.x(1)
+        |> Qx.measure(0, 0)
+        |> Qx.measure(1, 1)
+        |> Qx.c_if(0, 1, fn c -> Qx.x(c, 2) end)
+        |> Qx.c_if(1, 1, fn c -> Qx.x(c, 2) end)
+        |> Qx.measure(2, 2)
+
+      result = Qx.run(qc, 100)
+
+      # Both conditionals fire, so X applied twice (no net effect)
+      # Qubit 2 should measure |0⟩
+      assert result.counts[[1, 1, 0]] == 100
+    end
+
+    test "nested conditionals raise error" do
+      qc = Qx.create_circuit(3, 3)
+
+      assert_raise ArgumentError, ~r/Nested conditionals/, fn ->
+        Qx.c_if(qc, 0, 1, fn c ->
+          Qx.c_if(c, 1, 1, fn c2 -> Qx.x(c2, 2) end)
+        end)
+      end
+    end
+  end
 end
