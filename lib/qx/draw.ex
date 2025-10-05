@@ -901,9 +901,9 @@ defmodule Qx.Draw do
       <circle cx="#{gate_x}" cy="#{classical_y}" r="#{circle_radius}" fill="#{circle_fill}" stroke="#{@color_classical_line}" stroke-width="#{@line_thickness}"/>
     """
 
-    # Label showing which classical bit
+    # Label showing which classical bit (positioned above the classical line)
     label_svg = """
-      <text x="#{gate_x + 12}" y="#{classical_y + 4}" font-family="#{@font_family}" font-size="#{@label_font_size}" fill="#000000">c#{classical_bit}</text>
+      <text x="#{gate_x + 12}" y="#{classical_y - 8}" font-family="#{@font_family}" font-size="#{@label_font_size}" fill="#000000">c#{classical_bit}</text>
     """
 
     lines_svg <> circle_svg <> label_svg
