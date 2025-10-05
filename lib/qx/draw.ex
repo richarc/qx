@@ -8,10 +8,17 @@ defmodule Qx.Draw do
   """
 
   @doc """
-  Plots the probability distribution of quantum states.
+  Plots the probability distribution from a simulation result.
+
+  This is a convenience function for visualizing the probability distribution
+  directly from a simulation result map returned by `Qx.run/1` or `Qx.run/2`.
+  The probabilities are automatically extracted from the result.
+
+  For more control or to plot raw probability tensors (e.g., from
+  `Qx.get_probabilities/1`), use `histogram/2` instead.
 
   ## Parameters
-    * `result` - Simulation result containing probabilities
+    * `result` - Simulation result map containing probabilities
     * `options` - Optional plotting parameters (default: [])
 
   ## Options
@@ -22,10 +29,15 @@ defmodule Qx.Draw do
 
   ## Examples
 
+      # Quick visualization from simulation result
       iex> qc = Qx.QuantumCircuit.new(2, 0) |> Qx.Operations.h(0)
       iex> result = Qx.Simulation.run(qc)
       iex> Qx.Draw.plot(result)
       # Returns VegaLite specification
+
+  ## See Also
+    * `histogram/2` - For plotting raw probability tensors
+    * `plot_counts/2` - For plotting measurement counts
   """
   def plot(result, options \\ []) do
     format = Keyword.get(options, :format, :vega_lite)
@@ -80,17 +92,44 @@ defmodule Qx.Draw do
   end
 
   @doc """
-  Creates a histogram of quantum state probabilities.
+  Creates a histogram from a raw probability tensor.
+
+  This function provides more control for visualizing probability distributions
+  when you already have a probability tensor (e.g., from `Qx.get_probabilities/1`
+  or custom calculations). Unlike `plot/2`, this operates directly on probability
+  tensors rather than simulation result maps.
+
+  Use this when you need to:
+  - Plot probabilities obtained without running a full simulation
+  - Compare multiple probability distributions
+  - Customize visualization of theoretical probability distributions
 
   ## Parameters
-    * `probabilities` - Nx tensor of probabilities
+    * `probabilities` - Nx tensor of probabilities (must sum to 1.0)
     * `options` - Optional plotting parameters (default: [])
+
+  ## Options
+    * `:format` - Output format (:svg, :vega_lite) (default: :vega_lite)
+    * `:title` - Plot title (default: "Probability Histogram")
+    * `:width` - Plot width (default: 400)
+    * `:height` - Plot height (default: 300)
 
   ## Examples
 
-      iex> probs = Nx.tensor([0.5, 0.5, 0.0, 0.0])
+      # Plot probabilities from get_probabilities/1
+      iex> qc = Qx.create_circuit(2) |> Qx.h(0) |> Qx.h(1)
+      iex> probs = Qx.get_probabilities(qc)
       iex> Qx.Draw.histogram(probs)
       # Returns VegaLite specification
+
+      # Plot custom probability distribution
+      iex> custom_probs = Nx.tensor([0.5, 0.5, 0.0, 0.0])
+      iex> Qx.Draw.histogram(custom_probs, title: "Custom Distribution")
+      # Returns VegaLite specification
+
+  ## See Also
+    * `plot/2` - For plotting directly from simulation results
+    * `get_probabilities/1` - To obtain probability tensors from circuits
   """
   def histogram(probabilities, options \\ []) do
     format = Keyword.get(options, :format, :vega_lite)

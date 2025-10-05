@@ -359,10 +359,14 @@ defmodule Qx do
   defdelegate get_probabilities(circuit), to: Simulation, as: :get_probabilities
 
   @doc """
-  Visualizes simulation results.
+  Visualizes probability distribution from simulation results.
 
-  Creates plots showing probability distributions and measurement counts
-  with support for SVG output and LiveBook integration.
+  Convenience function for quickly plotting the probability distribution
+  from a simulation result. The probabilities are automatically extracted
+  from the result map.
+
+  For plotting raw probability tensors (e.g., from `get_probabilities/1`),
+  use `histogram/2` instead.
 
   ## Parameters
     * `result` - Simulation result from `run/1` or `run/2`
@@ -381,6 +385,10 @@ defmodule Qx do
       iex> plot = Qx.draw(result)
       iex> is_map(plot) or is_binary(plot)
       true
+
+  ## See Also
+    * `histogram/2` - For plotting raw probability tensors
+    * `draw_counts/2` - For plotting measurement counts
   """
   @spec draw(simulation_result(), keyword()) :: VegaLite.t() | String.t()
   defdelegate draw(result, options \\ []), to: Draw, as: :plot
@@ -404,18 +412,32 @@ defmodule Qx do
   defdelegate draw_counts(result, options \\ []), to: Draw, as: :plot_counts
 
   @doc """
-  Creates a histogram of quantum state probabilities.
+  Creates a histogram from a raw probability tensor.
+
+  Use this function when you have a probability tensor and want to visualize it.
+  This is useful for:
+  - Plotting probabilities from `get_probabilities/1` without running simulation
+  - Visualizing custom or theoretical probability distributions
+  - Comparing different probability distributions
+
+  For quick visualization of simulation results, use `draw/2` instead.
 
   ## Parameters
-    * `probabilities` - Nx tensor of probabilities
+    * `probabilities` - Nx tensor of probabilities (should sum to 1.0)
     * `options` - Optional plotting parameters
 
   ## Examples
 
-      iex> probs = Nx.tensor([0.5, 0.5])
+      # Visualize probabilities without full simulation
+      iex> qc = Qx.create_circuit(2) |> Qx.h(0)
+      iex> probs = Qx.get_probabilities(qc)
       iex> hist = Qx.histogram(probs)
       iex> is_map(hist) or is_binary(hist)
       true
+
+  ## See Also
+    * `draw/2` - For plotting from simulation results
+    * `get_probabilities/1` - To obtain probability tensors
   """
   @spec histogram(Nx.Tensor.t(), keyword()) :: VegaLite.t() | String.t()
   defdelegate histogram(probabilities, options \\ []), to: Draw
