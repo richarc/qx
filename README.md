@@ -272,7 +272,7 @@ mix test
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the Apache License 2.0.
 
 ## Acknowledgments
 
@@ -289,4 +289,3 @@ For detailed API documentation, run:
 ```bash
 mix docs
 ```
-updated e-mail address to private

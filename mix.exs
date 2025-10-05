@@ -59,7 +59,7 @@ defmodule Qx.MixProject do
   defp package do
     [
       name: "qx",
-      licenses: ["MIT"],
+      licenses: ["Apache-2.0"],
       links: %{
         "GitHub" => "https://github.com/richarc/qx"
       },
