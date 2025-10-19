@@ -4,6 +4,9 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 
 ## Features
 
+- **Two Modes of Operation**:
+  - **Circuit Mode**: Build quantum circuits and execute them (traditional workflow)
+  - **Calculation Mode**: Apply gates in real-time and inspect states immediately (great for learning!)
 - **Simple API**: Easy-to-use functions for quantum circuit creation and simulation
 - **Up to 20 Qubits**: Supports quantum circuits with up to 20 qubits
 - **Statevector Simulation**: Uses statevector method for accurate quantum state representation
@@ -36,7 +39,33 @@ mix deps.get
 
 ## Quick Start
 
-### Creating a Bell State
+### Calculation Mode (Real-Time Gate Application)
+
+```elixir
+# Create and manipulate qubits directly - gates apply immediately!
+q = Qx.Qubit.new()
+  |> Qx.Qubit.h()
+  |> Qx.Qubit.show_state()
+
+# Output:
+# %{
+#   state: "0.707|0⟩ + 0.707|1⟩",
+#   amplitudes: [{"|0⟩", "0.707+0.000i"}, {"|1⟩", "0.707+0.000i"}],
+#   probabilities: [{"|0⟩", 0.5}, {"|1⟩", 0.5}]
+# }
+
+# Inspect state at any step
+q = Qx.Qubit.new()
+Qx.Qubit.measure_probabilities(q)  # [1.0, 0.0] - definitely |0⟩
+
+q = Qx.Qubit.x(q)
+Qx.Qubit.measure_probabilities(q)  # [0.0, 1.0] - definitely |1⟩
+
+q = Qx.Qubit.h(q)
+Qx.Qubit.measure_probabilities(q)  # [0.5, 0.5] - superposition!
+```
+
+### Circuit Mode (Build Then Execute)
 
 ```elixir
 # Create a Bell state (maximally entangled two-qubit state)
@@ -66,17 +95,48 @@ IO.inspect(result.counts)
 ## API Reference
 
 The 'Qx' module implements a handy API for the majority of functions needed to create simple quantum circuits. It is a series of delegations to the following modules:
-- `Qx.Qubit` - Define and initialise individual qubits (not used in circuits)
-- `Qx.QuantumCircuit` - Structure and functions for a quantum circuit
-- `Qx.Operations` - Gate operations on Qubits
+- `Qx.Qubit` - Calculation mode: Define and manipulate individual qubits in real-time
+- `Qx.QuantumCircuit` - Circuit mode: Structure and functions for quantum circuits
+- `Qx.Operations` - Gate operations on circuits
 - `Qx.Simulation` - Simulation and execution of circuits
 
-### Circuit Creation
+### Calculation Mode (Qx.Qubit)
 
+Work with qubits directly - gates apply immediately!
+
+**Qubit Creation:**
+- `Qx.Qubit.new()` - Create |0⟩ state
+- `Qx.Qubit.new(alpha, beta)` - Create custom state α|0⟩ + β|1⟩
+- `Qx.Qubit.one()` - Create |1⟩ state
+- `Qx.Qubit.plus()` - Create |+⟩ state
+- `Qx.Qubit.minus()` - Create |-⟩ state
+
+**Single-Qubit Gates (Calculation Mode):**
+- `Qx.Qubit.h/1` - Hadamard gate
+- `Qx.Qubit.x/1` - Pauli-X gate
+- `Qx.Qubit.y/1` - Pauli-Y gate
+- `Qx.Qubit.z/1` - Pauli-Z gate
+- `Qx.Qubit.s/1` - S gate
+- `Qx.Qubit.t/1` - T gate
+- `Qx.Qubit.rx/2` - X-rotation
+- `Qx.Qubit.ry/2` - Y-rotation
+- `Qx.Qubit.rz/2` - Z-rotation
+- `Qx.Qubit.phase/2` - Phase gate
+
+**State Inspection:**
+- `Qx.Qubit.state_vector/1` - Get raw state tensor
+- `Qx.Qubit.show_state/1` - Get human-readable state (Dirac notation, amplitudes, probabilities)
+- `Qx.Qubit.measure_probabilities/1` - Get measurement probabilities
+- `Qx.Qubit.alpha/1` - Get |0⟩ amplitude
+- `Qx.Qubit.beta/1` - Get |1⟩ amplitude
+
+### Circuit Mode
+
+**Circuit Creation:**
 - `Qx.create_circuit(num_qubits)` - Create circuit with only qubits
 - `Qx.create_circuit(num_qubits, num_classical_bits)` - Create circuit with qubits and classical bits
 
-### Single-Qubit Gates
+**Single-Qubit Gates (Circuit Mode):**
 
 - `Qx.h(circuit, qubit)` - Hadamard gate (creates superposition)
 - `Qx.x(circuit, qubit)` - Pauli-X gate (bit flip)
@@ -229,6 +289,7 @@ Qx.draw(result)
 
 ### Working with Quantum States
 
+**Circuit Mode:**
 ```elixir
 # Create a 3-qubit GHZ state and examine its properties
 ghz_circuit = Qx.ghz_state()
@@ -242,17 +303,52 @@ probs = Qx.get_probabilities(ghz_circuit)
 Qx.histogram(probs)
 ```
 
+**Calculation Mode:**
+```elixir
+# Create and inspect qubit states in real-time
+q = Qx.Qubit.new()
+  |> Qx.Qubit.h()
+  |> Qx.Qubit.z()
+  |> Qx.Qubit.show_state()
+
+IO.puts(q.state)  # "0.707|0⟩ - 0.707|1⟩"
+IO.inspect(q.probabilities)  # [{"|0⟩", 0.5}, {"|1⟩", 0.5}]
+
+# Chain multiple operations
+final_state = Qx.Qubit.new()
+  |> Qx.Qubit.rx(:math.pi() / 4)
+  |> Qx.Qubit.ry(:math.pi() / 3)
+  |> Qx.Qubit.rz(:math.pi() / 6)
+  |> Qx.Qubit.show_state()
+```
+
 ## Module Structure
 
 The Qx library consists of several modules:
 
 - **`Qx`** - Main API providing convenient functions
-- **`Qx.Qubit`** - Qubit creation and manipulation functions
-- **`Qx.QuantumCircuit`** - Quantum circuit structure and management
-- **`Qx.Operations`** - Quantum gate operations
+- **`Qx.Qubit`** - Calculation mode: Real-time qubit creation and manipulation
+- **`Qx.QuantumCircuit`** - Circuit mode: Quantum circuit structure and management
+- **`Qx.Operations`** - Quantum gate operations for circuits
 - **`Qx.Simulation`** - Circuit execution and simulation engine
 - **`Qx.Draw`** - Visualization and plotting functions
 - **`Qx.Math`** - Core mathematical functions for quantum mechanics
+
+## Calculation Mode vs Circuit Mode
+
+**When to use Calculation Mode (`Qx.Qubit`):**
+- Learning quantum computing concepts
+- Exploring single-qubit gates and states
+- Debugging quantum algorithms
+- Interactive experimentation
+- Immediate state inspection needed
+
+**When to use Circuit Mode (`Qx.create_circuit`):**
+- Multi-qubit quantum algorithms
+- Measurements and classical feedback
+- Running multiple shots for statistics
+- Building reusable quantum circuits
+- Performance-critical simulations
 
 ## Requirements
 These are the versions I've developed and tested with

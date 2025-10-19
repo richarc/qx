@@ -548,11 +548,123 @@ defmodule Qx.Qubit do
       true
 
   ## See Also
+    * `show_state/1` - Get a human-readable representation of the state
     * `measure_probabilities/1` - Get measurement probabilities instead of amplitudes
     * `alpha/1` - Extract the |0⟩ amplitude
     * `beta/1` - Extract the |1⟩ amplitude
   """
   def state_vector(qubit) do
     qubit
+  end
+
+  @doc """
+  Returns a human-readable representation of the qubit state.
+
+  This function extracts the state vector and presents it in a structured
+  format showing the amplitudes, probabilities, and basis states.
+
+  ## Returns
+  A map containing:
+  - `:state` - The quantum state in Dirac notation (e.g., "α|0⟩ + β|1⟩")
+  - `:amplitudes` - List of basis state amplitudes as `{basis, amplitude}` tuples
+  - `:probabilities` - List of measurement probabilities as `{basis, probability}` tuples
+
+  ## Examples
+
+      # View |0⟩ state
+      iex> Qx.Qubit.new() |> Qx.Qubit.show_state()
+      %{
+        state: "1.000|0⟩ + 0.000|1⟩",
+        amplitudes: [
+          {"|0⟩", "1.000+0.000i"},
+          {"|1⟩", "0.000+0.000i"}
+        ],
+        probabilities: [
+          {"|0⟩", 1.0},
+          {"|1⟩", 0.0}
+        ]
+      }
+
+      # View superposition state
+      iex> q = Qx.Qubit.new() |> Qx.Qubit.h()
+      iex> state_info = Qx.Qubit.show_state(q)
+      iex> state_info.state
+      "0.707|0⟩ + 0.707|1⟩"
+
+      # Check probabilities
+      iex> q = Qx.Qubit.new() |> Qx.Qubit.h()
+      iex> %{probabilities: probs} = Qx.Qubit.show_state(q)
+      iex> Enum.all?(probs, fn {_, p} -> abs(p - 0.5) < 0.01 end)
+      true
+
+  ## See Also
+    * `state_vector/1` - Get the raw state tensor
+    * `measure_probabilities/1` - Get just the probabilities
+  """
+  def show_state(qubit) do
+    # Extract amplitudes
+    alpha = Nx.to_number(qubit[0])
+    beta = Nx.to_number(qubit[1])
+
+    # Calculate probabilities
+    prob_0 = Complex.abs(alpha) ** 2
+    prob_1 = Complex.abs(beta) ** 2
+
+    # Format amplitudes as strings
+    alpha_str = format_complex(alpha)
+    beta_str = format_complex(beta)
+
+    # Format state in Dirac notation
+    state_str = format_dirac_state(alpha, beta)
+
+    %{
+      state: state_str,
+      amplitudes: [
+        {"|0⟩", alpha_str},
+        {"|1⟩", beta_str}
+      ],
+      probabilities: [
+        {"|0⟩", prob_0},
+        {"|1⟩", prob_1}
+      ]
+    }
+  end
+
+  # Private helper to format complex numbers
+  defp format_complex(complex_num) do
+    real = Complex.real(complex_num)
+    imag = Complex.imag(complex_num)
+
+    real_str = :erlang.float_to_binary(real, decimals: 3)
+    imag_str = :erlang.float_to_binary(abs(imag), decimals: 3)
+
+    sign = if imag >= 0, do: "+", else: "-"
+    "#{real_str}#{sign}#{imag_str}i"
+  end
+
+  # Private helper to format state in Dirac notation
+  defp format_dirac_state(alpha, beta) do
+    alpha_mag = Complex.abs(alpha)
+    beta_mag = Complex.abs(beta)
+
+    alpha_str = :erlang.float_to_binary(alpha_mag, decimals: 3)
+    beta_str = :erlang.float_to_binary(beta_mag, decimals: 3)
+
+    # Determine sign for beta term
+    alpha_phase = :math.atan2(Complex.imag(alpha), Complex.real(alpha))
+    beta_phase = :math.atan2(Complex.imag(beta), Complex.real(beta))
+    phase_diff = beta_phase - alpha_phase
+
+    # Normalize phase difference to [-π, π]
+    phase_diff =
+      cond do
+        phase_diff > :math.pi() -> phase_diff - 2 * :math.pi()
+        phase_diff < -:math.pi() -> phase_diff + 2 * :math.pi()
+        true -> phase_diff
+      end
+
+    sign = if abs(phase_diff - :math.pi()) < 0.1, do: " - ", else: " + "
+
+    "#{alpha_str}|0⟩#{sign}#{beta_str}|1⟩"
   end
 end
