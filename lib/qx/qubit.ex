@@ -331,8 +331,7 @@ defmodule Qx.Qubit do
       true
   """
   def h(qubit) do
-    gate_matrix = Qx.Gates.hadamard()
-    Nx.dot(gate_matrix, qubit)
+    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.hadamard(), 0, 1)
   end
 
   @doc """
@@ -357,8 +356,7 @@ defmodule Qx.Qubit do
       true
   """
   def x(qubit) do
-    gate_matrix = Qx.Gates.pauli_x()
-    Nx.dot(gate_matrix, qubit)
+    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.pauli_x(), 0, 1)
   end
 
   @doc """
@@ -374,8 +372,7 @@ defmodule Qx.Qubit do
       true
   """
   def y(qubit) do
-    gate_matrix = Qx.Gates.pauli_y()
-    Nx.dot(gate_matrix, qubit)
+    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.pauli_y(), 0, 1)
   end
 
   @doc """
@@ -400,8 +397,7 @@ defmodule Qx.Qubit do
       true
   """
   def z(qubit) do
-    gate_matrix = Qx.Gates.pauli_z()
-    Nx.dot(gate_matrix, qubit)
+    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.pauli_z(), 0, 1)
   end
 
   @doc """
@@ -417,8 +413,7 @@ defmodule Qx.Qubit do
       true
   """
   def s(qubit) do
-    gate_matrix = Qx.Gates.s_gate()
-    Nx.dot(gate_matrix, qubit)
+    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.s_gate(), 0, 1)
   end
 
   @doc """
@@ -434,8 +429,7 @@ defmodule Qx.Qubit do
       true
   """
   def t(qubit) do
-    gate_matrix = Qx.Gates.t_gate()
-    Nx.dot(gate_matrix, qubit)
+    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.t_gate(), 0, 1)
   end
 
   @doc """
@@ -460,8 +454,7 @@ defmodule Qx.Qubit do
       true
   """
   def rx(qubit, theta) do
-    gate_matrix = Qx.Gates.rx(theta)
-    Nx.dot(gate_matrix, qubit)
+    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.rx(theta), 0, 1)
   end
 
   @doc """
@@ -478,8 +471,7 @@ defmodule Qx.Qubit do
       true
   """
   def ry(qubit, theta) do
-    gate_matrix = Qx.Gates.ry(theta)
-    Nx.dot(gate_matrix, qubit)
+    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.ry(theta), 0, 1)
   end
 
   @doc """
@@ -496,8 +488,7 @@ defmodule Qx.Qubit do
       true
   """
   def rz(qubit, theta) do
-    gate_matrix = Qx.Gates.rz(theta)
-    Nx.dot(gate_matrix, qubit)
+    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.rz(theta), 0, 1)
   end
 
   @doc """
@@ -514,8 +505,7 @@ defmodule Qx.Qubit do
       true
   """
   def phase(qubit, phi) do
-    gate_matrix = Qx.Gates.phase(phi)
-    Nx.dot(gate_matrix, qubit)
+    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.phase(phi), 0, 1)
   end
 
   @doc """

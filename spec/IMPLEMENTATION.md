@@ -13,7 +13,9 @@ The Qx library follows a modular architecture with clear separation of concerns:
 ```
 Qx (Main API)
 ├── Qx.Math (Mathematical functions)
-├── Qx.Qubit (Qubit operations)
+├── Qx.Calc (Shared calculation engine for gate application)
+├── Qx.Qubit (Single-qubit calculation mode)
+├── Qx.Register (Multi-qubit calculation mode)
 ├── Qx.QuantumCircuit (Circuit management)
 ├── Qx.Operations (Gate operations)
 ├── Qx.Simulation (Execution engine)
@@ -44,16 +46,55 @@ Qx (Main API)
 - **Backend**: Uses Nx for efficient numerical computations
 - **Status**: ✅ Complete with all essential quantum math operations
 
-### 3. Qx.Qubit Module
-- **Purpose**: Qubit creation and manipulation
+### 3. Qx.Calc Module
+- **Purpose**: Shared calculation engine for quantum gate operations in calculation mode
+- **Key Functions**:
+  - `apply_single_qubit_gate/4` - Apply single-qubit gates to state vectors
+  - `apply_cnot/4` - Apply CNOT (controlled-X) gate
+  - `apply_toffoli/5` - Apply Toffoli (CCX) gate
+- **Design Philosophy**: Consolidates gate application logic to eliminate code duplication between Qx.Qubit and Qx.Register
+- **Implementation Details**:
+  - Handles both single-qubit (direct matrix multiplication) and multi-qubit (tensor product expansion) cases
+  - Builds full n-qubit gate matrices from 2x2 single-qubit gates
+  - Uses bitwise operations for efficient controlled gate implementation
+  - Centralizes Kronecker product and tensor product operations
+- **Benefits**:
+  - Single source of truth for gate calculations
+  - Easier to optimize and maintain
+  - Both Qx.Qubit and Qx.Register delegate to this module
+  - Future enhancements (e.g., noise models) only need implementation in one place
+- **Status**: ✅ Complete with all calculation mode gates
+
+### 4. Qx.Qubit Module
+- **Purpose**: Single-qubit calculation mode - real-time gate application and state inspection
 - **Key Functions**:
   - `new/0` - Create |0⟩ state
   - `new/2` - Create custom qubit with α,β parameters
   - `one/0`, `plus/0`, `minus/0` - Standard quantum states
   - `valid?/1` - Qubit validation with normalization check
-- **Status**: ✅ Complete with automatic normalization
+  - `h/1`, `x/1`, `y/1`, `z/1`, `s/1`, `t/1` - Single-qubit gates
+  - `rx/2`, `ry/2`, `rz/2`, `phase/2` - Parameterized rotation gates
+  - `show_state/1`, `measure_probabilities/1` - State inspection
+- **Implementation**: All gate operations delegate to Qx.Calc for consistency
+- **Status**: ✅ Complete with automatic normalization and real-time calculation
 
-### 4. Qx.QuantumCircuit Module
+### 5. Qx.Register Module
+- **Purpose**: Multi-qubit calculation mode - real-time operations on quantum registers
+- **Key Functions**:
+  - `new/1` - Create register with n qubits (all initialized to |0⟩)
+  - `new/1` - Create register from list of qubits via tensor product
+  - Single-qubit gates: `h/2`, `x/2`, `y/2`, `z/2`, `s/2`, `t/2`, `rx/3`, `ry/3`, `rz/3`, `phase/3`
+  - Multi-qubit gates: `cx/3` (CNOT), `cz/3` (Controlled-Z), `ccx/4` (Toffoli)
+  - `show_state/1`, `get_probabilities/1`, `state_vector/1`, `valid?/1` - State inspection
+- **Features**:
+  - Support for up to 20 qubits
+  - Entanglement operations (CNOT, Toffoli)
+  - Real-time state inspection at any step
+  - Perfect for creating Bell states, GHZ states, and exploring quantum algorithms
+- **Implementation**: All gate operations delegate to Qx.Calc for shared calculation logic
+- **Status**: ✅ Complete with full multi-qubit support and entanglement
+
+### 6. Qx.QuantumCircuit Module
 - **Purpose**: Circuit structure and state management
 - **Key Features**:
   - Circuit creation with specified qubits and classical bits
@@ -63,16 +104,16 @@ Qx (Main API)
 - **Data Structure**: Maintains circuit state, instructions, and measurements
 - **Status**: ✅ Complete with full circuit management
 
-### 5. Qx.Operations Module
-- **Purpose**: Quantum gate operations
+### 7. Qx.Operations Module
+- **Purpose**: Quantum gate operations for circuit mode
 - **Supported Gates**:
   - Single-qubit: H, X, Y, Z, S, T, RX, RY, RZ, Phase
-  - Two-qubit: CNOT (CX)
+  - Two-qubit: CNOT (CX), Controlled-Z (CZ)
   - Three-qubit: Toffoli (CCX)
 - **Parameterized Gates**: ✅ Supports rotation gates with custom angles
 - **Status**: ✅ Complete with all specified gates
 
-### 6. Qx.Simulation Module
+### 8. Qx.Simulation Module
 - **Purpose**: Circuit execution and probability generation
 - **Simulation Method**: Statevector simulation (as specified)
 - **Key Features**:
@@ -83,7 +124,7 @@ Qx (Main API)
 - **Performance**: Uses Nx backend for efficient computation
 - **Status**: ✅ Complete with full simulation capabilities
 
-### 7. Qx.Draw Module
+### 9. Qx.Draw Module
 - **Purpose**: Visualization of simulation results
 - **Supported Formats**:
   - VegaLite (for LiveBook integration)

@@ -96,6 +96,7 @@ IO.inspect(result.counts)
 
 The 'Qx' module implements a handy API for the majority of functions needed to create simple quantum circuits. It is a series of delegations to the following modules:
 - `Qx.Qubit` - Calculation mode: Define and manipulate individual qubits in real-time
+- `Qx.Register` - Calculation mode: Multi-qubit registers with entanglement
 - `Qx.QuantumCircuit` - Circuit mode: Structure and functions for quantum circuits
 - `Qx.Operations` - Gate operations on circuits
 - `Qx.Simulation` - Simulation and execution of circuits
@@ -129,6 +130,37 @@ Work with qubits directly - gates apply immediately!
 - `Qx.Qubit.measure_probabilities/1` - Get measurement probabilities
 - `Qx.Qubit.alpha/1` - Get |0⟩ amplitude
 - `Qx.Qubit.beta/1` - Get |1⟩ amplitude
+
+### Calculation Mode (Qx.Register)
+
+Work with multi-qubit registers - gates apply immediately with full entanglement support!
+
+**Register Creation:**
+- `Qx.Register.new(num_qubits)` - Create register with n qubits (all |0⟩)
+- `Qx.Register.new([qubit1, qubit2, ...])` - Create from list of qubits via tensor product
+
+**Single-Qubit Gates (on specific qubits):**
+- `Qx.Register.h(register, qubit_index)` - Hadamard gate
+- `Qx.Register.x(register, qubit_index)` - Pauli-X gate
+- `Qx.Register.y(register, qubit_index)` - Pauli-Y gate
+- `Qx.Register.z(register, qubit_index)` - Pauli-Z gate
+- `Qx.Register.s(register, qubit_index)` - S gate
+- `Qx.Register.t(register, qubit_index)` - T gate
+- `Qx.Register.rx(register, qubit_index, theta)` - X-rotation
+- `Qx.Register.ry(register, qubit_index, theta)` - Y-rotation
+- `Qx.Register.rz(register, qubit_index, theta)` - Z-rotation
+- `Qx.Register.phase(register, qubit_index, phi)` - Phase gate
+
+**Multi-Qubit Gates:**
+- `Qx.Register.cx(register, control, target)` - CNOT gate
+- `Qx.Register.cz(register, control, target)` - Controlled-Z gate
+- `Qx.Register.ccx(register, control1, control2, target)` - Toffoli gate
+
+**State Inspection:**
+- `Qx.Register.state_vector(register)` - Get full state vector
+- `Qx.Register.get_probabilities(register)` - Get measurement probabilities for all basis states
+- `Qx.Register.show_state(register)` - Get human-readable multi-qubit state representation
+- `Qx.Register.valid?(register)` - Check if register is properly normalized
 
 ### Circuit Mode
 
@@ -303,7 +335,7 @@ probs = Qx.get_probabilities(ghz_circuit)
 Qx.histogram(probs)
 ```
 
-**Calculation Mode:**
+**Calculation Mode (Single Qubit):**
 ```elixir
 # Create and inspect qubit states in real-time
 q = Qx.Qubit.new()
@@ -322,12 +354,36 @@ final_state = Qx.Qubit.new()
   |> Qx.Qubit.show_state()
 ```
 
+**Calculation Mode (Multi-Qubit Register):**
+```elixir
+# Create a Bell state in real-time
+reg = Qx.Register.new(2)
+  |> Qx.Register.h(0)
+  |> Qx.Register.cx(0, 1)
+  |> Qx.Register.show_state()
+
+# Output shows entangled state:
+# %{
+#   state: "0.707|00⟩ + 0.707|11⟩",
+#   amplitudes: [{"|00⟩", "0.707+0.000i"}, {"|01⟩", "0.000+0.000i"}, ...],
+#   probabilities: [{"|00⟩", 0.5}, {"|01⟩", 0.0}, {"|10⟩", 0.0}, {"|11⟩", 0.5}]
+# }
+
+# Create register from existing qubits
+q1 = Qx.Qubit.new(0.6, 0.8)  # Custom state
+q2 = Qx.Qubit.plus()          # |+⟩ state
+reg = Qx.Register.new([q1, q2])
+  |> Qx.Register.h(0)
+  |> Qx.Register.get_probabilities()
+```
+
 ## Module Structure
 
 The Qx library consists of several modules:
 
 - **`Qx`** - Main API providing convenient functions
-- **`Qx.Qubit`** - Calculation mode: Real-time qubit creation and manipulation
+- **`Qx.Qubit`** - Calculation mode: Real-time single-qubit manipulation
+- **`Qx.Register`** - Calculation mode: Multi-qubit registers with entanglement
 - **`Qx.QuantumCircuit`** - Circuit mode: Quantum circuit structure and management
 - **`Qx.Operations`** - Quantum gate operations for circuits
 - **`Qx.Simulation`** - Circuit execution and simulation engine
@@ -336,19 +392,21 @@ The Qx library consists of several modules:
 
 ## Calculation Mode vs Circuit Mode
 
-**When to use Calculation Mode (`Qx.Qubit`):**
+**When to use Calculation Mode (`Qx.Qubit` / `Qx.Register`):**
 - Learning quantum computing concepts
-- Exploring single-qubit gates and states
-- Debugging quantum algorithms
-- Interactive experimentation
-- Immediate state inspection needed
+- Exploring single or multi-qubit gates and states
+- Creating and inspecting entangled states interactively
+- Debugging quantum algorithms step-by-step
+- Interactive experimentation with immediate feedback
+- Immediate state inspection needed at each step
 
 **When to use Circuit Mode (`Qx.create_circuit`):**
-- Multi-qubit quantum algorithms
-- Measurements and classical feedback
-- Running multiple shots for statistics
+- Multi-shot simulations for statistics
+- Measurements with classical bit storage
+- Conditional operations based on measurements
 - Building reusable quantum circuits
-- Performance-critical simulations
+- Performance-critical batch simulations
+- Exporting to OpenQASM for real hardware
 
 ## Requirements
 These are the versions I've developed and tested with
