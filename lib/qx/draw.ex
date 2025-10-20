@@ -92,6 +92,69 @@ defmodule Qx.Draw do
   end
 
   @doc """
+  Visualizes a single qubit state on the Bloch sphere.
+
+  The Bloch sphere is a geometrical representation of pure qubit states. Any pure
+  state of a single qubit can be represented as a point on the surface of a unit sphere.
+
+  ## Parameters
+    * `qubit` - Single qubit state tensor (2-element c64 tensor representing α|0⟩ + β|1⟩)
+    * `options` - Optional plotting parameters (default: [])
+
+  ## Options
+    * `:format` - Output format (:svg, :vega_lite) (default: :vega_lite)
+    * `:title` - Plot title (default: "Bloch Sphere")
+    * `:size` - Sphere size (default: 400)
+
+  ## Bloch Sphere Representation
+
+  A qubit state α|0⟩ + β|1⟩ maps to a point (x, y, z) on the Bloch sphere where:
+  - |0⟩ state is at the north pole (z = +1)
+  - |1⟩ state is at the south pole (z = -1)
+  - |+⟩ state is at the equator (x = +1)
+  - |-⟩ state is at the equator (x = -1)
+
+  ## Examples
+
+      # Visualize |0⟩ state (north pole)
+      iex> q = Qx.Qubit.new()
+      iex> Qx.Draw.bloch_sphere(q)
+      # Returns VegaLite specification
+
+      # Visualize superposition state
+      iex> q = Qx.Qubit.new() |> Qx.Qubit.h()
+      iex> Qx.Draw.bloch_sphere(q, title: "Hadamard State")
+
+      # Generate SVG output
+      iex> q = Qx.Qubit.plus()
+      iex> Qx.Draw.bloch_sphere(q, format: :svg)
+      # Returns SVG string
+
+  ## See Also
+    * `Qx.Qubit.new/0` - Create qubit states
+    * `Qx.Qubit.show_state/1` - Get detailed state information
+  """
+  def bloch_sphere(qubit, options \\ []) do
+    format = Keyword.get(options, :format, :vega_lite)
+    title = Keyword.get(options, :title, "Bloch Sphere")
+    size = Keyword.get(options, :size, 400)
+
+    # Convert qubit state to Bloch coordinates
+    {x, y, z, theta, phi} = qubit_to_bloch_coordinates(qubit)
+
+    case format do
+      :vega_lite ->
+        bloch_sphere_vega_lite({x, y, z, theta, phi}, title, size)
+
+      :svg ->
+        bloch_sphere_svg({x, y, z, theta, phi}, title, size)
+
+      _ ->
+        raise ArgumentError, "Unsupported format: #{format}"
+    end
+  end
+
+  @doc """
   Creates a histogram from a raw probability tensor.
 
   This function provides more control for visualizing probability distributions
@@ -163,7 +226,313 @@ defmodule Qx.Draw do
     end
   end
 
+  @doc """
+  Displays multi-qubit state as a formatted table.
+
+  This function creates a table view of a quantum state vector, showing each basis
+  state with its amplitude and probability. Useful for inspecting multi-qubit states.
+
+  ## Parameters
+    * `register_or_state` - Either a `Qx.Register.t()` struct or a state tensor
+    * `options` - Optional display parameters (default: [])
+
+  ## Options
+    * `:format` - Output format (:auto, :text, :html, :markdown) (default: :auto)
+      - `:auto` - Automatically detects LiveBook/Kino and uses best format
+      - `:text` - Plain text with newlines (for terminal/IEx)
+      - `:html` - HTML table (for web/notebooks)
+      - `:markdown` - Markdown table (for LiveBook with Kino)
+    * `:precision` - Number of decimal places (default: 3)
+    * `:hide_zeros` - Hide zero-amplitude states (default: false)
+
+  ## Examples
+
+      # Display register state (auto-detects best format)
+      iex> reg = Qx.Register.new(2) |> Qx.Register.h(0) |> Qx.Register.cx(0, 1)
+      iex> Qx.Draw.state_table(reg)
+      # Returns formatted table
+
+      # Display with zero states hidden
+      iex> reg = Qx.Register.new(3) |> Qx.Register.h(0)
+      iex> Qx.Draw.state_table(reg, hide_zeros: true)
+
+      # Force HTML format
+      iex> reg = Qx.Register.new(2)
+      iex> Qx.Draw.state_table(reg, format: :html)
+
+      # Markdown format (best for LiveBook)
+      iex> reg = Qx.Register.new(2)
+      iex> Qx.Draw.state_table(reg, format: :markdown)
+
+  ## See Also
+    * `Qx.Register.show_state/1` - Get state information as map
+    * `Qx.Register.get_probabilities/1` - Get probability distribution
+  """
+  def state_table(register_or_state, options \\ []) do
+    format = Keyword.get(options, :format, :auto)
+    precision = Keyword.get(options, :precision, 3)
+    hide_zeros = Keyword.get(options, :hide_zeros, false)
+
+    # Extract state vector
+    state =
+      case register_or_state do
+        %Qx.Register{state: s} -> s
+        tensor when is_struct(tensor, Nx.Tensor) -> tensor
+        _ -> raise ArgumentError, "Expected Qx.Register or Nx.Tensor, got: #{inspect(register_or_state)}"
+      end
+
+    # Build table data
+    table_data = build_state_table_data(state, precision, hide_zeros)
+
+    case format do
+      :auto ->
+        # Auto-detect best format based on environment
+        if kino_available?() do
+          # LiveBook environment - use Kino.Markdown for best display
+          markdown = format_state_table_markdown(table_data)
+          apply(Kino.Markdown, :new, [markdown])
+        else
+          # Terminal/IEx - use plain text
+          format_state_table_text(table_data)
+        end
+
+      :text ->
+        format_state_table_text(table_data)
+
+      :html ->
+        format_state_table_html(table_data)
+
+      :markdown ->
+        markdown = format_state_table_markdown(table_data)
+
+        if kino_available?() do
+          # Wrap in Kino.Markdown if available
+          apply(Kino.Markdown, :new, [markdown])
+        else
+          # Return plain markdown string if Kino not available
+          markdown
+        end
+
+      _ ->
+        raise ArgumentError, "Unsupported format: #{format}. Use :auto, :text, :html, or :markdown"
+    end
+  end
+
   # Private helper functions
+
+  # Check if Kino is available (indicates LiveBook environment)
+  defp kino_available?() do
+    Code.ensure_loaded?(Kino)
+  end
+
+  # Convert qubit state to Bloch sphere coordinates
+  defp qubit_to_bloch_coordinates(qubit) do
+    # Extract amplitudes α and β from qubit state
+    [alpha, beta] = Nx.to_flat_list(qubit)
+
+    # Get magnitude and phase
+    alpha_mag = Complex.abs(alpha)
+    _beta_mag = Complex.abs(beta)
+
+    # Calculate θ (polar angle): θ = 2 * acos(|α|)
+    theta = 2 * :math.acos(max(-1.0, min(1.0, alpha_mag)))
+
+    # Calculate φ (azimuthal angle): φ = arg(β) - arg(α)
+    alpha_phase = Complex.phase(alpha)
+    beta_phase = Complex.phase(beta)
+    phi = beta_phase - alpha_phase
+
+    # Convert to Cartesian coordinates
+    x = :math.sin(theta) * :math.cos(phi)
+    y = :math.sin(theta) * :math.sin(phi)
+    z = :math.cos(theta)
+
+    {x, y, z, theta, phi}
+  end
+
+  # Render Bloch sphere using VegaLite
+  defp bloch_sphere_vega_lite({x, _y, z, _theta, _phi}, title, size) do
+    # VegaLite doesn't support 3D natively, so we'll create a 2D projection
+    # We'll show two views: XZ plane and YZ plane
+
+    # Create a simple 2D representation showing the state vector projection
+    # onto the XZ plane (standard view)
+    data = [
+      # Axes
+      %{"type" => "axis", "x" => 0, "y" => 0, "x2" => 1, "y2" => 0, "label" => "X"},
+      %{"type" => "axis", "x" => 0, "y" => 0, "x2" => 0, "y2" => 1, "label" => "Z"},
+      %{"type" => "axis", "x" => 0, "y" => 0, "x2" => -1, "y2" => 0, "label" => "-X"},
+      %{"type" => "axis", "x" => 0, "y" => 0, "x2" => 0, "y2" => -1, "label" => "-Z"},
+      # State vector
+      %{"type" => "vector", "x" => 0, "y" => 0, "x2" => x, "y2" => z, "label" => "State"}
+    ]
+
+    VegaLite.new(width: size, height: size, title: title)
+    |> VegaLite.data_from_values(data)
+    |> VegaLite.layers([
+      VegaLite.new()
+      |> VegaLite.mark(:rule, color: "#cccccc")
+      |> VegaLite.encode_field(:x, "x", type: :quantitative, scale: [domain: [-1.2, 1.2]])
+      |> VegaLite.encode_field(:y, "y", type: :quantitative, scale: [domain: [-1.2, 1.2]])
+      |> VegaLite.encode_field(:x2, "x2")
+      |> VegaLite.encode_field(:y2, "y2")
+      |> VegaLite.transform(filter: "datum.type == 'axis'"),
+      VegaLite.new()
+      |> VegaLite.mark(:rule, color: "#ff0000", stroke_width: 3)
+      |> VegaLite.encode_field(:x, "x", type: :quantitative)
+      |> VegaLite.encode_field(:y, "y", type: :quantitative)
+      |> VegaLite.encode_field(:x2, "x2")
+      |> VegaLite.encode_field(:y2, "y2")
+      |> VegaLite.transform(filter: "datum.type == 'vector'"),
+      VegaLite.new()
+      |> VegaLite.mark(:point, color: "#ff0000", size: 100)
+      |> VegaLite.encode_field(:x, "x2", type: :quantitative)
+      |> VegaLite.encode_field(:y, "y2", type: :quantitative)
+      |> VegaLite.transform(filter: "datum.type == 'vector'")
+    ])
+  end
+
+  # Render Bloch sphere as SVG
+  defp bloch_sphere_svg({x, y, z, _theta, _phi}, title, size) do
+    center = size / 2
+    radius = size * 0.35
+
+    # Draw a 2D projection (XZ plane view)
+    # State point on sphere
+    state_x = center + x * radius
+    state_z = center - z * radius  # Negative because SVG Y increases downward
+
+    # Circle representing the sphere (equator view)
+    """
+    <svg width="#{size}" height="#{size}" xmlns="http://www.w3.org/2000/svg">
+      <rect width="#{size}" height="#{size}" fill="#ffffff"/>
+      <text x="#{center}" y="25" text-anchor="middle" font-family="Arial" font-size="16" font-weight="bold">#{title}</text>
+
+      <!-- Sphere outline -->
+      <circle cx="#{center}" cy="#{center}" r="#{radius}" fill="none" stroke="#cccccc" stroke-width="2"/>
+
+      <!-- Axes -->
+      <line x1="#{center - radius * 1.1}" y1="#{center}" x2="#{center + radius * 1.1}" y2="#{center}" stroke="#999999" stroke-width="1"/>
+      <line x1="#{center}" y1="#{center - radius * 1.1}" x2="#{center}" y2="#{center + radius * 1.1}" stroke="#999999" stroke-width="1"/>
+
+      <!-- Axis labels -->
+      <text x="#{center + radius * 1.2}" y="#{center + 5}" font-family="Arial" font-size="14">|+⟩</text>
+      <text x="#{center - radius * 1.3}" y="#{center + 5}" font-family="Arial" font-size="14">|-⟩</text>
+      <text x="#{center}" y="#{center - radius * 1.15}" text-anchor="middle" font-family="Arial" font-size="14">|0⟩</text>
+      <text x="#{center}" y="#{center + radius * 1.25}" text-anchor="middle" font-family="Arial" font-size="14">|1⟩</text>
+
+      <!-- State vector -->
+      <line x1="#{center}" y1="#{center}" x2="#{state_x}" y2="#{state_z}" stroke="#ff0000" stroke-width="3"/>
+      <circle cx="#{state_x}" cy="#{state_z}" r="6" fill="#ff0000"/>
+
+      <!-- Coordinates -->
+      <text x="#{size / 2}" y="#{size - 10}" text-anchor="middle" font-family="Arial" font-size="12">
+        (x: #{Float.round(x, 3)}, y: #{Float.round(y, 3)}, z: #{Float.round(z, 3)})
+      </text>
+    </svg>
+    """
+  end
+
+  # Build state table data
+  defp build_state_table_data(state, precision, hide_zeros) do
+    state_list = Nx.to_flat_list(state)
+    probabilities = state_list |> Enum.map(fn amp -> :math.pow(Complex.abs(amp), 2) end)
+
+    num_states = length(state_list)
+    num_qubits = trunc(:math.log2(num_states))
+
+    state_list
+    |> Enum.zip(probabilities)
+    |> Enum.with_index()
+    |> Enum.filter(fn {{_amp, prob}, _index} ->
+      not hide_zeros or prob > 1.0e-10
+    end)
+    |> Enum.map(fn {{amplitude, probability}, index} ->
+      basis_state = format_basis_state_label(index, num_qubits)
+      amplitude_str = format_complex_number(amplitude, precision)
+      probability_str = Float.round(probability, precision)
+
+      {basis_state, amplitude_str, probability_str}
+    end)
+  end
+
+  # Format basis state label
+  defp format_basis_state_label(index, num_qubits) do
+    binary_string = Integer.to_string(index, 2) |> String.pad_leading(num_qubits, "0")
+    "|#{binary_string}⟩"
+  end
+
+  # Format complex number
+  defp format_complex_number(complex, precision) do
+    real = Complex.real(complex)
+    imag = Complex.imag(complex)
+
+    real_str = Float.round(real, precision) |> to_string()
+    imag_abs_str = Float.round(abs(imag), precision) |> to_string()
+    sign = if imag >= 0, do: "+", else: "-"
+
+    "#{real_str}#{sign}#{imag_abs_str}i"
+  end
+
+  # Format state table as text
+  defp format_state_table_text(table_data) do
+    header = "Basis State | Amplitude              | Probability\n"
+    separator = "------------|------------------------|------------\n"
+
+    rows =
+      table_data
+      |> Enum.map(fn {basis, amplitude, probability} ->
+        String.pad_trailing(basis, 11) <>
+          " | " <>
+          String.pad_trailing(amplitude, 22) <>
+          " | " <> to_string(probability) <> "\n"
+      end)
+      |> Enum.join()
+
+    header <> separator <> rows
+  end
+
+  # Format state table as HTML
+  defp format_state_table_html(table_data) do
+    rows =
+      table_data
+      |> Enum.map(fn {basis, amplitude, probability} ->
+        "<tr><td>#{basis}</td><td>#{amplitude}</td><td>#{probability}</td></tr>"
+      end)
+      |> Enum.join("\n")
+
+    """
+    <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
+      <thead>
+        <tr>
+          <th>Basis State</th>
+          <th>Amplitude</th>
+          <th>Probability</th>
+        </tr>
+      </thead>
+      <tbody>
+        #{rows}
+      </tbody>
+    </table>
+    """
+  end
+
+  # Format state table as Markdown
+  defp format_state_table_markdown(table_data) do
+    header = "| Basis State | Amplitude | Probability |\n"
+    separator = "|-------------|-----------|-------------|\n"
+
+    rows =
+      table_data
+      |> Enum.map(fn {basis, amplitude, probability} ->
+        # Escape pipes in basis state to prevent markdown column confusion
+        escaped_basis = String.replace(basis, "|", "\\|")
+        "| #{escaped_basis} | #{amplitude} | #{probability} |"
+      end)
+      |> Enum.join("\n")
+
+    header <> separator <> rows
+  end
 
   defp plot_vega_lite(result, title, width, height) do
     probabilities = Nx.to_flat_list(result.probabilities)

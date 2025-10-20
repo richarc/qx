@@ -480,6 +480,79 @@ defmodule Qx do
   @spec histogram(Nx.Tensor.t(), keyword()) :: VegaLite.t() | String.t()
   defdelegate histogram(probabilities, options \\ []), to: Draw
 
+  @doc """
+  Visualizes a single qubit state on the Bloch sphere.
+
+  The Bloch sphere provides a geometric representation of a pure qubit state.
+  This visualization is particularly useful for understanding single-qubit gates
+  and state transformations in calculation mode.
+
+  ## Parameters
+    * `qubit` - Single qubit state tensor (from `Qx.Qubit`)
+    * `options` - Optional plotting parameters
+
+  ## Options
+    * `:format` - `:vega_lite` (default) or `:svg`
+    * `:title` - Plot title (default: "Bloch Sphere")
+    * `:size` - Sphere size (default: 400)
+
+  ## Examples
+
+      # Visualize |0⟩ state
+      iex> q = Qx.Qubit.new()
+      iex> plot = Qx.draw_bloch(q)
+      iex> is_map(plot) or is_binary(plot)
+      true
+
+      # Visualize superposition state
+      iex> q = Qx.Qubit.new() |> Qx.Qubit.h()
+      iex> plot = Qx.draw_bloch(q, title: "Superposition State")
+      iex> is_map(plot) or is_binary(plot)
+      true
+
+  ## See Also
+    * `Qx.Qubit` - Calculation mode for single qubits
+    * `draw_state/2` - Display multi-qubit state as table
+  """
+  @spec draw_bloch(Nx.Tensor.t(), keyword()) :: VegaLite.t() | String.t()
+  defdelegate draw_bloch(qubit, options \\ []), to: Draw, as: :bloch_sphere
+
+  @doc """
+  Displays a quantum state as a formatted table.
+
+  Shows basis states with their amplitudes and probabilities. Useful for
+  inspecting multi-qubit states in calculation mode.
+
+  ## Parameters
+    * `register_or_state` - `Qx.Register.t()` or state tensor
+    * `options` - Optional display parameters
+
+  ## Options
+    * `:format` - `:text` (default) or `:html`
+    * `:precision` - Decimal places (default: 3)
+    * `:hide_zeros` - Hide zero-amplitude states (default: false)
+
+  ## Examples
+
+      # Display Bell state
+      iex> reg = Qx.Register.new(2) |> Qx.Register.h(0) |> Qx.Register.cx(0, 1)
+      iex> table = Qx.draw_state(reg)
+      iex> is_binary(table)
+      true
+
+      # Hide zero states
+      iex> reg = Qx.Register.new(3) |> Qx.Register.h(0)
+      iex> table = Qx.draw_state(reg, hide_zeros: true)
+      iex> is_binary(table)
+      true
+
+  ## See Also
+    * `Qx.Register` - Calculation mode for multi-qubit systems
+    * `draw_bloch/2` - Bloch sphere visualization for single qubits
+  """
+  @spec draw_state(Qx.Register.t() | Nx.Tensor.t(), keyword()) :: String.t()
+  defdelegate draw_state(register_or_state, options \\ []), to: Draw, as: :state_table
+
   # Convenience functions for creating common quantum states and circuits
 
   @doc """
