@@ -458,20 +458,12 @@ defmodule Qx.Draw do
 
   # Format basis state label
   defp format_basis_state_label(index, num_qubits) do
-    binary_string = Integer.to_string(index, 2) |> String.pad_leading(num_qubits, "0")
-    "|#{binary_string}⟩"
+    Qx.Format.basis_state(index, num_qubits)
   end
 
   # Format complex number
   defp format_complex_number(complex, precision) do
-    real = Complex.real(complex)
-    imag = Complex.imag(complex)
-
-    real_str = Float.round(real, precision) |> to_string()
-    imag_abs_str = Float.round(abs(imag), precision) |> to_string()
-    sign = if imag >= 0, do: "+", else: "-"
-
-    "#{real_str}#{sign}#{imag_abs_str}i"
+    Qx.Format.complex(complex, precision: precision)
   end
 
   # Format state table as text
@@ -714,9 +706,7 @@ defmodule Qx.Draw do
   end
 
   defp format_state_label(index, num_states) do
-    num_qubits = trunc(:math.log2(num_states))
-    binary_string = Integer.to_string(index, 2) |> String.pad_leading(num_qubits, "0")
-    "|#{binary_string}⟩"
+    Qx.Format.state_label(index, num_states)
   end
 
   # ============================================================================

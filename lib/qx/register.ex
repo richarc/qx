@@ -51,8 +51,6 @@ defmodule Qx.Register do
           state: Nx.Tensor.t()
         }
 
-  alias Complex, as: C
-
   @doc """
   Creates a new quantum register.
 
@@ -79,27 +77,11 @@ defmodule Qx.Register do
       2
   """
   def new(num_qubits) when is_integer(num_qubits) and num_qubits > 0 do
-    if num_qubits > 20 do
-      raise ArgumentError, "Maximum 20 qubits supported (requested #{num_qubits})"
-    end
-
-    # Create initial state |00...0⟩
-    state_size = trunc(:math.pow(2, num_qubits))
-
-    # Initialize state vector with first element = 1, rest = 0
-    initial_state =
-      for i <- 0..(state_size - 1) do
-        if i == 0 do
-          C.new(1.0, 0.0)
-        else
-          C.new(0.0, 0.0)
-        end
-      end
-      |> Nx.tensor(type: :c64)
+    Qx.Validation.validate_num_qubits!(num_qubits)
 
     %__MODULE__{
       num_qubits: num_qubits,
-      state: initial_state
+      state: Qx.StateInit.zero_state(num_qubits)
     }
   end
 
@@ -108,13 +90,11 @@ defmodule Qx.Register do
       raise ArgumentError, "Cannot create register from empty list of qubits"
     end
 
-    if length(qubits) > 20 do
-      raise ArgumentError, "Maximum 20 qubits supported (provided #{length(qubits)})"
-    end
+    Qx.Validation.validate_num_qubits!(length(qubits))
 
     # Validate all qubits
     Enum.each(qubits, fn qubit ->
-      unless Qx.Qubit.valid?(qubit) do
+      unless Qx.Validation.valid_qubit?(qubit) do
         raise ArgumentError, "Invalid qubit in list - must be normalized 2-element tensor"
       end
     end)
@@ -468,13 +448,13 @@ defmodule Qx.Register do
       Enum.zip(state_list, probs_list)
       |> Enum.with_index()
       |> Enum.map(fn {{amplitude, probability}, index} ->
-        basis_label = format_basis_state(index, register.num_qubits)
-        amplitude_str = format_complex(amplitude)
+        basis_label = Qx.Format.basis_state(index, register.num_qubits)
+        amplitude_str = Qx.Format.complex(amplitude)
         {basis_label, amplitude_str, probability}
       end)
 
     # Build Dirac notation (only show non-zero terms)
-    state_str = build_state_string(amplitudes_and_probs)
+    state_str = Qx.Format.dirac_notation(amplitudes_and_probs)
 
     %{
       state: state_str,
@@ -493,9 +473,7 @@ defmodule Qx.Register do
       true
   """
   def valid?(%__MODULE__{} = register) do
-    probs = get_probabilities(register)
-    total_prob = Nx.sum(probs) |> Nx.to_number()
-    abs(total_prob - 1.0) < 1.0e-6
+    Qx.Validation.valid_register?(register)
   end
 
   # ============================================================================
@@ -504,52 +482,6 @@ defmodule Qx.Register do
 
   # Validate qubit index
   defp validate_qubit_index!(%__MODULE__{} = register, qubit_index) do
-    if qubit_index < 0 or qubit_index >= register.num_qubits do
-      raise ArgumentError,
-            "Qubit index #{qubit_index} out of range (register has #{register.num_qubits} qubits)"
-    end
-  end
-
-  # Format a basis state as |000⟩, |001⟩, etc.
-  defp format_basis_state(index, num_qubits) do
-    binary_string =
-      Integer.to_string(index, 2)
-      |> String.pad_leading(num_qubits, "0")
-
-    "|#{binary_string}⟩"
-  end
-
-  # Format complex number as string
-  defp format_complex(complex_num) do
-    real = Complex.real(complex_num)
-    imag = Complex.imag(complex_num)
-
-    real_str = :erlang.float_to_binary(real, decimals: 3)
-    imag_str = :erlang.float_to_binary(abs(imag), decimals: 3)
-
-    sign = if imag >= 0, do: "+", else: "-"
-    "#{real_str}#{sign}#{imag_str}i"
-  end
-
-  # Build state string in Dirac notation
-  defp build_state_string(amplitudes_and_probs) do
-    # Filter out near-zero amplitudes
-    significant_terms =
-      amplitudes_and_probs
-      |> Enum.filter(fn {_basis, _amp_str, prob} -> prob > 1.0e-6 end)
-
-    if Enum.empty?(significant_terms) do
-      # Shouldn't happen with normalized state, but handle it
-      {basis, _, _} = List.first(amplitudes_and_probs)
-      "0.000#{basis}"
-    else
-      significant_terms
-      |> Enum.map(fn {basis, _amp_str, prob} ->
-        magnitude = :math.sqrt(prob)
-        mag_str = :erlang.float_to_binary(magnitude, decimals: 3)
-        "#{mag_str}#{basis}"
-      end)
-      |> Enum.join(" + ")
-    end
+    Qx.Validation.validate_qubit_index!(qubit_index, register.num_qubits)
   end
 end

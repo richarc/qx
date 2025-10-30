@@ -22,7 +22,7 @@ defmodule Qx.Math do
       iex> b = Nx.tensor([[0, 5], [6, 7]])
       iex> Qx.Math.kron(a, b)
       #Nx.Tensor<
-        s64[4][4]
+        s32[4][4]
         [
           [0, 5, 0, 10],
           [6, 7, 12, 14],
@@ -72,8 +72,8 @@ defmodule Qx.Math do
       iex> state2 = Nx.tensor([0.0, 1.0])
       iex> Qx.Math.inner_product(state1, state2)
       #Nx.Tensor<
-        f32
-        0.0
+        c64
+        0.0+0.0i
       >
   """
   defn inner_product(state1, state2) do
@@ -89,10 +89,10 @@ defmodule Qx.Math do
       iex> state2 = Nx.tensor([0.0, 1.0])
       iex> Qx.Math.outer_product(state1, state2)
       #Nx.Tensor<
-        f32[2][2]
+        c64[2][2]
         [
-          [0.0, 1.0],
-          [0.0, 0.0]
+          [0.0+0.0i, 1.0+0.0i],
+          [0.0+0.0i, 0.0+0.0i]
         ]
       >
   """
@@ -126,7 +126,7 @@ defmodule Qx.Math do
       iex> Qx.Math.probabilities(state)
       #Nx.Tensor<
         f32[2]
-        [0.49999842047691345, 0.49999842047691345]
+        [0.4999903738498688, 0.4999903738498688]
       >
   """
   defn probabilities(state) do
@@ -138,8 +138,11 @@ defmodule Qx.Math do
 
   ## Examples
 
-      iex> Qx.Math.complex(1.0, 2.0)
-      #Complex<1.0+2.0i>
+      iex> c = Qx.Math.complex(1.0, 2.0)
+      iex> Complex.real(c)
+      1.0
+      iex> Complex.imag(c)
+      2.0
   """
   def complex(real, imag \\ 0.0) do
     C.new(real, imag)
@@ -167,8 +170,11 @@ defmodule Qx.Math do
   ## Examples
 
       iex> tensor = Nx.tensor([1.0, 2.0])
-      iex> Qx.Math.tensor_to_complex(tensor)
-      #Complex<1.0+2.0i>
+      iex> c = Qx.Math.tensor_to_complex(tensor)
+      iex> Complex.real(c)
+      1.0
+      iex> Complex.imag(c)
+      2.0
   """
   def tensor_to_complex(tensor) do
     [re, im] = Nx.to_flat_list(tensor)
@@ -217,10 +223,10 @@ defmodule Qx.Math do
 
       iex> Qx.Math.identity(2)
       #Nx.Tensor<
-        f32[2][2]
+        s32[2][2]
         [
-          [1.0, 0.0],
-          [0.0, 1.0]
+          [1, 0],
+          [0, 1]
         ]
       >
   """
@@ -258,6 +264,10 @@ defmodule Qx.Math do
       iex> pauli_x = Nx.tensor([[0.0, 1.0], [1.0, 0.0]])
       iex> Qx.Math.is_unitary?(pauli_x)
       true
+
+      iex> not_unitary = Nx.tensor([[2.0, 0.0], [0.0, 2.0]])
+      iex> Qx.Math.is_unitary?(not_unitary)
+      false
   """
   def is_unitary?(matrix) do
     {n, m} = Nx.shape(matrix)
@@ -267,12 +277,27 @@ defmodule Qx.Math do
     else
       conjugate_transpose = Nx.transpose(Nx.conjugate(matrix))
       product = Nx.dot(conjugate_transpose, matrix)
-      identity_matrix = identity(n)
+
+      # Convert identity to same type as product
+      identity_matrix = identity(n) |> Nx.as_type(Nx.type(product))
 
       # Check if the product is close to identity within tolerance
-      diff = Nx.abs(product - identity_matrix)
-      max_diff = Nx.reduce_max(diff) |> Nx.to_number()
-      max_diff < 1.0e-10
+      # Use Nx.subtract instead of - operator for tensor subtraction
+      diff_matrix = Nx.subtract(product, identity_matrix)
+
+      # Abs gives magnitude (real number) for each complex element
+      abs_diff = Nx.abs(diff_matrix)
+
+      # If still complex type (c64), extract real part
+      real_diff = case Nx.type(abs_diff) do
+        {:c, _} -> Nx.real(abs_diff)
+        _ -> abs_diff
+      end
+
+      max_diff = Nx.reduce_max(real_diff) |> Nx.to_number()
+
+      # Use slightly relaxed tolerance for floating point comparisons
+      max_diff < 1.0e-6
     end
   end
 

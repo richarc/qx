@@ -7,7 +7,7 @@ defmodule Qx.Simulation do
   All quantum states and operations properly support complex number arithmetic.
   """
 
-  alias Qx.{Math, QuantumCircuit, Gates}
+  alias Qx.{Math, QuantumCircuit, Gates, Calc}
 
   @type simulation_result :: %{
           probabilities: Nx.Tensor.t(),
@@ -153,68 +153,71 @@ defmodule Qx.Simulation do
   defp apply_instruction({gate_name, qubits, params}, state, num_qubits) do
     case {gate_name, length(qubits)} do
       {:h, 1} ->
-        apply_single_qubit_gate(Gates.hadamard(), Enum.at(qubits, 0), state, num_qubits)
+        Calc.apply_single_qubit_gate(state, Gates.hadamard(), Enum.at(qubits, 0), num_qubits)
 
       {:x, 1} ->
-        apply_single_qubit_gate(Gates.pauli_x(), Enum.at(qubits, 0), state, num_qubits)
+        Calc.apply_single_qubit_gate(state, Gates.pauli_x(), Enum.at(qubits, 0), num_qubits)
 
       {:y, 1} ->
-        apply_single_qubit_gate(Gates.pauli_y(), Enum.at(qubits, 0), state, num_qubits)
+        Calc.apply_single_qubit_gate(state, Gates.pauli_y(), Enum.at(qubits, 0), num_qubits)
 
       {:z, 1} ->
-        apply_single_qubit_gate(Gates.pauli_z(), Enum.at(qubits, 0), state, num_qubits)
+        Calc.apply_single_qubit_gate(state, Gates.pauli_z(), Enum.at(qubits, 0), num_qubits)
 
       {:s, 1} ->
-        apply_single_qubit_gate(Gates.s_gate(), Enum.at(qubits, 0), state, num_qubits)
+        Calc.apply_single_qubit_gate(state, Gates.s_gate(), Enum.at(qubits, 0), num_qubits)
 
       {:t, 1} ->
-        apply_single_qubit_gate(Gates.t_gate(), Enum.at(qubits, 0), state, num_qubits)
+        Calc.apply_single_qubit_gate(state, Gates.t_gate(), Enum.at(qubits, 0), num_qubits)
 
       {:cx, 2} ->
-        apply_cx_gate(Enum.at(qubits, 0), Enum.at(qubits, 1), state, num_qubits)
+        Calc.apply_cnot(state, Enum.at(qubits, 0), Enum.at(qubits, 1), num_qubits)
 
       {:ccx, 3} ->
-        apply_ccx_gate(
+        Calc.apply_toffoli(
+          state,
           Enum.at(qubits, 0),
           Enum.at(qubits, 1),
           Enum.at(qubits, 2),
-          state,
           num_qubits
         )
 
       {:cz, 2} ->
-        # Add CZ gate support
-        apply_cz_gate(Enum.at(qubits, 0), Enum.at(qubits, 1), state, num_qubits)
+        # CZ = H on target, CNOT, H on target
+        state
+        |> Calc.apply_single_qubit_gate(Gates.hadamard(), Enum.at(qubits, 1), num_qubits)
+        |> Calc.apply_cnot(Enum.at(qubits, 0), Enum.at(qubits, 1), num_qubits)
+        |> Calc.apply_single_qubit_gate(Gates.hadamard(), Enum.at(qubits, 1), num_qubits)
 
       {:rx, 1} ->
-        apply_single_qubit_gate(
+        Calc.apply_single_qubit_gate(
+          state,
           Gates.rx(Enum.at(params, 0)),
           Enum.at(qubits, 0),
-          state,
           num_qubits
         )
 
       {:ry, 1} ->
-        apply_single_qubit_gate(
+        Calc.apply_single_qubit_gate(
+          state,
           Gates.ry(Enum.at(params, 0)),
           Enum.at(qubits, 0),
-          state,
           num_qubits
         )
 
       {:rz, 1} ->
-        apply_single_qubit_gate(
+        Calc.apply_single_qubit_gate(
+          state,
           Gates.rz(Enum.at(params, 0)),
           Enum.at(qubits, 0),
-          state,
           num_qubits
         )
 
       {:phase, 1} ->
-        apply_single_qubit_gate(
+        Calc.apply_single_qubit_gate(
+          state,
           Gates.phase(Enum.at(params, 0)),
           Enum.at(qubits, 0),
-          state,
           num_qubits
         )
 
@@ -228,123 +231,6 @@ defmodule Qx.Simulation do
 
       _ ->
         raise "Unsupported gate: #{gate_name} with #{length(qubits)} qubits"
-    end
-  end
-
-  defp apply_single_qubit_gate(gate_matrix, target_qubit, state, num_qubits) do
-    state_size = trunc(:math.pow(2, num_qubits))
-
-    # Create new state vector initialized to zeros
-    new_state = Nx.tensor(List.duplicate(Complex.new(0.0, 0.0), state_size), type: :c64)
-
-    # Apply gate to each computational basis state
-    for i <- 0..(state_size - 1), reduce: new_state do
-      acc_state ->
-        target_bit = Bitwise.band(Bitwise.bsr(i, target_qubit), 1)
-
-        # Get current amplitude
-        amplitude = Nx.to_number(state[i])
-
-        cond do
-          target_bit == 0 ->
-            # |0⟩ component - apply first row of gate matrix
-            gate_00 = Nx.to_number(gate_matrix[0][0])
-            gate_10 = Nx.to_number(gate_matrix[1][0])
-
-            # For |0⟩ -> |0⟩ (same index)
-            new_amp_0 = Complex.multiply(gate_00, amplitude)
-
-            # For |0⟩ -> |1⟩ (flip target bit)
-            new_amp_1 = Complex.multiply(gate_10, amplitude)
-            new_index = Bitwise.bxor(i, Bitwise.bsl(1, target_qubit))
-
-            zero_tensor = Nx.tensor(List.duplicate(Complex.new(0.0, 0.0), state_size), type: :c64)
-            acc_state
-            |> Nx.add(Nx.put_slice(zero_tensor, [i], Nx.tensor([new_amp_0], type: :c64)))
-            |> Nx.add(Nx.put_slice(zero_tensor, [new_index], Nx.tensor([new_amp_1], type: :c64)))
-
-          target_bit == 1 ->
-            # |1⟩ component - apply second row of gate matrix
-            gate_01 = Nx.to_number(gate_matrix[0][1])
-            gate_11 = Nx.to_number(gate_matrix[1][1])
-
-            # For |1⟩ -> |0⟩ (flip target bit)
-            new_amp_0 = Complex.multiply(gate_01, amplitude)
-            new_index = Bitwise.bxor(i, Bitwise.bsl(1, target_qubit))
-
-            # For |1⟩ -> |1⟩ (same index)
-            new_amp_1 = Complex.multiply(gate_11, amplitude)
-
-            zero_tensor = Nx.tensor(List.duplicate(Complex.new(0.0, 0.0), state_size), type: :c64)
-            acc_state
-            |> Nx.add(Nx.put_slice(zero_tensor, [new_index], Nx.tensor([new_amp_0], type: :c64)))
-            |> Nx.add(Nx.put_slice(zero_tensor, [i], Nx.tensor([new_amp_1], type: :c64)))
-        end
-    end
-  end
-
-  defp apply_cx_gate(control_qubit, target_qubit, state, num_qubits) do
-    state_size = trunc(:math.pow(2, num_qubits))
-    new_state = Nx.tensor(List.duplicate(Complex.new(0.0, 0.0), state_size), type: :c64)
-
-    # Iterate through all basis states
-    for i <- 0..(state_size - 1), reduce: new_state do
-      acc_state ->
-        control_bit = Bitwise.band(Bitwise.bsr(i, control_qubit), 1)
-        amplitude = Nx.to_number(state[i])
-
-        if control_bit == 1 do
-          # Flip target bit
-          new_index = Bitwise.bxor(i, Bitwise.bsl(1, target_qubit))
-          Nx.add(acc_state, Nx.put_slice(Nx.tensor(List.duplicate(Complex.new(0.0, 0.0), state_size), type: :c64), [new_index], Nx.tensor([amplitude], type: :c64)))
-        else
-          # Keep state unchanged
-          Nx.add(acc_state, Nx.put_slice(Nx.tensor(List.duplicate(Complex.new(0.0, 0.0), state_size), type: :c64), [i], Nx.tensor([amplitude], type: :c64)))
-        end
-    end
-  end
-
-  defp apply_ccx_gate(control1_qubit, control2_qubit, target_qubit, state, num_qubits) do
-    state_size = trunc(:math.pow(2, num_qubits))
-    new_state = Nx.tensor(List.duplicate(Complex.new(0.0, 0.0), state_size), type: :c64)
-
-    for i <- 0..(state_size - 1), reduce: new_state do
-      acc_state ->
-        control1_bit = Bitwise.band(Bitwise.bsr(i, control1_qubit), 1)
-        control2_bit = Bitwise.band(Bitwise.bsr(i, control2_qubit), 1)
-        amplitude = Nx.to_number(state[i])
-
-        if control1_bit == 1 and control2_bit == 1 do
-          # Flip target bit
-          new_index = Bitwise.bxor(i, Bitwise.bsl(1, target_qubit))
-          Nx.add(acc_state, Nx.put_slice(Nx.tensor(List.duplicate(Complex.new(0.0, 0.0), state_size), type: :c64), [new_index], Nx.tensor([amplitude], type: :c64)))
-        else
-          # Keep state unchanged
-          Nx.add(acc_state, Nx.put_slice(Nx.tensor(List.duplicate(Complex.new(0.0, 0.0), state_size), type: :c64), [i], Nx.tensor([amplitude], type: :c64)))
-        end
-    end
-  end
-
-  defp apply_cz_gate(control_qubit, target_qubit, state, num_qubits) do
-    state_size = trunc(:math.pow(2, num_qubits))
-    new_state = Nx.tensor(List.duplicate(Complex.new(0.0, 0.0), state_size), type: :c64)
-
-    # CZ applies phase -1 if both qubits are |1⟩
-    for i <- 0..(state_size - 1), reduce: new_state do
-      acc_state ->
-        control_bit = Bitwise.band(Bitwise.bsr(i, control_qubit), 1)
-        target_bit = Bitwise.band(Bitwise.bsr(i, target_qubit), 1)
-        amplitude = Nx.to_number(state[i])
-
-        new_amplitude =
-          if control_bit == 1 and target_bit == 1 do
-            # Apply phase of -1
-            Complex.multiply(amplitude, Complex.new(-1.0, 0.0))
-          else
-            amplitude
-          end
-
-        Nx.add(acc_state, Nx.put_slice(Nx.tensor(List.duplicate(Complex.new(0.0, 0.0), state_size), type: :c64), [i], Nx.tensor([new_amplitude], type: :c64)))
     end
   end
 
@@ -381,11 +267,12 @@ defmodule Qx.Simulation do
     end
   end
 
-  defp extract_classical_bits(samples, measurements, _num_qubits) do
+  defp extract_classical_bits(samples, measurements, num_qubits) do
     Enum.map(samples, fn sample ->
       Enum.map(measurements, fn {qubit, _classical_bit} ->
         # Extract the bit value for the measured qubit from the sample index
-        Bitwise.band(Bitwise.bsr(sample, qubit), 1)
+        # Standard convention: qubit 0 is leftmost (MSB), so qubit q is at bit position (num_qubits - 1 - q)
+        Bitwise.band(Bitwise.bsr(sample, num_qubits - 1 - qubit), 1)
       end)
     end)
   end
@@ -478,7 +365,8 @@ defmodule Qx.Simulation do
     total_prob =
       for i <- 0..(state_size - 1), reduce: 0.0 do
         acc ->
-          qubit_value = Bitwise.band(Bitwise.bsr(i, qubit), 1)
+          # Standard convention: qubit 0 is leftmost (MSB), so qubit q is at bit position (num_qubits - 1 - q)
+          qubit_value = Bitwise.band(Bitwise.bsr(i, num_qubits - 1 - qubit), 1)
 
           if qubit_value == value do
             amplitude = Nx.to_number(state[i])
@@ -503,7 +391,8 @@ defmodule Qx.Simulation do
     # Create new state with collapsed amplitudes
     collapsed_data =
       for i <- 0..(state_size - 1) do
-        qubit_value = Bitwise.band(Bitwise.bsr(i, qubit), 1)
+        # Standard convention: qubit 0 is leftmost (MSB), so qubit q is at bit position (num_qubits - 1 - q)
+        qubit_value = Bitwise.band(Bitwise.bsr(i, num_qubits - 1 - qubit), 1)
 
         if qubit_value == measured_value do
           # Keep amplitude and renormalize

@@ -343,20 +343,6 @@ defmodule Qx.QuantumCircuit do
 
   # Private helper function to create complex basis states
   defp complex_basis_state(index, dimension) do
-    # Create state vector with c64 complex representation
-    alias Complex, as: C
-
-    state_data =
-      for i <- 0..(dimension - 1) do
-        if i == index do
-          # |i⟩ state has amplitude 1+0i
-          C.new(1.0, 0.0)
-        else
-          # other states have amplitude 0+0i
-          C.new(0.0, 0.0)
-        end
-      end
-
-    Nx.tensor(state_data, type: :c64)
+    Qx.StateInit.basis_state(index, dimension)
   end
 end

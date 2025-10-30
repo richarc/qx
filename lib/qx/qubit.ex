@@ -1,10 +1,11 @@
 defmodule Qx.Qubit do
   @moduledoc """
-  Functions for creating and manipulating quantum qubits in calculation mode.
+  Simplified API for single-qubit quantum operations.
 
-  This module provides the fundamental building blocks for quantum computing
-  simulations by handling individual qubit states and ensuring they meet
-  the normalization requirements of quantum mechanics.
+  This module provides a beginner-friendly interface for working with individual
+  qubits. Under the hood, it uses `Qx.Register` with `num_qubits=1`, providing
+  a clean abstraction for single-qubit operations without exposing multi-qubit
+  complexity.
 
   ## Calculation Mode
 
@@ -25,7 +26,7 @@ defmodule Qx.Qubit do
       q = Qx.Qubit.new()
         |> Qx.Qubit.h()
         |> Qx.Qubit.state_vector()
-      # Returns superposition state: [0.707+0.0i, 0.707+0.0i]
+      # Returns superposition state
 
       # Check probabilities at each step
       q = Qx.Qubit.new()
@@ -41,17 +42,6 @@ defmodule Qx.Qubit do
       q = Qx.Qubit.new(0.6, 0.8)  # Custom amplitudes (auto-normalized)
         |> Qx.Qubit.rz(:math.pi() / 4)
         |> Qx.Qubit.rx(:math.pi() / 2)
-
-  ## State Inspection
-
-  Two main functions for examining qubit states:
-
-  - `state_vector/1` - Returns the complex probability amplitudes [α, β]
-  - `measure_probabilities/1` - Returns the measurement probabilities [|α|², |β|²]
-
-  Use `state_vector/1` when you need to see phase information (important for
-  interference effects). Use `measure_probabilities/1` when you want to know
-  what you'd measure if you observed the qubit.
 
   ## Available Gates
 
@@ -69,24 +59,15 @@ defmodule Qx.Qubit do
   - `rz/2` - Rotation around Z-axis
   - `phase/2` - Arbitrary phase gate
 
-  ## Comparison: Calculation Mode vs Circuit Mode
+  ## Architecture Note
 
-      # Circuit Mode (Qx.QuantumCircuit)
-      qc = Qx.create_circuit(1)
-        |> Qx.h(0)
-        |> Qx.x(0)
-      # Can't inspect state here - gates not applied yet!
-
-      result = Qx.run(qc)  # Execute the circuit
-      result.probabilities  # See results only after running
-
-      # Calculation Mode (Qx.Qubit)
-      q = Qx.Qubit.new()
-        |> Qx.Qubit.h()
-      Qx.Qubit.state_vector(q)  # Can inspect immediately!
-
-      q = Qx.Qubit.x(q)
-      Qx.Qubit.state_vector(q)  # Inspect at any step!
+  This module is implemented as a thin wrapper around `Qx.Register`. All gate
+  operations delegate to the Register module, ensuring consistency and reducing
+  code duplication. This design provides:
+  - Single source of truth for gate implementations
+  - Better performance (Register is highly optimized)
+  - Easier maintenance
+  - Seamless transition when scaling to multi-qubit operations
 
   ## See Also
 
@@ -96,11 +77,20 @@ defmodule Qx.Qubit do
   """
 
   import Nx.Defn
-  alias Qx.Math
+
+  alias Qx.Register
   alias Complex, as: C
 
+  @type t :: Nx.Tensor.t()
+
+  # ============================================================================
+  # STATE CREATION
+  # ============================================================================
+
   @doc """
-  Creates a new qubit in the default |0⟩ state.
+  Creates a qubit in the |0⟩ state.
+
+  The |0⟩ state is represented as the state vector [1, 0].
 
   ## Examples
 
@@ -111,47 +101,37 @@ defmodule Qx.Qubit do
       >
   """
   def new do
-    # |0⟩ state with c64 complex representation
-    Nx.tensor([C.new(1.0, 0.0), C.new(0.0, 0.0)], type: :c64)
+    Register.new(1) |> extract_state()
   end
 
   @doc """
-  Creates a new qubit with specified alpha and beta coefficients.
+  Creates a qubit with custom amplitudes.
 
-  The qubit state is represented as α|0⟩ + β|1⟩, where |α|² + |β|² = 1.
-  This function automatically normalizes the coefficients to ensure the
-  qubit meets quantum mechanics normalization requirements.
+  The qubit state is automatically normalized to ensure |α|² + |β|² = 1.
 
   ## Parameters
-    * `alpha` - Coefficient for the |0⟩ state (number or Complex)
-    * `beta` - Coefficient for the |1⟩ state (number or Complex)
+  - `alpha` - Amplitude for |0⟩ state (real number or Complex)
+  - `beta` - Amplitude for |1⟩ state (real number or Complex)
 
   ## Examples
 
-      iex> Qx.Qubit.new(1.0, 1.0)
-      #Nx.Tensor<
-        c64[2]
-        [0.7071067690849304+0.0i, 0.7071067690849304+0.0i]
-      >
+      iex> q = Qx.Qubit.new(0.6, 0.8)
+      iex> Qx.Qubit.valid?(q)
+      true
 
-      iex> Qx.Qubit.new(1.0, 0.0)
-      #Nx.Tensor<
-        c64[2]
-        [1.0+0.0i, 0.0+0.0i]
-      >
+      iex> q = Qx.Qubit.new(1, 1)  # Auto-normalized to (|0⟩ + |1⟩)/√2
+      iex> probs = Qx.Qubit.measure_probabilities(q) |> Nx.to_flat_list()
+      iex> abs(Enum.at(probs, 0) - 0.5) < 0.01
+      true
   """
   def new(alpha, beta) when is_number(alpha) and is_number(beta) do
-    # Create c64 tensor from real numbers
-    alpha_complex = C.new(alpha, 0.0)
-    beta_complex = C.new(beta, 0.0)
-    state = Nx.tensor([alpha_complex, beta_complex], type: :c64)
-    Math.normalize(state)
+    state = Nx.tensor([C.new(alpha, 0.0), C.new(beta, 0.0)], type: :c64)
+    Qx.Math.normalize(state)
   end
 
   def new(%C{} = alpha, %C{} = beta) do
-    # Create c64 tensor from Complex numbers
     state = Nx.tensor([alpha, beta], type: :c64)
-    Math.normalize(state)
+    Qx.Math.normalize(state)
   end
 
   @doc """
@@ -166,8 +146,7 @@ defmodule Qx.Qubit do
       >
   """
   def one do
-    # |1⟩ state with c64 complex representation
-    Nx.tensor([C.new(0.0, 0.0), C.new(1.0, 0.0)], type: :c64)
+    Qx.StateInit.one_state()
   end
 
   @doc """
@@ -177,14 +156,13 @@ defmodule Qx.Qubit do
 
   ## Examples
 
-      iex> Qx.Qubit.plus()
-      #Nx.Tensor<
-        c64[2]
-        [0.7071067690849304+0.0i, 0.7071067690849304+0.0i]
-      >
+      iex> q = Qx.Qubit.plus()
+      iex> probs = Qx.Qubit.measure_probabilities(q) |> Nx.to_flat_list()
+      iex> abs(Enum.at(probs, 0) - 0.5) < 0.01
+      true
   """
   def plus do
-    new(1.0, 1.0)
+    Qx.StateInit.plus_state()
   end
 
   @doc """
@@ -194,14 +172,232 @@ defmodule Qx.Qubit do
 
   ## Examples
 
-      iex> Qx.Qubit.minus()
-      #Nx.Tensor<
-        c64[2]
-        [0.7071067690849304+0.0i, -0.7071067690849304+0.0i]
-      >
+      iex> q = Qx.Qubit.minus()
+      iex> probs = Qx.Qubit.measure_probabilities(q) |> Nx.to_flat_list()
+      iex> abs(Enum.at(probs, 0) - 0.5) < 0.01
+      true
   """
   def minus do
-    new(1.0, -1.0)
+    Qx.StateInit.minus_state()
+  end
+
+  @doc """
+  Creates a random qubit state with uniformly distributed amplitudes.
+
+  The state is automatically normalized to ensure it represents a valid qubit.
+
+  ## Examples
+
+      iex> random_qubit = Qx.Qubit.random()
+      iex> Qx.Qubit.valid?(random_qubit)
+      true
+  """
+  def random do
+    Qx.StateInit.random_state(1)
+  end
+
+  # ============================================================================
+  # GATE OPERATIONS (delegate to Register)
+  # ============================================================================
+
+  @doc """
+  Applies a Hadamard gate to a qubit in calculation mode.
+
+  The Hadamard gate creates superposition by transforming:
+  - |0⟩ → (|0⟩ + |1⟩)/√2
+  - |1⟩ → (|0⟩ - |1⟩)/√2
+
+  ## Examples
+
+      iex> q = Qx.Qubit.new() |> Qx.Qubit.h()
+      iex> probs = Qx.Qubit.measure_probabilities(q) |> Nx.to_flat_list()
+      iex> abs(Enum.at(probs, 0) - 0.5) < 0.01
+      true
+  """
+  def h(qubit) do
+    qubit |> wrap() |> Register.h(0) |> extract_state()
+  end
+
+  @doc """
+  Applies a Pauli-X gate (bit flip) to a qubit.
+
+  Transforms |0⟩ ↔ |1⟩.
+
+  ## Examples
+
+      iex> q = Qx.Qubit.new() |> Qx.Qubit.x()
+      iex> probs = Qx.Qubit.measure_probabilities(q) |> Nx.to_flat_list()
+      iex> Enum.at(probs, 1)
+      1.0
+  """
+  def x(qubit) do
+    qubit |> wrap() |> Register.x(0) |> extract_state()
+  end
+
+  @doc """
+  Applies a Pauli-Y gate to a qubit.
+
+  ## Examples
+
+      iex> q = Qx.Qubit.new() |> Qx.Qubit.y()
+      iex> Qx.Qubit.valid?(q)
+      true
+  """
+  def y(qubit) do
+    qubit |> wrap() |> Register.y(0) |> extract_state()
+  end
+
+  @doc """
+  Applies a Pauli-Z gate (phase flip) to a qubit.
+
+  ## Examples
+
+      iex> q = Qx.Qubit.new() |> Qx.Qubit.z()
+      iex> Qx.Qubit.valid?(q)
+      true
+  """
+  def z(qubit) do
+    qubit |> wrap() |> Register.z(0) |> extract_state()
+  end
+
+  @doc """
+  Applies an S gate (π/2 phase) to a qubit.
+
+  ## Examples
+
+      iex> q = Qx.Qubit.new() |> Qx.Qubit.s()
+      iex> Qx.Qubit.valid?(q)
+      true
+  """
+  def s(qubit) do
+    qubit |> wrap() |> Register.s(0) |> extract_state()
+  end
+
+  @doc """
+  Applies a T gate (π/4 phase) to a qubit.
+
+  ## Examples
+
+      iex> q = Qx.Qubit.new() |> Qx.Qubit.t()
+      iex> Qx.Qubit.valid?(q)
+      true
+  """
+  def t(qubit) do
+    qubit |> wrap() |> Register.t(0) |> extract_state()
+  end
+
+  @doc """
+  Applies a rotation around the X-axis.
+
+  ## Parameters
+  - `qubit` - The qubit state
+  - `theta` - Rotation angle in radians
+
+  ## Examples
+
+      iex> q = Qx.Qubit.new() |> Qx.Qubit.rx(:math.pi())
+      iex> probs = Qx.Qubit.measure_probabilities(q) |> Nx.to_flat_list()
+      iex> abs(Enum.at(probs, 1) - 1.0) < 0.01
+      true
+  """
+  def rx(qubit, theta) do
+    qubit |> wrap() |> Register.rx(0, theta) |> extract_state()
+  end
+
+  @doc """
+  Applies a rotation around the Y-axis.
+
+  ## Examples
+
+      iex> q = Qx.Qubit.new() |> Qx.Qubit.ry(:math.pi() / 2)
+      iex> probs = Qx.Qubit.measure_probabilities(q) |> Nx.to_flat_list()
+      iex> abs(Enum.at(probs, 0) - 0.5) < 0.01
+      true
+  """
+  def ry(qubit, theta) do
+    qubit |> wrap() |> Register.ry(0, theta) |> extract_state()
+  end
+
+  @doc """
+  Applies a rotation around the Z-axis.
+
+  ## Examples
+
+      iex> q = Qx.Qubit.new() |> Qx.Qubit.h() |> Qx.Qubit.rz(:math.pi() / 4)
+      iex> Qx.Qubit.valid?(q)
+      true
+  """
+  def rz(qubit, theta) do
+    qubit |> wrap() |> Register.rz(0, theta) |> extract_state()
+  end
+
+  @doc """
+  Applies an arbitrary phase gate.
+
+  ## Parameters
+  - `qubit` - The qubit state
+  - `phi` - Phase angle in radians
+
+  ## Examples
+
+      iex> q = Qx.Qubit.new() |> Qx.Qubit.phase(:math.pi() / 4)
+      iex> Qx.Qubit.valid?(q)
+      true
+  """
+  def phase(qubit, phi) do
+    qubit |> wrap() |> Register.phase(0, phi) |> extract_state()
+  end
+
+  # ============================================================================
+  # CONVENIENCE ACCESSORS (unique to Qubit)
+  # ============================================================================
+
+  @doc """
+  Gets the amplitude for the |0⟩ state.
+
+  ## Examples
+
+      iex> qubit = Qx.Qubit.new(0.6, 0.8)
+      iex> alpha = Qx.Qubit.alpha(qubit)
+      iex> abs(Complex.abs(alpha) - 0.6) < 0.01
+      true
+  """
+  def alpha(qubit) do
+    Nx.to_number(qubit[0])
+  end
+
+  @doc """
+  Gets the amplitude for the |1⟩ state.
+
+  ## Examples
+
+      iex> qubit = Qx.Qubit.new(0.6, 0.8)
+      iex> beta = Qx.Qubit.beta(qubit)
+      iex> abs(Complex.abs(beta) - 0.8) < 0.01
+      true
+  """
+  def beta(qubit) do
+    Nx.to_number(qubit[1])
+  end
+
+  # ============================================================================
+  # STATE INSPECTION
+  # ============================================================================
+
+  @doc """
+  Returns the state vector of the qubit.
+
+  ## Examples
+
+      iex> q = Qx.Qubit.new()
+      iex> Qx.Qubit.state_vector(q)
+      #Nx.Tensor<
+        c64[2]
+        [1.0+0.0i, 0.0+0.0i]
+      >
+  """
+  def state_vector(qubit) do
+    qubit
   end
 
   @doc """
@@ -213,12 +409,60 @@ defmodule Qx.Qubit do
       iex> probs = Qx.Qubit.measure_probabilities(qubit)
       iex> Nx.shape(probs)
       {2}
-      iex> [p0, p1] = Nx.to_flat_list(probs)
-      iex> abs(p0 - 0.5) < 0.01 and abs(p1 - 0.5) < 0.01
-      true
   """
   defn measure_probabilities(qubit) do
-    Math.probabilities(qubit)
+    Qx.Math.probabilities(qubit)
+  end
+
+  @doc """
+  Returns a human-readable representation of the qubit state.
+
+  ## Examples
+
+      iex> q = Qx.Qubit.new() |> Qx.Qubit.h()
+      iex> info = Qx.Qubit.show_state(q)
+      iex> is_map(info)
+      true
+  """
+  def show_state(qubit) do
+    qubit |> wrap() |> Register.show_state()
+  end
+
+  @doc """
+  Inspects and prints the qubit state, then returns the qubit unchanged.
+
+  This is useful for debugging in pipelines without breaking the chain.
+
+  ## Options
+  - `:label` - Custom label for the output (default: "Qubit State")
+  - `:verbose` - Show detailed probabilities (default: false)
+
+  ## Examples
+
+      iex> q = Qx.Qubit.new()
+      ...>   |> Qx.Qubit.h()
+      ...>   |> Qx.Qubit.tap_state(label: "After Hadamard")
+      ...>   |> Qx.Qubit.x()
+      iex> Qx.Qubit.valid?(q)
+      true
+  """
+  def tap_state(qubit, opts \\ []) do
+    state_info = show_state(qubit)
+    label = Keyword.get(opts, :label, "Qubit State")
+
+    IO.puts("\n#{label}: #{state_info.state}")
+
+    if Keyword.get(opts, :verbose, false) do
+      IO.puts("  Probabilities:")
+
+      Enum.each(state_info.probabilities, fn {basis, prob} ->
+        if prob > 1.0e-6 do
+          IO.puts("    #{basis}: #{Float.round(prob, 6)}")
+        end
+      end)
+    end
+
+    qubit
   end
 
   @doc """
@@ -239,422 +483,18 @@ defmodule Qx.Qubit do
       false
   """
   def valid?(state) do
-    case Nx.shape(state) do
-      {2} ->
-        probs = Math.probabilities(state)
-        norm_squared = Nx.sum(probs) |> Nx.to_number()
-        abs(norm_squared - 1.0) < 1.0e-6
-
-      _ ->
-        false
-    end
-  end
-
-  @doc """
-  Gets the amplitude for the |0⟩ state.
-
-  ## Examples
-
-      iex> qubit = Qx.Qubit.new(0.6, 0.8)
-      iex> alpha = Qx.Qubit.alpha(qubit)
-      iex> abs(Complex.abs(alpha) - 0.6) < 0.01
-      true
-  """
-  def alpha(qubit) do
-    # Extract the first complex number from c64 tensor
-    Nx.to_number(qubit[0])
-  end
-
-  @doc """
-  Gets the amplitude for the |1⟩ state.
-
-  ## Examples
-
-      iex> qubit = Qx.Qubit.new(0.6, 0.8)
-      iex> beta = Qx.Qubit.beta(qubit)
-      iex> abs(Complex.abs(beta) - 0.8) < 0.01
-      true
-  """
-  def beta(qubit) do
-    # Extract the second complex number from c64 tensor
-    Nx.to_number(qubit[1])
-  end
-
-  @doc """
-  Creates a random qubit state with uniformly distributed amplitudes.
-
-  The state is automatically normalized to ensure it represents a valid qubit.
-
-  ## Examples
-
-      iex> random_qubit = Qx.Qubit.random()
-      iex> Qx.Qubit.valid?(random_qubit)
-      true
-  """
-  def random do
-    # Generate random complex amplitudes
-    alpha_re = :rand.uniform() * 2 - 1
-    alpha_im = :rand.uniform() * 2 - 1
-    beta_re = :rand.uniform() * 2 - 1
-    beta_im = :rand.uniform() * 2 - 1
-
-    alpha = C.new(alpha_re, alpha_im)
-    beta = C.new(beta_re, beta_im)
-    new(alpha, beta)
+    Qx.Validation.valid_qubit?(state)
   end
 
   # ============================================================================
-  # Calculation Mode - Gate Operations
+  # PRIVATE HELPERS
   # ============================================================================
 
-  @doc """
-  Applies a Hadamard gate to a qubit in calculation mode.
-
-  The Hadamard gate creates superposition, transforming |0⟩ to (|0⟩ + |1⟩)/√2
-  and |1⟩ to (|0⟩ - |1⟩)/√2. The gate is applied immediately and returns the
-  updated state.
-
-  ## Examples
-
-      # Create superposition from |0⟩
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.h()
-      iex> probs = Qx.Qubit.measure_probabilities(q)
-      iex> [p0, p1] = Nx.to_flat_list(probs)
-      iex> abs(p0 - 0.5) < 0.01 and abs(p1 - 0.5) < 0.01
-      true
-
-      # Apply to |1⟩
-      iex> q = Qx.Qubit.one() |> Qx.Qubit.h()
-      iex> probs = Qx.Qubit.measure_probabilities(q)
-      iex> [p0, p1] = Nx.to_flat_list(probs)
-      iex> abs(p0 - 0.5) < 0.01 and abs(p1 - 0.5) < 0.01
-      true
-  """
-  def h(qubit) do
-    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.hadamard(), 0, 1)
+  # Wraps a state vector in a Register struct
+  defp wrap(state) when is_struct(state, Nx.Tensor) do
+    %Register{num_qubits: 1, state: state}
   end
 
-  @doc """
-  Applies a Pauli-X gate (bit flip) to a qubit in calculation mode.
-
-  The X gate flips |0⟩ to |1⟩ and |1⟩ to |0⟩. The gate is applied immediately
-  and returns the updated state.
-
-  ## Examples
-
-      # Flip |0⟩ to |1⟩
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.x()
-      iex> Qx.Qubit.measure_probabilities(q)
-      #Nx.Tensor<
-        f32[2]
-        [0.0, 1.0]
-      >
-
-      # Chain with other gates
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.x() |> Qx.Qubit.h()
-      iex> Qx.Qubit.valid?(q)
-      true
-  """
-  def x(qubit) do
-    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.pauli_x(), 0, 1)
-  end
-
-  @doc """
-  Applies a Pauli-Y gate to a qubit in calculation mode.
-
-  The Y gate applies both bit flip and phase flip transformations.
-  The gate is applied immediately and returns the updated state.
-
-  ## Examples
-
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.y()
-      iex> Qx.Qubit.valid?(q)
-      true
-  """
-  def y(qubit) do
-    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.pauli_y(), 0, 1)
-  end
-
-  @doc """
-  Applies a Pauli-Z gate (phase flip) to a qubit in calculation mode.
-
-  The Z gate leaves |0⟩ unchanged and applies a phase of -1 to |1⟩.
-  The gate is applied immediately and returns the updated state.
-
-  ## Examples
-
-      # Z has no effect on |0⟩
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.z()
-      iex> Qx.Qubit.measure_probabilities(q)
-      #Nx.Tensor<
-        f32[2]
-        [1.0, 0.0]
-      >
-
-      # Creates phase difference in superposition
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.h() |> Qx.Qubit.z()
-      iex> Qx.Qubit.valid?(q)
-      true
-  """
-  def z(qubit) do
-    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.pauli_z(), 0, 1)
-  end
-
-  @doc """
-  Applies an S gate (phase gate with π/2 phase) to a qubit in calculation mode.
-
-  The S gate applies a phase of i to the |1⟩ component.
-  The gate is applied immediately and returns the updated state.
-
-  ## Examples
-
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.s()
-      iex> Qx.Qubit.valid?(q)
-      true
-  """
-  def s(qubit) do
-    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.s_gate(), 0, 1)
-  end
-
-  @doc """
-  Applies a T gate (phase gate with π/4 phase) to a qubit in calculation mode.
-
-  The T gate applies a phase of e^(iπ/4) to the |1⟩ component.
-  The gate is applied immediately and returns the updated state.
-
-  ## Examples
-
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.t()
-      iex> Qx.Qubit.valid?(q)
-      true
-  """
-  def t(qubit) do
-    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.t_gate(), 0, 1)
-  end
-
-  @doc """
-  Applies a rotation around the X-axis to a qubit in calculation mode.
-
-  ## Parameters
-    * `qubit` - The qubit state tensor
-    * `theta` - Rotation angle in radians
-
-  ## Examples
-
-      # π/2 rotation
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.rx(:math.pi() / 2)
-      iex> Qx.Qubit.valid?(q)
-      true
-
-      # Full rotation (2π) returns to original state
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.rx(2 * :math.pi())
-      iex> probs = Qx.Qubit.measure_probabilities(q)
-      iex> [p0, _p1] = Nx.to_flat_list(probs)
-      iex> abs(p0 - 1.0) < 0.01
-      true
-  """
-  def rx(qubit, theta) do
-    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.rx(theta), 0, 1)
-  end
-
-  @doc """
-  Applies a rotation around the Y-axis to a qubit in calculation mode.
-
-  ## Parameters
-    * `qubit` - The qubit state tensor
-    * `theta` - Rotation angle in radians
-
-  ## Examples
-
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.ry(:math.pi() / 2)
-      iex> Qx.Qubit.valid?(q)
-      true
-  """
-  def ry(qubit, theta) do
-    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.ry(theta), 0, 1)
-  end
-
-  @doc """
-  Applies a rotation around the Z-axis to a qubit in calculation mode.
-
-  ## Parameters
-    * `qubit` - The qubit state tensor
-    * `theta` - Rotation angle in radians
-
-  ## Examples
-
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.rz(:math.pi() / 4)
-      iex> Qx.Qubit.valid?(q)
-      true
-  """
-  def rz(qubit, theta) do
-    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.rz(theta), 0, 1)
-  end
-
-  @doc """
-  Applies a phase gate with specified phase to a qubit in calculation mode.
-
-  ## Parameters
-    * `qubit` - The qubit state tensor
-    * `phi` - Phase angle in radians
-
-  ## Examples
-
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.phase(:math.pi() / 4)
-      iex> Qx.Qubit.valid?(q)
-      true
-  """
-  def phase(qubit, phi) do
-    Qx.Calc.apply_single_qubit_gate(qubit, Qx.Gates.phase(phi), 0, 1)
-  end
-
-  @doc """
-  Returns the state vector of a qubit.
-
-  This function provides explicit access to the qubit's state vector, showing
-  the complex probability amplitudes for the |0⟩ and |1⟩ basis states.
-
-  The state vector is the tensor itself, but this function makes it explicit
-  for inspection in calculation mode workflows.
-
-  ## Returns
-  An Nx.Tensor of shape {2} containing the complex amplitudes [α, β] where
-  the qubit state is α|0⟩ + β|1⟩.
-
-  ## Examples
-
-      # Inspect state after applying gates
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.h()
-      iex> state = Qx.Qubit.state_vector(q)
-      iex> Nx.shape(state)
-      {2}
-
-      # See the amplitudes
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.x()
-      iex> state = Qx.Qubit.state_vector(q)
-      iex> alpha = Qx.Qubit.alpha(state)
-      iex> beta = Qx.Qubit.beta(state)
-      iex> abs(Complex.abs(alpha) - 0.0) < 0.01 and abs(Complex.abs(beta) - 1.0) < 0.01
-      true
-
-  ## See Also
-    * `show_state/1` - Get a human-readable representation of the state
-    * `measure_probabilities/1` - Get measurement probabilities instead of amplitudes
-    * `alpha/1` - Extract the |0⟩ amplitude
-    * `beta/1` - Extract the |1⟩ amplitude
-  """
-  def state_vector(qubit) do
-    qubit
-  end
-
-  @doc """
-  Returns a human-readable representation of the qubit state.
-
-  This function extracts the state vector and presents it in a structured
-  format showing the amplitudes, probabilities, and basis states.
-
-  ## Returns
-  A map containing:
-  - `:state` - The quantum state in Dirac notation (e.g., "α|0⟩ + β|1⟩")
-  - `:amplitudes` - List of basis state amplitudes as `{basis, amplitude}` tuples
-  - `:probabilities` - List of measurement probabilities as `{basis, probability}` tuples
-
-  ## Examples
-
-      # View |0⟩ state
-      iex> Qx.Qubit.new() |> Qx.Qubit.show_state()
-      %{
-        state: "1.000|0⟩ + 0.000|1⟩",
-        amplitudes: [
-          {"|0⟩", "1.000+0.000i"},
-          {"|1⟩", "0.000+0.000i"}
-        ],
-        probabilities: [
-          {"|0⟩", 1.0},
-          {"|1⟩", 0.0}
-        ]
-      }
-
-      # View superposition state
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.h()
-      iex> state_info = Qx.Qubit.show_state(q)
-      iex> state_info.state
-      "0.707|0⟩ + 0.707|1⟩"
-
-      # Check probabilities
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.h()
-      iex> %{probabilities: probs} = Qx.Qubit.show_state(q)
-      iex> Enum.all?(probs, fn {_, p} -> abs(p - 0.5) < 0.01 end)
-      true
-
-  ## See Also
-    * `state_vector/1` - Get the raw state tensor
-    * `measure_probabilities/1` - Get just the probabilities
-  """
-  def show_state(qubit) do
-    # Extract amplitudes
-    alpha = Nx.to_number(qubit[0])
-    beta = Nx.to_number(qubit[1])
-
-    # Calculate probabilities
-    prob_0 = Complex.abs(alpha) ** 2
-    prob_1 = Complex.abs(beta) ** 2
-
-    # Format amplitudes as strings
-    alpha_str = format_complex(alpha)
-    beta_str = format_complex(beta)
-
-    # Format state in Dirac notation
-    state_str = format_dirac_state(alpha, beta)
-
-    %{
-      state: state_str,
-      amplitudes: [
-        {"|0⟩", alpha_str},
-        {"|1⟩", beta_str}
-      ],
-      probabilities: [
-        {"|0⟩", prob_0},
-        {"|1⟩", prob_1}
-      ]
-    }
-  end
-
-  # Private helper to format complex numbers
-  defp format_complex(complex_num) do
-    real = Complex.real(complex_num)
-    imag = Complex.imag(complex_num)
-
-    real_str = :erlang.float_to_binary(real, decimals: 3)
-    imag_str = :erlang.float_to_binary(abs(imag), decimals: 3)
-
-    sign = if imag >= 0, do: "+", else: "-"
-    "#{real_str}#{sign}#{imag_str}i"
-  end
-
-  # Private helper to format state in Dirac notation
-  defp format_dirac_state(alpha, beta) do
-    alpha_mag = Complex.abs(alpha)
-    beta_mag = Complex.abs(beta)
-
-    alpha_str = :erlang.float_to_binary(alpha_mag, decimals: 3)
-    beta_str = :erlang.float_to_binary(beta_mag, decimals: 3)
-
-    # Determine sign for beta term
-    alpha_phase = :math.atan2(Complex.imag(alpha), Complex.real(alpha))
-    beta_phase = :math.atan2(Complex.imag(beta), Complex.real(beta))
-    phase_diff = beta_phase - alpha_phase
-
-    # Normalize phase difference to [-π, π]
-    phase_diff =
-      cond do
-        phase_diff > :math.pi() -> phase_diff - 2 * :math.pi()
-        phase_diff < -:math.pi() -> phase_diff + 2 * :math.pi()
-        true -> phase_diff
-      end
-
-    sign = if abs(phase_diff - :math.pi()) < 0.1, do: " - ", else: " + "
-
-    "#{alpha_str}|0⟩#{sign}#{beta_str}|1⟩"
-  end
+  # Extracts state vector from Register
+  defp extract_state(%Register{state: state}), do: state
 end

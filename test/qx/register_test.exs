@@ -71,17 +71,17 @@ defmodule Qx.RegisterTest do
       reg = Register.new(2) |> Register.h(0)
       probs = Register.get_probabilities(reg) |> Nx.to_flat_list()
 
-      # H on qubit 0: |00⟩ → (|00⟩ + |01⟩)/√2
+      # H on qubit 0 (leftmost): |00⟩ → (|00⟩ + |10⟩)/√2
       assert approx_equal?(Enum.at(probs, 0), 0.5)  # |00⟩
-      assert approx_equal?(Enum.at(probs, 1), 0.5)  # |01⟩
+      assert approx_equal?(Enum.at(probs, 2), 0.5)  # |10⟩
     end
 
     test "x/2 flips specific qubit" do
       reg = Register.new(2) |> Register.x(1)
       probs = Register.get_probabilities(reg) |> Nx.to_flat_list()
 
-      # X on qubit 1: |00⟩ → |10⟩
-      assert approx_equal?(Enum.at(probs, 2), 1.0)
+      # X on qubit 1 (rightmost): |00⟩ → |01⟩
+      assert approx_equal?(Enum.at(probs, 1), 1.0)
     end
 
     test "can apply gates to different qubits" do
@@ -134,17 +134,17 @@ defmodule Qx.RegisterTest do
       reg = Register.new(2) |> Register.rx(0, :math.pi())
       probs = Register.get_probabilities(reg) |> Nx.to_flat_list()
 
-      # RX(π) on qubit 0: |00⟩ → |01⟩
-      assert approx_equal?(Enum.at(probs, 1), 1.0)
+      # RX(π) on qubit 0 (leftmost): |00⟩ → |10⟩
+      assert approx_equal?(Enum.at(probs, 2), 1.0)
     end
 
     test "ry/3 with π/2 creates superposition" do
       reg = Register.new(2) |> Register.ry(1, :math.pi() / 2)
       probs = Register.get_probabilities(reg) |> Nx.to_flat_list()
 
-      # RY(π/2) on qubit 1: |00⟩ → (|00⟩ + |10⟩)/√2
+      # RY(π/2) on qubit 1 (rightmost): |00⟩ → (|00⟩ + |01⟩)/√2
       assert approx_equal?(Enum.at(probs, 0), 0.5)
-      assert approx_equal?(Enum.at(probs, 2), 0.5)
+      assert approx_equal?(Enum.at(probs, 1), 0.5)
     end
 
     test "rz/3 preserves probabilities" do
@@ -187,13 +187,13 @@ defmodule Qx.RegisterTest do
 
     test "cx/3 with control |0⟩ does nothing" do
       reg = Register.new(2)
-        |> Register.x(1)  # |10⟩
+        |> Register.x(1)  # |01⟩ (qubit 1 is rightmost)
         |> Register.cx(0, 1)
 
       probs = Register.get_probabilities(reg) |> Nx.to_flat_list()
 
-      # Control is |0⟩, so target unchanged: stays |10⟩
-      assert approx_equal?(Enum.at(probs, 2), 1.0)
+      # Control (qubit 0) is |0⟩, so target unchanged: stays |01⟩
+      assert approx_equal?(Enum.at(probs, 1), 1.0)
     end
 
     test "cx/3 with control |1⟩ flips target" do
@@ -230,13 +230,13 @@ defmodule Qx.RegisterTest do
 
     test "ccx/3 with one control |0⟩ does nothing" do
       reg = Register.new(3)
-        |> Register.x(0)  # Control 1: |1⟩, Control 2: |0⟩
+        |> Register.x(0)  # Qubit 0 (leftmost): |100⟩
         |> Register.ccx(0, 1, 2)
 
       probs = Register.get_probabilities(reg) |> Nx.to_flat_list()
 
-      # Only one control |1⟩, target unchanged: stays |001⟩
-      assert approx_equal?(Enum.at(probs, 1), 1.0)  # |001⟩ = index 1
+      # Only one control |1⟩, target unchanged: stays |100⟩
+      assert approx_equal?(Enum.at(probs, 4), 1.0)  # |100⟩ = index 4
     end
 
     test "raises when control and target are same" do

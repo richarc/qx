@@ -108,16 +108,16 @@ defmodule Qx.Calc do
   # Builds a full n-qubit gate matrix from a 2x2 single-qubit gate
   defp build_full_gate_matrix(gate_2x2, target_qubit, num_qubits) do
     # We need to build a 2^n x 2^n matrix
-    # This is the tensor product with qubit ordering convention:
-    # Qubit 0 is rightmost (LSB), so we build from highest to lowest
-    # Gate for qubit i: I_{n-1} ⊗ ... ⊗ I_{i+1} ⊗ gate_i ⊗ I_{i-1} ⊗ ... ⊗ I_0
+    # Standard convention: qubit 0 is leftmost (MSB)
+    # Gate for qubit i: gate_i ⊗ I_{i+1} ⊗ ... ⊗ I_{n-1}
+    # We build from qubit 0 to qubit (n-1)
 
     identity = Qx.Gates.identity()
 
-    # Build list of matrices from highest qubit index to lowest
+    # Build list of matrices from qubit 0 to qubit (num_qubits - 1)
     # This matches the standard quantum computing convention
     matrices =
-      for i <- (num_qubits - 1)..0//-1 do
+      for i <- 0..(num_qubits - 1) do
         if i == target_qubit, do: gate_2x2, else: identity
       end
 
@@ -167,14 +167,16 @@ defmodule Qx.Calc do
     state_size = trunc(:math.pow(2, num_qubits))
 
     # Build the CNOT matrix directly
+    # Standard convention: qubit 0 is leftmost (MSB)
     result =
       for i <- 0..(state_size - 1), j <- 0..(state_size - 1) do
         # Check if control qubit is |1⟩ in state i
-        control_bit = Bitwise.band(Bitwise.bsr(i, control_qubit), 1)
+        # For standard convention: qubit q is at bit position (num_qubits - 1 - q)
+        control_bit = Bitwise.band(Bitwise.bsr(i, num_qubits - 1 - control_qubit), 1)
 
         if control_bit == 1 do
           # If control is |1⟩, apply X to target: flip target bit
-          j_with_flipped_target = Bitwise.bxor(i, Bitwise.bsl(1, target_qubit))
+          j_with_flipped_target = Bitwise.bxor(i, Bitwise.bsl(1, num_qubits - 1 - target_qubit))
 
           # Matrix element is 1 if j matches the flipped state
           if j == j_with_flipped_target do
@@ -202,15 +204,17 @@ defmodule Qx.Calc do
     state_size = trunc(:math.pow(2, num_qubits))
 
     # Build the Toffoli matrix directly
+    # Standard convention: qubit 0 is leftmost (MSB)
     result =
       for i <- 0..(state_size - 1), j <- 0..(state_size - 1) do
         # Check if both control qubits are |1⟩ in state i
-        control1_bit = Bitwise.band(Bitwise.bsr(i, control1), 1)
-        control2_bit = Bitwise.band(Bitwise.bsr(i, control2), 1)
+        # For standard convention: qubit q is at bit position (num_qubits - 1 - q)
+        control1_bit = Bitwise.band(Bitwise.bsr(i, num_qubits - 1 - control1), 1)
+        control2_bit = Bitwise.band(Bitwise.bsr(i, num_qubits - 1 - control2), 1)
 
         if control1_bit == 1 and control2_bit == 1 do
           # If both controls are |1⟩, apply X to target: flip target bit
-          j_with_flipped_target = Bitwise.bxor(i, Bitwise.bsl(1, target))
+          j_with_flipped_target = Bitwise.bxor(i, Bitwise.bsl(1, num_qubits - 1 - target))
 
           # Matrix element is 1 if j matches the flipped state
           if j == j_with_flipped_target do
