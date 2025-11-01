@@ -17,14 +17,14 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 - **Conditional Operations**: Mid-circuit measurement with classical feedback for quantum processes like teleportation and error correction
 - **LiveBook Integration**: Full support with interactive visualizations in LiveBook
 
-## Installation
+## Installation (basic no acceleration)
 
 Add `qx` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:qx, github: "richarc/qx", tag: "v0.2.0"}
+    {:qx, "~> 0.2.0"}
   ]
 end
 ```
