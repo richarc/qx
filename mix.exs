@@ -30,11 +30,14 @@ defmodule Qx.MixProject do
     [
       {:nx, "~> 0.10"},
       {:exla, "~> 0.10"},
+      {:emlx, github: "elixir-nx/emlx", branch: "main"},
       {:vega_lite, "~> 0.1"},
       {:complex, "~> 0.6"},
       # stop removing this!!!!!!!
       {:usage_rules, "~> 0.1"},
-      {:ex_doc, "~> 0.34", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false},
+      {:benchee, "~> 1.3", only: :dev},
+      {:benchee_html, "~> 1.0", only: :dev}
     ]
   end
 
@@ -44,11 +47,7 @@ defmodule Qx.MixProject do
       name: "Qx - Quantum Computing Simulator",
       source_url: "https://github.com/richarc/qx",
       homepage_url: "https://github.com/richarc/qx",
-      extras: [
-        "CHANGELOG.md",
-        "API_IMPROVEMENTS_SUMMARY.md",
-        "TELEPORTATION_EXAMPLE.md"
-      ],
+      extras: [],
       groups_for_modules: [
         "Core API": [Qx],
         "Circuit Building": [Qx.QuantumCircuit, Qx.Operations],
@@ -83,10 +82,7 @@ defmodule Qx.MixProject do
         ]
       ],
       groups_for_extras: [
-        Guides: [
-          "API_IMPROVEMENTS_SUMMARY.md",
-          "TELEPORTATION_EXAMPLE.md"
-        ],
+        Guides: [],
         "Release Notes": ~r/CHANGELOG.*/
       ]
     ]
@@ -99,7 +95,7 @@ defmodule Qx.MixProject do
       links: %{
         "GitHub" => "https://github.com/richarc/qx"
       },
-      maintainers: ["Richard C"]
+      maintainers: ["Craig Richards"]
     ]
   end
 end

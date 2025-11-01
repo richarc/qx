@@ -25,8 +25,8 @@ qx-*.tar
 # Ignore spec files
 /spec/
 
-# Ignore option files
-/options/
+# Ignore output
+/output/
 
 # Ignore agents documentation
 AGENTS.md

@@ -102,13 +102,6 @@ iex> Nx.default_backend({EMLX.Backend, device: :gpu})
 iex> Nx.tensor([1, 2, 3]) |> IO.inspect()
 ```
 
-**Benefits**:
-- ✅ Pure Elixir solution - no Python dependencies required
-- ✅ Native Metal GPU support for M1/M2/M3/M4
-- ✅ Unified memory architecture optimization (zero-copy CPU ↔ GPU)
-- ✅ Automatic binary downloads (no manual compilation)
-- ✅ 5-20x faster than CPU for large circuits
-
 **Note**: Metal does not support 64-bit floats, but Qx uses Complex64 which is fully supported.
 
 ## Quick Start
