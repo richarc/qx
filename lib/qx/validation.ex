@@ -16,7 +16,7 @@ defmodule Qx.Validation do
       :ok
 
       iex> Qx.Validation.validate_qubit_index!(5, 3)
-      ** (ArgumentError) Qubit index 5 out of range (0..2)
+      ** (Qx.QubitIndexError) Qubit index 5 out of range (0..2)
   """
 
   @doc """
@@ -85,7 +85,7 @@ defmodule Qx.Validation do
   @doc """
   Validates normalization of a state vector.
 
-  Raises `ArgumentError` if not normalized within tolerance.
+  Raises `Qx.StateNormalizationError` if not normalized within tolerance.
 
   ## Examples
 
@@ -95,15 +95,14 @@ defmodule Qx.Validation do
 
       iex> invalid = Nx.tensor([Complex.new(1.0, 0.0), Complex.new(1.0, 0.0)], type: :c64)
       iex> Qx.Validation.validate_normalized!(invalid)
-      ** (ArgumentError) State not normalized: total probability = 2.0 (expected 1.0 ± 1.0e-6)
+      ** (Qx.StateNormalizationError) State not normalized: total probability = 2.0 (expected 1.0 ± 1.0e-6)
   """
   def validate_normalized!(state, tolerance \\ 1.0e-6) do
     probs = Qx.Math.probabilities(state)
     total = Nx.sum(probs) |> Nx.to_number()
 
     if abs(total - 1.0) > tolerance do
-      raise ArgumentError,
-            "State not normalized: total probability = #{total} (expected 1.0 ± #{tolerance})"
+      raise Qx.StateNormalizationError, {total, tolerance}
     end
 
     :ok
@@ -125,15 +124,14 @@ defmodule Qx.Validation do
       :ok
 
       iex> Qx.Validation.validate_qubit_index!(5, 3)
-      ** (ArgumentError) Qubit index 5 out of range (0..2)
+      ** (Qx.QubitIndexError) Qubit index 5 out of range (0..2)
 
       iex> Qx.Validation.validate_qubit_index!(-1, 3)
-      ** (ArgumentError) Qubit index -1 out of range (0..2)
+      ** (Qx.QubitIndexError) Qubit index -1 out of range (0..2)
   """
   def validate_qubit_index!(index, num_qubits) when is_integer(index) and is_integer(num_qubits) do
     if index < 0 or index >= num_qubits do
-      raise ArgumentError,
-            "Qubit index #{index} out of range (0..#{num_qubits - 1})"
+      raise Qx.QubitIndexError, {index, num_qubits}
     end
 
     :ok
@@ -148,7 +146,7 @@ defmodule Qx.Validation do
       :ok
 
       iex> Qx.Validation.validate_qubit_indices!([0, 5], 3)
-      ** (ArgumentError) Qubit index 5 out of range (0..2)
+      ** (Qx.QubitIndexError) Qubit index 5 out of range (0..2)
   """
   def validate_qubit_indices!(indices, num_qubits) when is_list(indices) do
     Enum.each(indices, &validate_qubit_index!(&1, num_qubits))
@@ -184,12 +182,11 @@ defmodule Qx.Validation do
       :ok
 
       iex> Qx.Validation.validate_classical_bit!(10, 5)
-      ** (ArgumentError) Classical bit index 10 out of range (0..4)
+      ** (Qx.ClassicalBitError) Classical bit index 10 out of range (0..4)
   """
   def validate_classical_bit!(index, num_bits) when is_integer(index) and is_integer(num_bits) do
     if index < 0 or index >= num_bits do
-      raise ArgumentError,
-            "Classical bit index #{index} out of range (0..#{num_bits - 1})"
+      raise Qx.ClassicalBitError, {index, num_bits}
     end
 
     :ok
@@ -245,7 +242,7 @@ defmodule Qx.Validation do
       :ok
 
       iex> Qx.Validation.validate_gate_name!(:not_a_gate)
-      ** (ArgumentError) Unknown gate: :not_a_gate
+      ** (Qx.GateError) Unsupported gate: :not_a_gate
   """
   def validate_gate_name!(gate_name) do
     known_gates = [
@@ -267,7 +264,7 @@ defmodule Qx.Validation do
     ]
 
     if gate_name not in known_gates do
-      raise ArgumentError, "Unknown gate: #{inspect(gate_name)}"
+      raise Qx.GateError, {:unsupported_gate, gate_name}
     end
 
     :ok
@@ -282,21 +279,16 @@ defmodule Qx.Validation do
       :ok
 
       iex> Qx.Validation.validate_num_qubits!(0)
-      ** (ArgumentError) Number of qubits must be positive, got: 0
+      ** (Qx.QubitCountError) Invalid qubit count: 0 (must be between 1 and 20)
 
       iex> Qx.Validation.validate_num_qubits!(25)
-      ** (ArgumentError) Maximum 20 qubits supported, got: 25
+      ** (Qx.QubitCountError) Invalid qubit count: 25 (must be between 1 and 20)
   """
   def validate_num_qubits!(num_qubits) when is_integer(num_qubits) do
-    cond do
-      num_qubits <= 0 ->
-        raise ArgumentError, "Number of qubits must be positive, got: #{num_qubits}"
-
-      num_qubits > 20 ->
-        raise ArgumentError, "Maximum 20 qubits supported, got: #{num_qubits}"
-
-      true ->
-        :ok
+    if num_qubits < 1 or num_qubits > 20 do
+      raise Qx.QubitCountError, {num_qubits, 1, 20}
     end
+
+    :ok
   end
 end

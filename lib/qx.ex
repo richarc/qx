@@ -163,6 +163,26 @@ defmodule Qx do
   defdelegate cx(circuit, control_qubit, target_qubit), to: Operations
 
   @doc """
+  Applies a controlled-Z (CZ) gate.
+
+  Applies a Z gate to the target qubit if and only if the control qubit is |1⟩.
+  This is a symmetric two-qubit gate that applies a phase flip when both qubits are |1⟩.
+
+  ## Parameters
+    * `circuit` - Quantum circuit
+    * `control_qubit` - Control qubit index
+    * `target_qubit` - Target qubit index
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(2) |> Qx.cz(0, 1)
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      1
+  """
+  @spec cz(circuit(), non_neg_integer(), non_neg_integer()) :: circuit()
+  defdelegate cz(circuit, control_qubit, target_qubit), to: Operations
+
+  @doc """
   Applies a controlled-controlled-X (CCNOT/Toffoli) gate.
 
   Flips target qubit if and only if both control qubits are |1⟩
@@ -624,4 +644,57 @@ defmodule Qx do
       vsn -> List.to_string(vsn)
     end
   end
+
+  # Tap-style debugging functions
+
+  @doc """
+  Inspects the circuit without breaking the pipeline.
+
+  See `Qx.Operations.tap_circuit/2` for full documentation.
+
+  ## Examples
+
+      # Inspect instructions while building circuit
+      circuit = Qx.create_circuit(2)
+        |> Qx.h(0)
+        |> Qx.tap_circuit(fn c -> IO.puts("Gates: #\{length(c.instructions)}") end)
+        |> Qx.cx(0, 1)
+
+  """
+  @spec tap_circuit(circuit(), (circuit() -> any())) :: circuit()
+  defdelegate tap_circuit(circuit, fun), to: Operations
+
+  @doc """
+  Inspects the current quantum state without breaking the pipeline.
+
+  See `Qx.Operations.tap_state/2` for full documentation.
+
+  ## Examples
+
+      # Inspect quantum state while building circuit
+      circuit = Qx.create_circuit(1)
+        |> Qx.h(0)
+        |> Qx.tap_state(fn s -> IO.puts("State shape: #\{inspect(Nx.shape(s))}") end)
+        |> Qx.z(0)
+
+  """
+  @spec tap_state(circuit(), (Nx.Tensor.t() -> any())) :: circuit()
+  defdelegate tap_state(circuit, fun), to: Operations
+
+  @doc """
+  Inspects measurement probabilities without breaking the pipeline.
+
+  See `Qx.Operations.tap_probabilities/2` for full documentation.
+
+  ## Examples
+
+      # Inspect probabilities while building circuit
+      circuit = Qx.create_circuit(2)
+        |> Qx.h(0)
+        |> Qx.tap_probabilities(fn p -> IO.puts("Probs: #\{inspect(Nx.shape(p))}") end)
+        |> Qx.cx(0, 1)
+
+  """
+  @spec tap_probabilities(circuit(), (Nx.Tensor.t() -> any())) :: circuit()
+  defdelegate tap_probabilities(circuit, fun), to: Operations
 end

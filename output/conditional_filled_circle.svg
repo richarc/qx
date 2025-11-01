@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="230" viewBox="0 0 420 230">
+  <rect width="420" height="230" fill="#ffffff"/>
+    <text x="210.0" y="25" text-anchor="middle" font-family="Helvetica" font-size="15">Conditional X Gate (c0==1)</text>
+
+    <line x1="80" y1="60" x2="400" y2="60" stroke="#000000" stroke-width="2"/>
+  <text x="70" y="65" text-anchor="end" font-family="Helvetica" font-size="13">q<tspan baseline-shift="sub" font-size="9.1">0</tspan></text>
+
+  <line x1="80" y1="105" x2="400" y2="105" stroke="#000000" stroke-width="2"/>
+  <text x="70" y="110" text-anchor="end" font-family="Helvetica" font-size="13">q<tspan baseline-shift="sub" font-size="9.1">1</tspan></text>
+  <line x1="80" y1="170" x2="400" y2="170" stroke="#778899" stroke-width="2"/>
+  <line x1="80" y1="173" x2="400" y2="173" stroke="#778899" stroke-width="2"/>
+  <text x="70" y="175" text-anchor="end" font-family="Helvetica" font-size="13">c/2</text>
+
+    <rect x="105.0" y="45.0" width="30" height="30" fill="#33b1ff" stroke="#33b1ff" stroke-width="1.5"/>
+  <text x="120" y="64" text-anchor="middle" font-family="Helvetica" font-size="10" fill="#000000">H</text>
+
+  <rect x="175.0" y="45.0" width="30" height="30" fill="#a8a8a8" stroke="#a8a8a8" stroke-width="1.5"/>
+  <path d="M 182.65 63 A 7.35 7.35 0 0 1 197.35 63" fill="none" stroke="#000000" stroke-width="2"/>
+  <line x1="190" y1="63" x2="195.25" y2="54.75" stroke="#000000" stroke-width="2"/>
+  <line x1="190" y1="75.0" x2="190" y2="171.5" stroke="#778899" stroke-width="2"/>
+  <polygon points="190,179.5 184,170.5 196,170.5" fill="#778899"/>
+
+  <rect x="245.0" y="90.0" width="30" height="30" fill="#fa4d56" stroke="#fa4d56" stroke-width="1.5"/>
+  <text x="260" y="109" text-anchor="middle" font-family="Helvetica" font-size="10" fill="#000000">X</text>
+  <line x1="258.5" y1="120.0" x2="258.5" y2="170" stroke="#778899" stroke-width="2"/>
+  <line x1="261.5" y1="120.0" x2="261.5" y2="170" stroke="#778899" stroke-width="2"/>
+  <circle cx="260" cy="170" r="5" fill="#778899" stroke="#778899" stroke-width="2"/>
+  <text x="272" y="162" font-family="Helvetica" font-size="13" fill="#000000">c0</text>
+
+  <rect x="315.0" y="90.0" width="30" height="30" fill="#a8a8a8" stroke="#a8a8a8" stroke-width="1.5"/>
+  <path d="M 322.65 108 A 7.35 7.35 0 0 1 337.35 108" fill="none" stroke="#000000" stroke-width="2"/>
+  <line x1="330" y1="108" x2="335.25" y2="99.75" stroke="#000000" stroke-width="2"/>
+  <line x1="330" y1="120.0" x2="330" y2="171.5" stroke="#778899" stroke-width="2"/>
+  <polygon points="330,179.5 324,170.5 336,170.5" fill="#778899"/>
+
+</svg>

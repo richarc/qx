@@ -81,7 +81,7 @@ defmodule Qx.ValidationTest do
     test "raises for unnormalized state" do
       unnormalized = Nx.tensor([C.new(1.0, 0.0), C.new(1.0, 0.0)], type: :c64)
 
-      assert_raise ArgumentError, ~r/State not normalized/, fn ->
+      assert_raise Qx.StateNormalizationError, ~r/State not normalized/, fn ->
         Validation.validate_normalized!(unnormalized)
       end
     end
@@ -89,7 +89,7 @@ defmodule Qx.ValidationTest do
     test "includes total probability in error message" do
       unnormalized = Nx.tensor([C.new(1.0, 0.0), C.new(1.0, 0.0)], type: :c64)
 
-      assert_raise ArgumentError, ~r/total probability = 2\.0/, fn ->
+      assert_raise Qx.StateNormalizationError, ~r/total probability = 2\.0/, fn ->
         Validation.validate_normalized!(unnormalized)
       end
     end
@@ -103,19 +103,19 @@ defmodule Qx.ValidationTest do
     end
 
     test "rejects negative index" do
-      assert_raise ArgumentError, ~r/Qubit index -1 out of range/, fn ->
+      assert_raise Qx.QubitIndexError, ~r/Qubit index -1 out of range/, fn ->
         Validation.validate_qubit_index!(-1, 3)
       end
     end
 
     test "rejects index >= num_qubits" do
-      assert_raise ArgumentError, ~r/Qubit index 3 out of range \(0\.\.2\)/, fn ->
+      assert_raise Qx.QubitIndexError, ~r/Qubit index 3 out of range \(0\.\.2\)/, fn ->
         Validation.validate_qubit_index!(3, 3)
       end
     end
 
     test "rejects large index" do
-      assert_raise ArgumentError, ~r/Qubit index 100 out of range/, fn ->
+      assert_raise Qx.QubitIndexError, ~r/Qubit index 100 out of range/, fn ->
         Validation.validate_qubit_index!(100, 5)
       end
     end
@@ -123,7 +123,7 @@ defmodule Qx.ValidationTest do
     test "works with 1-qubit system" do
       assert Validation.validate_qubit_index!(0, 1) == :ok
 
-      assert_raise ArgumentError, fn ->
+      assert_raise Qx.QubitIndexError, fn ->
         Validation.validate_qubit_index!(1, 1)
       end
     end
@@ -139,14 +139,14 @@ defmodule Qx.ValidationTest do
     end
 
     test "rejects if any index is invalid" do
-      assert_raise ArgumentError, ~r/Qubit index 5 out of range/, fn ->
+      assert_raise Qx.QubitIndexError, ~r/Qubit index 5 out of range/, fn ->
         Validation.validate_qubit_indices!([0, 1, 5], 3)
       end
     end
 
     test "stops at first invalid index" do
       # Should raise error for index 10, not 20
-      assert_raise ArgumentError, ~r/Qubit index 10/, fn ->
+      assert_raise Qx.QubitIndexError, ~r/Qubit index 10/, fn ->
         Validation.validate_qubit_indices!([0, 10, 20], 5)
       end
     end
@@ -191,13 +191,13 @@ defmodule Qx.ValidationTest do
     end
 
     test "rejects negative index" do
-      assert_raise ArgumentError, ~r/Classical bit index -1 out of range/, fn ->
+      assert_raise Qx.ClassicalBitError, ~r/Classical bit index -1 out of range/, fn ->
         Validation.validate_classical_bit!(-1, 5)
       end
     end
 
     test "rejects index >= num_bits" do
-      assert_raise ArgumentError, ~r/Classical bit index 5 out of range \(0\.\.4\)/, fn ->
+      assert_raise Qx.ClassicalBitError, ~r/Classical bit index 5 out of range \(0\.\.4\)/, fn ->
         Validation.validate_classical_bit!(5, 5)
       end
     end
@@ -281,7 +281,7 @@ defmodule Qx.ValidationTest do
     end
 
     test "rejects unknown gate" do
-      assert_raise ArgumentError, ~r/Unknown gate: :not_a_gate/, fn ->
+      assert_raise Qx.GateError, ~r/Unsupported gate: :not_a_gate/, fn ->
         Validation.validate_gate_name!(:not_a_gate)
       end
     end
@@ -295,25 +295,25 @@ defmodule Qx.ValidationTest do
     end
 
     test "rejects zero qubits" do
-      assert_raise ArgumentError, ~r/Number of qubits must be positive, got: 0/, fn ->
+      assert_raise Qx.QubitCountError, ~r/Invalid qubit count: 0/, fn ->
         Validation.validate_num_qubits!(0)
       end
     end
 
     test "rejects negative qubits" do
-      assert_raise ArgumentError, ~r/Number of qubits must be positive/, fn ->
+      assert_raise Qx.QubitCountError, ~r/Invalid qubit count/, fn ->
         Validation.validate_num_qubits!(-1)
       end
     end
 
     test "rejects more than 20 qubits" do
-      assert_raise ArgumentError, ~r/Maximum 20 qubits supported, got: 25/, fn ->
+      assert_raise Qx.QubitCountError, ~r/Invalid qubit count: 25/, fn ->
         Validation.validate_num_qubits!(25)
       end
     end
 
     test "rejects extremely large values" do
-      assert_raise ArgumentError, ~r/Maximum 20 qubits supported/, fn ->
+      assert_raise Qx.QubitCountError, ~r/Invalid qubit count/, fn ->
         Validation.validate_num_qubits!(1000)
       end
     end

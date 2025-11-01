@@ -17,10 +17,11 @@ defmodule Qx.Calc do
   optimize and maintain.
   """
 
-  alias Complex, as: C
-
   @doc """
   Applies a single-qubit gate to a state vector.
+
+  Uses optimized direct statevector manipulation from Qx.CalcFast for
+  improved performance (10-1000x faster than matrix-based approach).
 
   ## Parameters
 
@@ -44,20 +45,15 @@ defmodule Qx.Calc do
   @spec apply_single_qubit_gate(Nx.Tensor.t(), Nx.Tensor.t(), non_neg_integer(), pos_integer()) ::
           Nx.Tensor.t()
   def apply_single_qubit_gate(state, gate_matrix, target_qubit, num_qubits) do
-    cond do
-      num_qubits == 1 ->
-        # Simple case: single qubit, direct matrix multiplication
-        Nx.dot(gate_matrix, state)
-
-      num_qubits > 1 ->
-        # Multi-qubit case: expand gate to full system size
-        full_gate_matrix = build_full_gate_matrix(gate_matrix, target_qubit, num_qubits)
-        Nx.dot(full_gate_matrix, state)
-    end
+    # Use optimized direct statevector manipulation
+    Qx.CalcFast.apply_single_qubit_gate(state, gate_matrix, target_qubit, num_qubits)
   end
 
   @doc """
   Applies a two-qubit gate (like CNOT) to a state vector.
+
+  Uses optimized direct statevector manipulation from Qx.CalcFast for
+  improved performance (avoids building 2^n x 2^n matrix).
 
   ## Parameters
 
@@ -74,12 +70,15 @@ defmodule Qx.Calc do
   @spec apply_cnot(Nx.Tensor.t(), non_neg_integer(), non_neg_integer(), pos_integer()) ::
           Nx.Tensor.t()
   def apply_cnot(state, control_qubit, target_qubit, num_qubits) do
-    gate_matrix = build_cnot_matrix(control_qubit, target_qubit, num_qubits)
-    Nx.dot(gate_matrix, state)
+    # Use optimized direct statevector manipulation
+    Qx.CalcFast.apply_cnot(state, control_qubit, target_qubit, num_qubits)
   end
 
   @doc """
   Applies a Toffoli (CCX) gate to a state vector.
+
+  Uses optimized direct statevector manipulation from Qx.CalcFast for
+  improved performance (avoids building 2^n x 2^n matrix).
 
   ## Parameters
 
@@ -97,143 +96,19 @@ defmodule Qx.Calc do
           pos_integer()
         ) :: Nx.Tensor.t()
   def apply_toffoli(state, control1, control2, target, num_qubits) do
-    gate_matrix = build_toffoli_matrix(control1, control2, target, num_qubits)
-    Nx.dot(gate_matrix, state)
+    # Use optimized direct statevector manipulation
+    Qx.CalcFast.apply_toffoli(state, control1, control2, target, num_qubits)
   end
 
   # ============================================================================
   # Private Helper Functions
   # ============================================================================
-
-  # Builds a full n-qubit gate matrix from a 2x2 single-qubit gate
-  defp build_full_gate_matrix(gate_2x2, target_qubit, num_qubits) do
-    # We need to build a 2^n x 2^n matrix
-    # Standard convention: qubit 0 is leftmost (MSB)
-    # Gate for qubit i: gate_i ⊗ I_{i+1} ⊗ ... ⊗ I_{n-1}
-    # We build from qubit 0 to qubit (n-1)
-
-    identity = Qx.Gates.identity()
-
-    # Build list of matrices from qubit 0 to qubit (num_qubits - 1)
-    # This matches the standard quantum computing convention
-    matrices =
-      for i <- 0..(num_qubits - 1) do
-        if i == target_qubit, do: gate_2x2, else: identity
-      end
-
-    # Compute tensor product of all matrices
-    tensor_product_matrices(matrices)
-  end
-
-  # Computes tensor product of a list of 2x2 matrices
-  defp tensor_product_matrices([single_matrix]) do
-    single_matrix
-  end
-
-  defp tensor_product_matrices([first | rest]) do
-    rest_product = tensor_product_matrices(rest)
-    kronecker_product_matrix(first, rest_product)
-  end
-
-  # Kronecker product for matrices
-  defp kronecker_product_matrix(mat_a, mat_b) do
-    # mat_a is 2x2, mat_b is 2^n x 2^n
-    size_a = 2
-    size_b = Nx.axis_size(mat_b, 0)
-    result_size = size_a * size_b
-
-    # Build result matrix
-    result =
-      for i <- 0..(result_size - 1), j <- 0..(result_size - 1) do
-        # Determine which element of mat_a and mat_b to multiply
-        a_row = div(i, size_b)
-        a_col = div(j, size_b)
-        b_row = rem(i, size_b)
-        b_col = rem(j, size_b)
-
-        a_elem = Nx.to_number(mat_a[a_row][a_col])
-        b_elem = Nx.to_number(mat_b[b_row][b_col])
-
-        Complex.multiply(a_elem, b_elem)
-      end
-      |> Nx.tensor(type: :c64)
-      |> Nx.reshape({result_size, result_size})
-
-    result
-  end
-
-  # Builds a CNOT gate matrix for n qubits
-  defp build_cnot_matrix(control_qubit, target_qubit, num_qubits) do
-    state_size = trunc(:math.pow(2, num_qubits))
-
-    # Build the CNOT matrix directly
-    # Standard convention: qubit 0 is leftmost (MSB)
-    result =
-      for i <- 0..(state_size - 1), j <- 0..(state_size - 1) do
-        # Check if control qubit is |1⟩ in state i
-        # For standard convention: qubit q is at bit position (num_qubits - 1 - q)
-        control_bit = Bitwise.band(Bitwise.bsr(i, num_qubits - 1 - control_qubit), 1)
-
-        if control_bit == 1 do
-          # If control is |1⟩, apply X to target: flip target bit
-          j_with_flipped_target = Bitwise.bxor(i, Bitwise.bsl(1, num_qubits - 1 - target_qubit))
-
-          # Matrix element is 1 if j matches the flipped state
-          if j == j_with_flipped_target do
-            C.new(1.0, 0.0)
-          else
-            C.new(0.0, 0.0)
-          end
-        else
-          # If control is |0⟩, identity: keep state unchanged
-          if i == j do
-            C.new(1.0, 0.0)
-          else
-            C.new(0.0, 0.0)
-          end
-        end
-      end
-      |> Nx.tensor(type: :c64)
-      |> Nx.reshape({state_size, state_size})
-
-    result
-  end
-
-  # Builds a Toffoli gate matrix for n qubits
-  defp build_toffoli_matrix(control1, control2, target, num_qubits) do
-    state_size = trunc(:math.pow(2, num_qubits))
-
-    # Build the Toffoli matrix directly
-    # Standard convention: qubit 0 is leftmost (MSB)
-    result =
-      for i <- 0..(state_size - 1), j <- 0..(state_size - 1) do
-        # Check if both control qubits are |1⟩ in state i
-        # For standard convention: qubit q is at bit position (num_qubits - 1 - q)
-        control1_bit = Bitwise.band(Bitwise.bsr(i, num_qubits - 1 - control1), 1)
-        control2_bit = Bitwise.band(Bitwise.bsr(i, num_qubits - 1 - control2), 1)
-
-        if control1_bit == 1 and control2_bit == 1 do
-          # If both controls are |1⟩, apply X to target: flip target bit
-          j_with_flipped_target = Bitwise.bxor(i, Bitwise.bsl(1, num_qubits - 1 - target))
-
-          # Matrix element is 1 if j matches the flipped state
-          if j == j_with_flipped_target do
-            C.new(1.0, 0.0)
-          else
-            C.new(0.0, 0.0)
-          end
-        else
-          # If any control is |0⟩, identity: keep state unchanged
-          if i == j do
-            C.new(1.0, 0.0)
-          else
-            C.new(0.0, 0.0)
-          end
-        end
-      end
-      |> Nx.tensor(type: :c64)
-      |> Nx.reshape({state_size, state_size})
-
-    result
-  end
+  #
+  # Note: The old matrix-based implementations (build_full_gate_matrix,
+  # build_cnot_matrix, build_toffoli_matrix) have been removed in favor
+  # of direct statevector manipulation in Qx.CalcFast. The old approach
+  # was 10-1000x slower and used significantly more memory.
+  #
+  # For reference or debugging, the old implementations are preserved in
+  # git history (commit before EXLA optimization).
 end

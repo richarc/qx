@@ -196,6 +196,91 @@ defmodule Qx.Qubit do
     Qx.StateInit.random_state(1)
   end
 
+  @doc """
+  Creates a qubit from a computational basis state.
+
+  ## Parameters
+    * `basis` - 0 for |0⟩ or 1 for |1⟩
+
+  ## Examples
+
+      iex> q = Qx.Qubit.from_basis(0)
+      iex> Qx.Qubit.alpha(q) |> Complex.abs()
+      1.0
+
+      iex> q = Qx.Qubit.from_basis(1)
+      iex> Qx.Qubit.beta(q) |> Complex.abs()
+      1.0
+  """
+  @spec from_basis(0 | 1) :: t()
+  def from_basis(0), do: new()
+  def from_basis(1), do: one()
+
+  def from_basis(basis) do
+    raise ArgumentError, "Basis must be 0 or 1, got: #{inspect(basis)}"
+  end
+
+  @doc """
+  Creates a qubit from Bloch sphere coordinates.
+
+  The Bloch sphere is a geometrical representation of a qubit's quantum state.
+  Any pure qubit state can be written as:
+  |ψ⟩ = cos(θ/2)|0⟩ + e^(iφ)sin(θ/2)|1⟩
+
+  ## Parameters
+    * `theta` - Polar angle in radians (0 to π)
+    * `phi` - Azimuthal angle in radians (0 to 2π)
+
+  ## Examples
+
+      # Create |0⟩ state (north pole)
+      iex> q = Qx.Qubit.from_bloch(0, 0)
+      iex> Qx.Qubit.alpha(q) |> Complex.abs() |> Float.round(3)
+      1.0
+
+      # Create |1⟩ state (south pole)
+      iex> q = Qx.Qubit.from_bloch(:math.pi(), 0)
+      iex> Qx.Qubit.beta(q) |> Complex.abs() |> Float.round(3)
+      1.0
+
+      # Create |+⟩ state (equator, x-axis)
+      iex> q = Qx.Qubit.from_bloch(:math.pi() / 2, 0)
+      iex> probs = Qx.Qubit.measure_probabilities(q) |> Nx.to_flat_list()
+      iex> abs(Enum.at(probs, 0) - 0.5) < 0.01
+      true
+  """
+  @spec from_bloch(number(), number()) :: t()
+  def from_bloch(theta, phi) when is_number(theta) and is_number(phi) do
+    alpha = :math.cos(theta / 2)
+
+    beta_magnitude = :math.sin(theta / 2)
+    beta = C.multiply(C.new(beta_magnitude, 0.0), C.from_polar(1.0, phi))
+
+    new(C.new(alpha, 0.0), beta)
+  end
+
+  @doc """
+  Creates a qubit from angle (simplified Bloch sphere).
+
+  This is a simplified version of `from_bloch/2` where phi=0.
+  Useful for creating states along the X-Z plane of the Bloch sphere.
+
+  ## Parameters
+    * `theta` - Polar angle in radians (0 to π)
+
+  ## Examples
+
+      # Create superposition |+⟩
+      iex> q = Qx.Qubit.from_angle(:math.pi() / 2)
+      iex> probs = Qx.Qubit.measure_probabilities(q) |> Nx.to_flat_list()
+      iex> abs(Enum.at(probs, 0) - 0.5) < 0.01
+      true
+  """
+  @spec from_angle(number()) :: t()
+  def from_angle(theta) when is_number(theta) do
+    from_bloch(theta, 0.0)
+  end
+
   # ============================================================================
   # GATE OPERATIONS (delegate to Register)
   # ============================================================================

@@ -4,7 +4,7 @@ defmodule Qx.MixProject do
   def project do
     [
       app: :qx,
-      version: "0.1.1",
+      version: "0.2.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -29,6 +29,7 @@ defmodule Qx.MixProject do
   defp deps do
     [
       {:nx, "~> 0.10"},
+      {:exla, "~> 0.10"},
       {:vega_lite, "~> 0.1"},
       {:complex, "~> 0.6"},
       # stop removing this!!!!!!!
@@ -43,15 +44,49 @@ defmodule Qx.MixProject do
       name: "Qx - Quantum Computing Simulator",
       source_url: "https://github.com/richarc/qx",
       homepage_url: "https://github.com/richarc/qx",
-      extras: ["CHANGELOG.md"],
+      extras: [
+        "CHANGELOG.md",
+        "API_IMPROVEMENTS_SUMMARY.md",
+        "TELEPORTATION_EXAMPLE.md"
+      ],
       groups_for_modules: [
         "Core API": [Qx],
         "Circuit Building": [Qx.QuantumCircuit, Qx.Operations],
-        Simulation: [Qx.Simulation],
+        "Calculation Mode": [Qx.Qubit, Qx.Register],
+        "Simulation & Results": [
+          Qx.Simulation,
+          Qx.SimulationResult
+        ],
         Visualization: [Qx.Draw],
-        "Mathematical Functions": [Qx.Math, Qx.Qubit, Qx.Gates]
+        "Error Handling": [
+          Qx.Error,
+          Qx.QubitIndexError,
+          Qx.StateNormalizationError,
+          Qx.MeasurementError,
+          Qx.ConditionalError,
+          Qx.ClassicalBitError,
+          Qx.GateError,
+          Qx.QubitCountError
+        ],
+        "Validation & Utilities": [
+          Qx.Validation,
+          Qx.Math,
+          Qx.Format,
+          Qx.StateInit
+        ],
+        "Low-Level Operations": [
+          Qx.Calc,
+          Qx.Gates
+        ],
+        Behaviours: [
+          Qx.Behaviours.QuantumState
+        ]
       ],
       groups_for_extras: [
+        Guides: [
+          "API_IMPROVEMENTS_SUMMARY.md",
+          "TELEPORTATION_EXAMPLE.md"
+        ],
         "Release Notes": ~r/CHANGELOG.*/
       ]
     ]

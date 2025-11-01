@@ -72,11 +72,7 @@ grover_circuit = Qx.create_circuit(2)
                  |> Qx.h(1)
 
                  # Step 2: Oracle - flip phase of |11⟩
-                 # This is implemented as a controlled-Z where both qubits control
-                 # We'll approximate this with CZ gate (which we implement as H-CX-H)
-                 |> Qx.h(1)     # Prep for CZ
-                 |> Qx.cx(0, 1) # CNOT
-                 |> Qx.h(1)     # Complete CZ
+                 |> Qx.cz(0, 1)
 
                  # Step 3: Diffusion operator
                  # Apply H to all qubits
@@ -85,10 +81,8 @@ grover_circuit = Qx.create_circuit(2)
                  # Apply X to all qubits
                  |> Qx.x(0)
                  |> Qx.x(1)
-                 # Apply controlled-Z on all qubits (multi-controlled Z)
-                 |> Qx.h(1)     # Prep for CZ
-                 |> Qx.cx(0, 1) # CNOT
-                 |> Qx.h(1)     # Complete CZ
+                 # Apply controlled-Z
+                 |> Qx.cz(0, 1)
                  # Apply X to all qubits
                  |> Qx.x(0)
                  |> Qx.x(1)
@@ -112,8 +106,7 @@ grover_11_prob = Enum.at(grover_probs, 3)
 max_prob = Enum.max(grover_probs)
 grover_validation = grover_11_prob == max_prob and grover_11_prob > 0.4
 
-IO.puts("   ✓ Grover's Algorithm Validation: #{if grover_validation, do: "PASSED", else: "APPROXIMATED"}")
-IO.puts("   Note: Using approximated gates, exact Grover's requires proper controlled-Z")
+IO.puts("   ✓ Grover's Algorithm Validation: #{if grover_validation, do: "PASSED", else: "FAILED"}")
 IO.puts("")
 
 # Validation 4: Quantum State Properties

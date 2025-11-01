@@ -3,6 +3,9 @@
 # Conditional Circuit Visualization Examples
 # Demonstrates the visualization of classically-controlled quantum operations
 
+# Ensure output directory exists
+File.mkdir_p!("output")
+
 IO.puts("=== Conditional Circuit Visualization Examples ===\n")
 
 # Example 1: Simple conditional with filled circle (==1)

@@ -3,6 +3,17 @@
 # Complex Number Support Demonstration for Qx Quantum Computing Simulator
 # This script demonstrates the newly implemented complex number support in Qx
 
+# Helper function to format complex amplitudes
+defmodule ComplexHelper do
+  def format_amplitude(state, index, decimals \\ 6) do
+    amp = Nx.to_number(state[index])
+    real = Float.round(Complex.real(amp), decimals)
+    imag = Float.round(Complex.imag(amp), decimals)
+    sign = if imag >= 0, do: " + ", else: " "
+    "#{real}#{sign}#{imag}i"
+  end
+end
+
 IO.puts("=== Qx Complex Number Support Demonstration ===\n")
 
 # Example 1: Y Gate - Now with proper complex numbers!
@@ -14,8 +25,8 @@ result_y = Qx.run(qc_y)
 final_state_y = Qx.get_state(qc_y)
 
 IO.puts("   Final state after Y gate:")
-IO.puts("   |0⟩ amplitude: #{Nx.to_number(final_state_y[0][0])} + #{Nx.to_number(final_state_y[0][1])}i")
-IO.puts("   |1⟩ amplitude: #{Nx.to_number(final_state_y[1][0])} + #{Nx.to_number(final_state_y[1][1])}i")
+IO.puts("   |0⟩ amplitude: #{ComplexHelper.format_amplitude(final_state_y, 0)}")
+IO.puts("   |1⟩ amplitude: #{ComplexHelper.format_amplitude(final_state_y, 1)}")
 
 probs_y = Nx.to_flat_list(result_y.probabilities)
 IO.puts("   Probabilities: |0⟩ = #{Float.round(Enum.at(probs_y, 0), 6)}, |1⟩ = #{Float.round(Enum.at(probs_y, 1), 6)}")
@@ -29,8 +40,8 @@ qc_s = Qx.create_circuit(1) |> Qx.x(0) |> Qx.s(0)
 final_state_s = Qx.get_state(qc_s)
 
 IO.puts("   Final state after X then S:")
-IO.puts("   |0⟩ amplitude: #{Nx.to_number(final_state_s[0][0])} + #{Nx.to_number(final_state_s[0][1])}i")
-IO.puts("   |1⟩ amplitude: #{Nx.to_number(final_state_s[1][0])} + #{Nx.to_number(final_state_s[1][1])}i")
+IO.puts("   |0⟩ amplitude: #{ComplexHelper.format_amplitude(final_state_s, 0)}")
+IO.puts("   |1⟩ amplitude: #{ComplexHelper.format_amplitude(final_state_s, 1)}")
 IO.puts("")
 
 # Example 3: T Gate - Phase gate π/4
@@ -44,7 +55,7 @@ expected_real = :math.cos(:math.pi() / 4)
 expected_imag = :math.sin(:math.pi() / 4)
 
 IO.puts("   Expected: #{Float.round(expected_real, 6)} + #{Float.round(expected_imag, 6)}i")
-IO.puts("   Actual:   #{Float.round(Nx.to_number(final_state_t[1][0]), 6)} + #{Float.round(Nx.to_number(final_state_t[1][1]), 6)}i")
+IO.puts("   Actual:   #{ComplexHelper.format_amplitude(final_state_t, 1)}")
 IO.puts("")
 
 # Example 4: Complex superposition with H then S
@@ -57,8 +68,8 @@ final_state_hs = Qx.get_state(qc_hs)
 expected_amp = 1.0 / :math.sqrt(2)
 
 IO.puts("   Final state after H then S:")
-IO.puts("   |0⟩ amplitude: #{Float.round(Nx.to_number(final_state_hs[0][0]), 6)} + #{Float.round(Nx.to_number(final_state_hs[0][1]), 6)}i")
-IO.puts("   |1⟩ amplitude: #{Float.round(Nx.to_number(final_state_hs[1][0]), 6)} + #{Float.round(Nx.to_number(final_state_hs[1][1]), 6)}i")
+IO.puts("   |0⟩ amplitude: #{ComplexHelper.format_amplitude(final_state_hs, 0)}")
+IO.puts("   |1⟩ amplitude: #{ComplexHelper.format_amplitude(final_state_hs, 1)}")
 IO.puts("   Expected: (1/√2)|0⟩ + (i/√2)|1⟩")
 IO.puts("   Expected amplitudes: #{Float.round(expected_amp, 6)} + 0i, 0 + #{Float.round(expected_amp, 6)}i")
 IO.puts("")
@@ -76,7 +87,7 @@ expected_rz_imag = :math.sin(angle / 2)
 
 IO.puts("   RZ(π/3) applied to |1⟩:")
 IO.puts("   Expected: #{Float.round(expected_rz_real, 6)} + #{Float.round(expected_rz_imag, 6)}i")
-IO.puts("   Actual:   #{Float.round(Nx.to_number(final_state_rz[1][0]), 6)} + #{Float.round(Nx.to_number(final_state_rz[1][1]), 6)}i")
+IO.puts("   Actual:   #{ComplexHelper.format_amplitude(final_state_rz, 1)}")
 IO.puts("")
 
 # Example 6: Phase gate with custom angle
@@ -92,7 +103,7 @@ expected_phase_imag = :math.sin(phi)
 
 IO.puts("   Phase(π/6) applied to |1⟩:")
 IO.puts("   Expected: #{Float.round(expected_phase_real, 6)} + #{Float.round(expected_phase_imag, 6)}i")
-IO.puts("   Actual:   #{Float.round(Nx.to_number(final_state_phase[1][0]), 6)} + #{Float.round(Nx.to_number(final_state_phase[1][1]), 6)}i")
+IO.puts("   Actual:   #{ComplexHelper.format_amplitude(final_state_phase, 1)}")
 IO.puts("")
 
 # Example 7: Complex qubit creation with Qx.Qubit
@@ -130,8 +141,8 @@ IO.puts("   |11⟩: #{Float.round(Enum.at(bell_probs, 3), 6)}")
 
 bell_state = Qx.get_state(bell_qc)
 IO.puts("   Complex representation:")
-IO.puts("   |00⟩: #{Float.round(Nx.to_number(bell_state[0][0]), 6)} + #{Float.round(Nx.to_number(bell_state[0][1]), 6)}i")
-IO.puts("   |11⟩: #{Float.round(Nx.to_number(bell_state[3][0]), 6)} + #{Float.round(Nx.to_number(bell_state[3][1]), 6)}i")
+IO.puts("   |00⟩: #{ComplexHelper.format_amplitude(bell_state, 0)}")
+IO.puts("   |11⟩: #{ComplexHelper.format_amplitude(bell_state, 3)}")
 IO.puts("")
 
 # Example 9: Demonstrating phase relationships
@@ -142,8 +153,8 @@ interference_qc = Qx.create_circuit(1) |> Qx.h(0) |> Qx.s(0)
 interference_state = Qx.get_state(interference_qc)
 
 IO.puts("   Before measurement, the state has complex phases:")
-IO.puts("   |0⟩: #{Float.round(Nx.to_number(interference_state[0][0]), 6)} + #{Float.round(Nx.to_number(interference_state[0][1]), 6)}i")
-IO.puts("   |1⟩: #{Float.round(Nx.to_number(interference_state[1][0]), 6)} + #{Float.round(Nx.to_number(interference_state[1][1]), 6)}i")
+IO.puts("   |0⟩: #{ComplexHelper.format_amplitude(interference_state, 0)}")
+IO.puts("   |1⟩: #{ComplexHelper.format_amplitude(interference_state, 1)}")
 
 # Show that probabilities are still 50/50 despite complex phases
 interference_result = Qx.run(interference_qc)

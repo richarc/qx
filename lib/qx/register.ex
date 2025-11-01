@@ -136,6 +136,78 @@ defmodule Qx.Register do
     result
   end
 
+  @doc """
+  Creates a register from a list of computational basis states.
+
+  ## Parameters
+    * `basis_states` - List of 0s and 1s representing the basis state for each qubit
+
+  ## Examples
+
+      # Create |010⟩ state
+      iex> reg = Qx.Register.from_basis_states([0, 1, 0])
+      iex> reg.num_qubits
+      3
+
+      # Create |11⟩ state (Bell state preparation starting point)
+      iex> reg = Qx.Register.from_basis_states([1, 1])
+      iex> probs = Qx.Register.get_probabilities(reg) |> Nx.to_flat_list()
+      iex> Enum.at(probs, 3)
+      1.0
+  """
+  @spec from_basis_states(list(0 | 1)) :: t()
+  def from_basis_states(states) when is_list(states) do
+    if Enum.empty?(states) do
+      raise ArgumentError, "Cannot create register from empty basis state list"
+    end
+
+    # Validate all elements are 0 or 1
+    unless Enum.all?(states, &(&1 in [0, 1])) do
+      raise ArgumentError, "All basis states must be 0 or 1"
+    end
+
+    # Create qubits for each basis state
+    qubits =
+      Enum.map(states, fn
+        0 -> Qx.Qubit.new()
+        1 -> Qx.Qubit.one()
+      end)
+
+    new(qubits)
+  end
+
+  @doc """
+  Creates a register where all qubits are in superposition (|+⟩ state).
+
+  ## Parameters
+    * `num_qubits` - Number of qubits to create
+
+  ## Examples
+
+      # Create 2-qubit register in equal superposition of all 4 basis states
+      iex> reg = Qx.Register.from_superposition(2)
+      iex> probs = Qx.Register.get_probabilities(reg) |> Nx.to_flat_list()
+      iex> Enum.all?(probs, fn p -> abs(p - 0.25) < 0.01 end)
+      true
+
+      # 3-qubit superposition (8 equal states)
+      iex> reg = Qx.Register.from_superposition(3)
+      iex> probs = Qx.Register.get_probabilities(reg) |> Nx.to_flat_list()
+      iex> Enum.all?(probs, fn p -> abs(p - 0.125) < 0.01 end)
+      true
+  """
+  @spec from_superposition(pos_integer()) :: t()
+  def from_superposition(num_qubits) when is_integer(num_qubits) and num_qubits > 0 do
+    Qx.Validation.validate_num_qubits!(num_qubits)
+
+    # Apply H gate to all qubits starting from |0...0⟩
+    register = new(num_qubits)
+
+    Enum.reduce(0..(num_qubits - 1), register, fn qubit_index, acc ->
+      h(acc, qubit_index)
+    end)
+  end
+
   # ============================================================================
   # Single-Qubit Gate Operations
   # ============================================================================

@@ -52,7 +52,7 @@ defmodule Qx.RegisterTest do
     end
 
     test "new/1 rejects too many qubits" do
-      assert_raise ArgumentError, fn ->
+      assert_raise Qx.QubitCountError, fn ->
         Register.new(21)
       end
     end
@@ -123,7 +123,7 @@ defmodule Qx.RegisterTest do
     test "raises on invalid qubit index" do
       reg = Register.new(2)
 
-      assert_raise ArgumentError, fn ->
+      assert_raise Qx.QubitIndexError, fn ->
         Register.h(reg, 5)
       end
     end

@@ -100,13 +100,18 @@ IO.puts("")
 IO.puts("7. Direct state access")
 state_circuit = Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1)
 quantum_state = Qx.get_state(state_circuit)
-state_amplitudes = Nx.to_flat_list(quantum_state)
 
 IO.puts("   Raw quantum state amplitudes:")
 for i <- 0..3 do
   binary = Integer.to_string(i, 2) |> String.pad_leading(2, "0")
-  amplitude = Enum.at(state_amplitudes, i)
-  IO.puts("   |#{binary}⟩: #{Float.round(amplitude, 4)}")
+  # Get complex amplitude - state is now c64 tensor
+  amplitude = Nx.to_number(quantum_state[i])
+  real = Float.round(Complex.real(amplitude), 4)
+  imag = Float.round(Complex.imag(amplitude), 4)
+
+  # Format as complex number
+  sign = if imag >= 0, do: "+", else: ""
+  IO.puts("   |#{binary}⟩: #{real}#{sign}#{imag}i")
 end
 IO.puts("")
 

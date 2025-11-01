@@ -1,6 +1,6 @@
 # Qx - Quantum Computing Simulator for Elixir
 
-Qx is a quantum computing simulator built for Elixir that provides an intuitive API for creating and simulating quantum circuits. It supports up to 20 qubits with statevector simulation using Nx as the computational backend for efficient processing.
+Qx is a quantum computing simulator built for Elixir that provides an intuitive API for creating and simulating quantum circuits. The primary goal of the project is to enhance my understanding of quantum computing concepts, quantum simulators and the Elixir Nx library. My hope is that it is eventualy valuable for others to learn quantum computing. It supports up to 20 qubits (an arbitrary number that I feel is useful but still below the memory cliff that would occurs around 30 qubits).
 
 ## Features
 
@@ -10,23 +10,21 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 - **Simple API**: Easy-to-use functions for quantum circuit creation and simulation
 - **Up to 20 Qubits**: Supports quantum circuits with up to 20 qubits
 - **Statevector Simulation**: Uses statevector method for accurate quantum state representation
-- **Nx Backend**: Leverages Nx for efficient numerical computations with GPU support
+- **EXLA Backend**: Leverages Elixir Nx for faster execution (CPU/GPU)
 - **Visualization**: Built-in plotting capabilities with SVG and VegaLite support, plus circuit diagram generation
-- **Circuit Diagrams**: Generate publication-quality SVG circuit diagrams following Qiskit conventions
-- **Comprehensive Gates**: Supports H, X, Y, Z, S, T, RX, RY, RZ, CNOT, CZ, and Toffoli gates
+- **Growing Range of Gates**: Supports H, X, Y, Z, S, T, RX, RY, RZ, CNOT, CZ, and Toffoli gates
 - **Measurements**: Quantum measurements with classical bit storage
-- **Conditional Operations**: Mid-circuit measurement with classical feedback for quantum teleportation and error correction
-- **OpenQASM 3.0 Compatible**: Conditional operations map to OpenQASM 3.0 for real hardware execution
-- **LiveBook Integration**: Works seamlessly with LiveBook for interactive quantum computing
+- **Conditional Operations**: Mid-circuit measurement with classical feedback for quantum processes like teleportation and error correction
+- **LiveBook Integration**: Full support with interactive visualizations in LiveBook
 
-## Installation
+## Installation (basic no acceleration)
 
 Add `qx` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:qx, "~> 0.1.0"}
+    {:qx, "~> 0.2.0"}
   ]
 end
 ```
@@ -36,6 +34,82 @@ Then run:
 ```bash
 mix deps.get
 ```
+
+## Performance & Acceleration
+
+### Optional GPU Acceleration (NVIDIA/AMD)
+
+For even better performance, you can enable GPU support on Linux/Windows systems:
+
+#### NVIDIA GPU (CUDA) - Linux/Windows
+```bash
+# 1. Install CUDA Toolkit (11.8 or later)
+# https://developer.nvidia.com/cuda-downloads
+
+# 2. Set environment variable before running
+export XLA_TARGET=cuda118  # or cuda120
+
+# 3. Configure in config/config.exs
+config :nx, :default_backend, {EXLA.Backend, client: :cuda}
+```
+
+#### AMD GPU (ROCm) - Linux
+```bash
+# 1. Install ROCm (5.4 or later)
+# https://rocm.docs.amd.com/
+
+# 2. Configure in config/config.exs
+config :nx, :default_backend, {EXLA.Backend, client: :rocm}
+```
+
+**Note for macOS/Apple Silicon Users**: EXLA does not currently support Metal GPU acceleration on M1/M2/M3/M4 Macs. However, you have two excellent options:
+1. **EXLA CPU backend** (recommended): speedup through XLA's LLVM optimizations
+2. **EMLX with Metal GPU**: additional speedup using MLX framework (see below)
+
+### Apple Silicon GPU Acceleration with EMLX (M1/M2/M3/M4)
+
+EMLX provides Metal GPU acceleration on Apple Silicon through the MLX framework, designed specifically for Apple's unified memory architecture:
+
+```elixir
+# Add to mix.exs dependencies
+defp deps do
+  [
+    {:qx, "~> 0.2.0"},
+    {:emlx, github: "elixir-nx/emlx", branch: "main"}
+  ]
+end
+```
+
+```elixir
+# Configure in config/config.exs
+import Config
+
+# Use EMLX with Metal GPU
+config :nx, :default_backend, {EMLX.Backend, device: :gpu}
+
+# Optional: Enable JIT compilation for Metal kernels
+# System.put_env("LIBMLX_ENABLE_JIT", "1")
+```
+
+**Installation:**
+```bash
+# Get dependencies - EMLX automatically downloads precompiled MLX binaries
+mix deps.get
+
+# Verify in IEx
+iex -S mix
+iex> Nx.default_backend({EMLX.Backend, device: :gpu})
+iex> Nx.tensor([1, 2, 3]) |> IO.inspect()
+```
+
+**Benefits**:
+- ✅ Pure Elixir solution - no Python dependencies required
+- ✅ Native Metal GPU support for M1/M2/M3/M4
+- ✅ Unified memory architecture optimization (zero-copy CPU ↔ GPU)
+- ✅ Automatic binary downloads (no manual compilation)
+- ✅ 5-20x faster than CPU for large circuits
+
+**Note**: Metal does not support 64-bit floats, but Qx uses Complex64 which is fully supported.
 
 ## Quick Start
 
@@ -111,6 +185,9 @@ Work with qubits directly - gates apply immediately!
 - `Qx.Qubit.one()` - Create |1⟩ state
 - `Qx.Qubit.plus()` - Create |+⟩ state
 - `Qx.Qubit.minus()` - Create |-⟩ state
+- `Qx.Qubit.from_basis(0 | 1)` - Create from computational basis
+- `Qx.Qubit.from_bloch(theta, phi)` - Create from Bloch sphere coordinates
+- `Qx.Qubit.from_angle(theta)` - Create from angle (simplified Bloch sphere)
 
 **Single-Qubit Gates (Calculation Mode):**
 - `Qx.Qubit.h/1` - Hadamard gate
@@ -138,6 +215,8 @@ Work with multi-qubit registers - gates apply immediately with full entanglement
 **Register Creation:**
 - `Qx.Register.new(num_qubits)` - Create register with n qubits (all |0⟩)
 - `Qx.Register.new([qubit1, qubit2, ...])` - Create from list of qubits via tensor product
+- `Qx.Register.from_basis_states([0, 1, 0])` - Create from list of basis states (e.g., |010⟩)
+- `Qx.Register.from_superposition(n)` - Create n-qubit register in equal superposition
 
 **Single-Qubit Gates (on specific qubits):**
 - `Qx.Register.h(register, qubit_index)` - Hadamard gate
@@ -220,18 +299,67 @@ result = Qx.run(qc, 1000)
 
 See `examples/conditional_gates_example.exs` for more examples.
 
-**OpenQASM 3.0 Compatibility:** Conditional operations map directly to OpenQASM 3.0 if-statements for execution on real quantum hardware.
-
 ### Circuit Visualization
 
 - `Qx.barrier(circuit, qubits)` - Add visual barrier for circuit organization
 
 ### Simulation
 
-- `Qx.run(circuit)` - Run simulation with default 1024 shots
+- `Qx.run(circuit)` - Run simulation with default 1024 shots (returns `SimulationResult`)
 - `Qx.run(circuit, shots)` - Run simulation with specified number of shots
-- `Qx.get_state(circuit)` - Get quantum state vector directly
-- `Qx.get_probabilities(circuit)` - Get probability distribution
+- `Qx.get_state(circuit)` - Get quantum state vector directly (only for circuits without measurements)
+- `Qx.get_probabilities(circuit)` - Get probability distribution (only for circuits without measurements)
+
+### Simulation Results
+
+The `Qx.run/2` function returns a `SimulationResult` struct with helper functions:
+
+- `Qx.SimulationResult.most_frequent(result)` - Get most common measurement outcome
+- `Qx.SimulationResult.filter_by_probability(result, threshold)` - Filter outcomes by probability
+- `Qx.SimulationResult.outcomes(result)` - Get list of all unique outcomes
+- `Qx.SimulationResult.probability(result, outcome)` - Get probability of specific outcome
+- `Qx.SimulationResult.to_map(result)` - Convert to map for backwards compatibility
+
+### Debugging & Inspection
+
+Pipeline-friendly tap functions for inspecting circuits during construction:
+
+- `Qx.tap_circuit(circuit, fn)` - Inspect circuit metadata without breaking pipeline
+- `Qx.tap_state(circuit, fn)` - Inspect quantum state during building
+- `Qx.tap_probabilities(circuit, fn)` - Inspect measurement probabilities
+
+**Example:**
+```elixir
+result = Qx.create_circuit(2)
+  |> Qx.h(0)
+  |> Qx.tap_circuit(fn c -> IO.puts("Gates: #{length(c.instructions)}") end)
+  |> Qx.tap_state(&IO.inspect(&1, label: "State after H"))
+  |> Qx.cx(0, 1)
+  |> Qx.tap_probabilities(fn p -> IO.puts("Bell state created!") end)
+  |> Qx.run(1000)
+```
+
+### Error Handling
+
+Qx provides domain-specific exception types for better error handling:
+
+- `Qx.QubitIndexError` - Qubit index out of range
+- `Qx.StateNormalizationError` - Invalid quantum state normalization
+- `Qx.MeasurementError` - Measurement-related errors
+- `Qx.ConditionalError` - Conditional operation errors
+- `Qx.ClassicalBitError` - Classical bit index errors
+- `Qx.GateError` - Gate operation errors
+- `Qx.QubitCountError` - Invalid qubit count
+
+**Example:**
+```elixir
+try do
+  circuit |> Qx.h(999)
+rescue
+  Qx.QubitIndexError -> IO.puts("Invalid qubit index!")
+  Qx.GateError -> IO.puts("Gate operation failed!")
+end
+```
 
 ### Visualization
 
@@ -250,6 +378,153 @@ See `examples/conditional_gates_example.exs` for more examples.
 - `Qx.bell_state()` - Create Bell state circuit
 - `Qx.ghz_state()` - Create GHZ state circuit
 - `Qx.superposition()` - Create single-qubit superposition
+
+## Using Qx with LiveBook
+
+[LiveBook](https://livebook.dev/) is the perfect environment for interactive quantum computing with Qx! Here's how to set it up with full EXLA acceleration.
+
+### Basic Setup
+
+Create a new LiveBook notebook and add this setup cell:
+
+```elixir
+Mix.install([
+  {:qx, github: "richarc/qx"},
+  {:kino, "~> 0.12"},
+  {:vega_lite, "~> 0.1.11"},
+  {:kino_vega_lite, "~> 0.1.11"}
+])
+```
+
+### Setup with EXLA Acceleration (Recommended)
+
+For maximum performance, include EXLA in your setup:
+
+```elixir
+Mix.install([
+  {:qx, github: "richarc/qx"},
+  {:exla, "~> 0.10"},
+  {:kino, "~> 0.12"},
+  {:vega_lite, "~> 0.1.11"},
+  {:kino_vega_lite, "~> 0.1.11"}
+])
+
+# Configure EXLA backend for speedup
+Application.put_env(:nx, :default_backend, EXLA.Backend)
+```
+
+### GPU Acceleration in LiveBook
+
+**For Apple Silicon (M1/M2/M3/M4 Macs)**:
+
+```elixir
+Mix.install([
+  {:qx, github: "richarc/qx"},
+  {:emlx, github: "elixir-nx/emlx", branch: "main"},
+  {:kino, "~> 0.12"},
+  {:vega_lite, "~> 0.1.11"},
+  {:kino_vega_lite, "~> 0.1.11"}
+])
+
+# Configure for Metal GPU
+Application.put_env(:nx, :default_backend, {EMLX.Backend, device: :gpu})
+```
+
+**For NVIDIA/AMD GPUs (Linux/Windows)**:
+
+```elixir
+Mix.install([
+  {:qx, github: "richarc/qx"},
+  {:exla, "~> 0.10"},
+  {:kino, "~> 0.12"},
+  {:vega_lite, "~> 0.1.11"},
+  {:kino_vega_lite, "~> 0.1.11"}
+])
+
+# Configure for CUDA GPU (NVIDIA - Linux/Windows)
+Application.put_env(:nx, :default_backend, {EXLA.Backend, client: :cuda})
+
+# Or for AMD ROCm GPU (Linux only)
+# Application.put_env(:nx, :default_backend, {EXLA.Backend, client: :rocm})
+```
+
+### Interactive Visualization Example
+
+Once set up, you can create beautiful interactive visualizations:
+
+```elixir
+# Create a Bell state
+circuit = Qx.create_circuit(2, 2)
+          |> Qx.h(0)
+          |> Qx.cx(0, 1)
+          |> Qx.measure(0, 0)
+          |> Qx.measure(1, 1)
+
+# Run simulation
+result = Qx.run(circuit, 1000)
+
+# Visualize with Kino
+Qx.draw_counts(result)
+```
+
+### Real-Time State Inspection
+
+LiveBook's reactive cells make quantum state exploration intuitive:
+
+```elixir
+# Calculation Mode - perfect for learning!
+import Qx.Qubit
+
+qubit = new()
+        |> h()
+        |> show_state()
+        |> Kino.render()
+
+# Apply more gates and see immediate results
+qubit
+|> x()
+|> show_state()
+```
+
+### Performance Verification
+
+Check that EXLA is active:
+
+```elixir
+# Verify backend
+IO.inspect(Nx.default_backend(), label: "Active Backend")
+
+# Run a quick benchmark
+{time, _result} = :timer.tc(fn ->
+  Qx.create_circuit(15, 0)
+  |> Qx.h(0)
+  |> Qx.cx(0, 1)
+  |> Qx.cx(1, 2)
+  |> Qx.get_state()
+end)
+
+IO.puts("15-qubit circuit execution: #{time / 1000} ms")
+# Should see ~90ms with EXLA, vs 15+ seconds without
+```
+
+### Tips for LiveBook Users
+
+1. **Use Calculation Mode for Learning**: Real-time gate application with `Qx.Qubit` and `Qx.Register` is perfect for understanding quantum mechanics interactively
+
+2. **Leverage Kino Widgets**: Use `Kino.render()` to create interactive controls for gate parameters
+
+3. **Performance**: Always include EXLA in your Mix.install for best performance
+
+4. **Visualization**: `Qx.draw_counts/1` returns VegaLite specs that render beautifully in LiveBook
+
+5. **Debugging**: Use tap functions (`tap_state`, `tap_probabilities`) in pipelines with `IO.inspect` for immediate feedback
+
+### Example LiveBook Notebooks
+
+Check out example notebooks in the repository:
+- `examples/livebook/getting_started.livemd` - Basic introduction
+- `examples/livebook/quantum_teleportation.livemd` - Complete teleportation tutorial
+- `examples/livebook/grovers_algorithm.livemd` - Search algorithm implementation
 
 ## Examples
 
@@ -278,19 +553,33 @@ The circuit diagram feature supports:
 
 See `examples/circuit_visualization_example.exs` for more examples.
 
-### Quantum Teleportation Setup
+### Quantum Teleportation
 
 ```elixir
-# Create a quantum teleportation circuit
+# Create a quantum teleportation circuit (teleport |1⟩ state)
 qc = Qx.create_circuit(3, 3)
-     |> Qx.h(1)           # Create Bell pair between qubits 1 and 2
-     |> Qx.cx(1, 2)
-     |> Qx.cx(0, 1)       # Bell measurement on qubits 0 and 1
+     |> Qx.x(0)                           # Prepare |1⟩ to teleport
+     |> Qx.h(1)                           # Create Bell pair
+     |> Qx.cx(1, 2)                       # between qubits 1 and 2
+     |> Qx.cx(0, 1)                       # Bell measurement
      |> Qx.h(0)
-     |> Qx.measure(0, 0)  # Measure qubit 0
-     |> Qx.measure(1, 1)  # Measure qubit 1
+     |> Qx.measure(0, 0)                  # Measure qubit 0
+     |> Qx.measure(1, 1)                  # Measure qubit 1
+     |> Qx.c_if(1, 1, fn c -> Qx.x(c, 2) end)  # Conditional corrections
+     |> Qx.c_if(0, 1, fn c -> Qx.z(c, 2) end)
+     |> Qx.measure(2, 2)                  # Measure teleported qubit
 
-result = Qx.run(qc)
+# Run simulation
+result = Qx.run(qc, 1000)
+
+# Analyze with new SimulationResult helpers
+{most_common, count} = Qx.SimulationResult.most_frequent(result)
+IO.puts("Most frequent: #{most_common} (#{count} times)")
+
+# All outcomes should have rightmost bit = 1 (successful teleportation)
+# Output: "001", "011", "101", or "111" - all with last bit = 1
+
+# Visualize
 Qx.draw_counts(result)
 ```
 
@@ -346,6 +635,14 @@ q = Qx.Qubit.new()
 IO.puts(q.state)  # "0.707|0⟩ - 0.707|1⟩"
 IO.inspect(q.probabilities)  # [{"|0⟩", 0.5}, {"|1⟩", 0.5}]
 
+# 🆕 Using new constructors
+q = Qx.Qubit.from_basis(1)         # Create |1⟩ directly
+  |> Qx.Qubit.h()
+
+# 🆕 Create from Bloch sphere (theta=π/2, phi=0 gives |+⟩)
+q = Qx.Qubit.from_bloch(:math.pi() / 2, 0)
+  |> Qx.Qubit.show_state()
+
 # Chain multiple operations
 final_state = Qx.Qubit.new()
   |> Qx.Qubit.rx(:math.pi() / 4)
@@ -369,6 +666,14 @@ reg = Qx.Register.new(2)
 #   probabilities: [{"|00⟩", 0.5}, {"|01⟩", 0.0}, {"|10⟩", 0.0}, {"|11⟩", 0.5}]
 # }
 
+# 🆕 Create from basis states
+reg = Qx.Register.from_basis_states([0, 1, 0])  # |010⟩ state
+  |> Qx.Register.show_state()
+
+# 🆕 Create in equal superposition
+reg = Qx.Register.from_superposition(3)  # All 8 states equally likely
+  |> Qx.Register.get_probabilities()
+
 # Create register from existing qubits
 q1 = Qx.Qubit.new(0.6, 0.8)  # Custom state
 q2 = Qx.Qubit.plus()          # |+⟩ state
@@ -387,8 +692,11 @@ The Qx library consists of several modules:
 - **`Qx.QuantumCircuit`** - Circuit mode: Quantum circuit structure and management
 - **`Qx.Operations`** - Quantum gate operations for circuits
 - **`Qx.Simulation`** - Circuit execution and simulation engine
+- **`Qx.SimulationResult`** - Structured simulation results with helper functions
 - **`Qx.Draw`** - Visualization and plotting functions
 - **`Qx.Math`** - Core mathematical functions for quantum mechanics
+- **`Qx.Validation`** - Input validation with custom exceptions
+- **`Qx.Behaviours.QuantumState`** - Behaviour for consistent quantum state APIs
 
 ## Calculation Mode vs Circuit Mode
 

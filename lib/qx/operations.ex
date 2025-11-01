@@ -410,4 +410,133 @@ defmodule Qx.Operations do
     # Measurements are stored separately, so we mainly need to check for nested c_if
     :ok
   end
+
+  @doc """
+  Inspects the circuit without breaking the pipeline.
+
+  The provided function receives the circuit and can perform
+  any side-effect (logging, printing, assertions), but the
+  return value is ignored and the original circuit is returned.
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `fun` - Function to execute: `(circuit -> any())`
+
+  ## Examples
+
+      iex> circuit = Qx.QuantumCircuit.new(2, 0)
+      ...> |> Qx.Operations.h(0)
+      ...> |> Qx.Operations.tap_circuit(&IO.inspect(&1.instructions, label: "After H"))
+      ...> |> Qx.Operations.cx(0, 1)
+      After H: [{:h, [0], []}]
+      %Qx.QuantumCircuit{...}
+
+      # Create circuit and inspect depth/qubits
+      circuit = Qx.QuantumCircuit.new(3, 0)
+        |> Qx.Operations.h(0)
+        |> Qx.Operations.tap_circuit(fn circ ->
+             IO.puts("Depth: #\{Qx.QuantumCircuit.depth(circ)}")
+             IO.puts("Qubits: #\{circ.num_qubits}")
+           end)
+        |> Qx.Operations.x(1)
+      # Outputs:
+      # Depth: 1
+      # Qubits: 3
+
+  ## See Also
+    * `tap_state/2` - Inspect quantum state
+    * `tap_probabilities/2` - Inspect measurement probabilities
+  """
+  @spec tap_circuit(QuantumCircuit.t(), (QuantumCircuit.t() -> any())) :: QuantumCircuit.t()
+  def tap_circuit(%QuantumCircuit{} = circuit, fun) when is_function(fun, 1) do
+    fun.(circuit)
+    circuit
+  end
+
+  @doc """
+  Inspects the current quantum state without breaking the pipeline.
+
+  **Important:** This executes all instructions so far to get
+  the current state. Use sparingly in performance-critical code.
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `fun` - Function to execute: `(Nx.Tensor.t() -> any())`
+
+  ## Examples
+
+      iex> circuit = Qx.QuantumCircuit.new(1, 0)
+      ...> |> Qx.Operations.h(0)
+      ...> |> Qx.Operations.tap_state(&IO.inspect(&1, label: "After H gate"))
+      ...> |> Qx.Operations.z(0)
+      After H gate: #Nx.Tensor<...>
+      %Qx.QuantumCircuit{...}
+
+      iex> circuit = Qx.QuantumCircuit.new(2, 0)
+      ...> |> Qx.Operations.h(0)
+      ...> |> Qx.Operations.tap_state(fn state ->
+      ...>      probs = Qx.Math.probabilities(state)
+      ...>      IO.inspect(Nx.to_list(probs), label: "Probabilities")
+      ...>    end)
+      ...> |> Qx.Operations.cx(0, 1)
+      Probabilities: [0.5, 0.5, 0.0, 0.0]
+      %Qx.QuantumCircuit{...}
+
+  ## See Also
+    * `tap_circuit/2` - Inspect circuit metadata
+    * `tap_probabilities/2` - Inspect measurement probabilities directly
+  """
+  @spec tap_state(QuantumCircuit.t(), (Nx.Tensor.t() -> any())) :: QuantumCircuit.t()
+  def tap_state(%QuantumCircuit{} = circuit, fun) when is_function(fun, 1) do
+    state = QuantumCircuit.get_state(circuit)
+    fun.(state)
+    circuit
+  end
+
+  @doc """
+  Inspects measurement probabilities without breaking the pipeline.
+
+  Convenience function that computes probabilities and passes them
+  to your inspection function.
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `fun` - Function to execute: `(Nx.Tensor.t() -> any())`
+
+  ## Examples
+
+      iex> circuit = Qx.QuantumCircuit.new(2, 2)
+      ...> |> Qx.Operations.h(0)
+      ...> |> Qx.Operations.cx(0, 1)
+      ...> |> Qx.Operations.tap_probabilities(&IO.inspect/1)
+      ...> |> Qx.Operations.measure(0, 0)
+      #Nx.Tensor<
+        f32[4]
+        [0.5, 0.0, 0.0, 0.5]
+      >
+      %Qx.QuantumCircuit{...}
+
+      # Create circuit and inspect probabilities
+      circuit = Qx.QuantumCircuit.new(1, 0)
+        |> Qx.Operations.h(0)
+        |> Qx.Operations.tap_probabilities(fn probs ->
+             prob_list = Nx.to_list(probs)
+             IO.puts("P(|0⟩) = #\{Enum.at(prob_list, 0)}")
+             IO.puts("P(|1⟩) = #\{Enum.at(prob_list, 1)}")
+           end)
+      # Outputs:
+      # P(|0⟩) = 0.5
+      # P(|1⟩) = 0.5
+
+  ## See Also
+    * `tap_state/2` - Inspect full quantum state
+    * `tap_circuit/2` - Inspect circuit metadata
+  """
+  @spec tap_probabilities(QuantumCircuit.t(), (Nx.Tensor.t() -> any())) :: QuantumCircuit.t()
+  def tap_probabilities(%QuantumCircuit{} = circuit, fun) when is_function(fun, 1) do
+    state = QuantumCircuit.get_state(circuit)
+    probs = Qx.Math.probabilities(state)
+    fun.(probs)
+    circuit
+  end
 end

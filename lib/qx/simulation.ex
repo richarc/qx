@@ -7,15 +7,9 @@ defmodule Qx.Simulation do
   All quantum states and operations properly support complex number arithmetic.
   """
 
-  alias Qx.{Math, QuantumCircuit, Gates, Calc}
+  alias Qx.{Math, QuantumCircuit, Gates, Calc, SimulationResult}
 
-  @type simulation_result :: %{
-          probabilities: Nx.Tensor.t(),
-          classical_bits: list(list(integer())),
-          state: Nx.Tensor.t(),
-          shots: integer(),
-          counts: map()
-        }
+  @type simulation_result :: SimulationResult.t()
 
   @doc """
   Executes a quantum circuit and returns the simulation results.
@@ -53,7 +47,7 @@ defmodule Qx.Simulation do
     # Perform measurements if any
     {classical_bits, counts} = perform_measurements(circuit, final_state, shots)
 
-    %{
+    %SimulationResult{
       probabilities: probabilities,
       classical_bits: classical_bits,
       state: final_state,
@@ -82,7 +76,7 @@ defmodule Qx.Simulation do
     {final_state, _} = List.last(results)
     probabilities = Math.probabilities(final_state)
 
-    %{
+    %SimulationResult{
       probabilities: probabilities,
       classical_bits: classical_bits,
       state: final_state,
@@ -94,6 +88,9 @@ defmodule Qx.Simulation do
   @doc """
   Executes a quantum circuit without measurements, returning only the final state.
 
+  **Note:** This function only works for circuits without measurements or conditionals.
+  For circuits with measurements, use `run/2` instead to get the simulation result.
+
   ## Parameters
     * `circuit` - The quantum circuit to execute
 
@@ -103,13 +100,31 @@ defmodule Qx.Simulation do
       iex> state = Qx.Simulation.get_state(qc)
       iex> Nx.shape(state)
       {2}
+
+  ## Raises
+
+    * `Qx.MeasurementError` - If circuit contains measurements or conditionals
   """
   def get_state(%QuantumCircuit{} = circuit) do
+    # Check if circuit has measurements or conditionals
+    if has_measurements?(circuit) or has_conditionals?(circuit) do
+      raise Qx.MeasurementError,
+            "Cannot get pure state from circuit with measurements or conditionals. Use run/2 instead."
+    end
+
     execute_circuit(circuit)
+  end
+
+  # Helper to check if circuit has measurements
+  defp has_measurements?(%QuantumCircuit{measurements: measurements}) do
+    length(measurements) > 0
   end
 
   @doc """
   Gets the probability distribution for all computational basis states.
+
+  **Note:** This function only works for circuits without measurements or conditionals.
+  For circuits with measurements, use `run/2` and access the probabilities from the result.
 
   ## Parameters
     * `circuit` - The quantum circuit
@@ -120,8 +135,18 @@ defmodule Qx.Simulation do
       iex> probs = Qx.Simulation.get_probabilities(qc)
       iex> Nx.shape(probs)
       {2}
+
+  ## Raises
+
+    * `Qx.MeasurementError` - If circuit contains measurements or conditionals
   """
   def get_probabilities(%QuantumCircuit{} = circuit) do
+    # Check if circuit has measurements or conditionals
+    if has_measurements?(circuit) or has_conditionals?(circuit) do
+      raise Qx.MeasurementError,
+            "Cannot get probabilities from circuit with measurements or conditionals. Use run/2 instead."
+    end
+
     final_state = execute_circuit(circuit)
     Math.probabilities(final_state)
   end

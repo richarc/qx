@@ -43,27 +43,27 @@
 
   <line x1="610" y1="60" x2="610" y2="150" stroke="#a8a8a8" stroke-width="1" stroke-dasharray="3.7,1.6" opacity="0.6"/>
 
-  <line x1="680" y1="105" x2="680" y2="150" stroke="#33b1ff" stroke-width="2"/>
-  <circle cx="680" cy="105" r="4.5" fill="#002d9c" stroke="#002d9c" stroke-width="1.5"/>
-  <circle cx="680" cy="150" r="10.5" fill="none" stroke="#000000" stroke-width="2"/>
-  <line x1="669.5" y1="150" x2="690.5" y2="150" stroke="#000000" stroke-width="2"/>
-  <line x1="680" y1="139.5" x2="680" y2="160.5" stroke="#000000" stroke-width="2"/>
+  <rect x="665.0" y="45.0" width="30" height="30" fill="#a8a8a8" stroke="#a8a8a8" stroke-width="1.5"/>
+  <path d="M 672.65 63 A 7.35 7.35 0 0 1 687.35 63" fill="none" stroke="#000000" stroke-width="2"/>
+  <line x1="680" y1="63" x2="685.25" y2="54.75" stroke="#000000" stroke-width="2"/>
+  <line x1="680" y1="75.0" x2="680" y2="216.5" stroke="#778899" stroke-width="2"/>
+  <polygon points="680,224.5 674,215.5 686,215.5" fill="#778899"/>
 
-  <line x1="750" y1="60" x2="750" y2="150" stroke="#33b1ff" stroke-width="2"/>
-  <circle cx="750" cy="60" r="4.5" fill="#002d9c" stroke="#002d9c" stroke-width="1.5"/>
-  <circle cx="750" cy="150" r="4.5" fill="#002d9c" stroke="#002d9c" stroke-width="1.5"/>
+  <rect x="735.0" y="90.0" width="30" height="30" fill="#a8a8a8" stroke="#a8a8a8" stroke-width="1.5"/>
+  <path d="M 742.65 108 A 7.35 7.35 0 0 1 757.35 108" fill="none" stroke="#000000" stroke-width="2"/>
+  <line x1="750" y1="108" x2="755.25" y2="99.75" stroke="#000000" stroke-width="2"/>
+  <line x1="750" y1="120.0" x2="750" y2="216.5" stroke="#778899" stroke-width="2"/>
+  <polygon points="750,224.5 744,215.5 756,215.5" fill="#778899"/>
 
-  <rect x="805.0" y="45.0" width="30" height="30" fill="#a8a8a8" stroke="#a8a8a8" stroke-width="1.5"/>
-  <path d="M 812.65 63 A 7.35 7.35 0 0 1 827.35 63" fill="none" stroke="#000000" stroke-width="2"/>
-  <line x1="820" y1="63" x2="825.25" y2="54.75" stroke="#000000" stroke-width="2"/>
-  <line x1="820" y1="75.0" x2="820" y2="216.5" stroke="#778899" stroke-width="2"/>
-  <polygon points="820,224.5 814,215.5 826,215.5" fill="#778899"/>
+  <line x1="820" y1="105" x2="820" y2="150" stroke="#33b1ff" stroke-width="2"/>
+  <circle cx="820" cy="105" r="4.5" fill="#002d9c" stroke="#002d9c" stroke-width="1.5"/>
+  <circle cx="820" cy="150" r="10.5" fill="none" stroke="#000000" stroke-width="2"/>
+  <line x1="809.5" y1="150" x2="830.5" y2="150" stroke="#000000" stroke-width="2"/>
+  <line x1="820" y1="139.5" x2="820" y2="160.5" stroke="#000000" stroke-width="2"/>
 
-  <rect x="875.0" y="90.0" width="30" height="30" fill="#a8a8a8" stroke="#a8a8a8" stroke-width="1.5"/>
-  <path d="M 882.65 108 A 7.35 7.35 0 0 1 897.35 108" fill="none" stroke="#000000" stroke-width="2"/>
-  <line x1="890" y1="108" x2="895.25" y2="99.75" stroke="#000000" stroke-width="2"/>
-  <line x1="890" y1="120.0" x2="890" y2="216.5" stroke="#778899" stroke-width="2"/>
-  <polygon points="890,224.5 884,215.5 896,215.5" fill="#778899"/>
+  <line x1="890" y1="60" x2="890" y2="150" stroke="#33b1ff" stroke-width="2"/>
+  <circle cx="890" cy="60" r="4.5" fill="#002d9c" stroke="#002d9c" stroke-width="1.5"/>
+  <circle cx="890" cy="150" r="4.5" fill="#002d9c" stroke="#002d9c" stroke-width="1.5"/>
 
   <rect x="945.0" y="135.0" width="30" height="30" fill="#a8a8a8" stroke="#a8a8a8" stroke-width="1.5"/>
   <path d="M 952.65 153 A 7.35 7.35 0 0 1 967.35 153" fill="none" stroke="#000000" stroke-width="2"/>
