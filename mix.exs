@@ -30,7 +30,7 @@ defmodule Qx.MixProject do
     [
       {:nx, "~> 0.10"},
       {:exla, "~> 0.10"},
-      {:emlx, "~> 0.2", optional: true},
+      # {:emlx, "~> 0.2", optional: true},
       {:vega_lite, "~> 0.1"},
       {:complex, "~> 0.6"},
       {:usage_rules, "~> 0.1"},
