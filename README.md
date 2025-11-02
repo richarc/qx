@@ -74,7 +74,7 @@ EMLX provides Metal GPU acceleration on Apple Silicon through the MLX framework,
 # Add to mix.exs dependencies
 defp deps do
   [
-    {:qx, "~> 0.2.0"},
+    {:qx, github: "richarc/qx", tag: "v0.2.0"},
     {:emlx, github: "elixir-nx/emlx", branch: "main"}
   ]
 end
