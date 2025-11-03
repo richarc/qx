@@ -10,7 +10,7 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 - **Simple API**: Easy-to-use functions for quantum circuit creation and simulation
 - **Up to 20 Qubits**: Supports quantum circuits with up to 20 qubits
 - **Statevector Simulation**: Uses statevector method for accurate quantum state representation
-- **EXLA Backend**: Leverages Elixir Nx for faster execution (CPU/GPU)
+- **Optional Acceleration**: Add EXLA or EMLX backends for speedup (CPU/GPU)
 - **Visualization**: Built-in plotting capabilities with SVG and VegaLite support, plus circuit diagram generation
 - **Growing Range of Gates**: Supports H, X, Y, Z, S, T, RX, RY, RZ, CNOT, CZ, and Toffoli gates
 - **Measurements**: Quantum measurements with classical bit storage
@@ -19,12 +19,14 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 
 ## Installation
 
-Add `qx` to your list of dependencies in `mix.exs`:
+### Basic Installation (All Platforms)
+
+Qx works immediately on any platform without additional acceleration libraries:
 
 ```elixir
 def deps do
   [
-    {:qx, github: "richarc/qx", tag: "v0.2.0"}
+    {:qx, github: "richarc/qx", branch: "main"}
   ]
 end
 ```
@@ -35,74 +37,332 @@ Then run:
 mix deps.get
 ```
 
+This installs Qx with the default `Nx.BinaryBackend`, which works on all platforms but is slower for larger quantum circuits (10+ qubits).
+
+> **Want better performance?** See [Performance & Acceleration](#performance--acceleration) below to add optional EXLA (CPU/GPU) or EMLX (Apple Silicon GPU) for backend speedup.
+
 ## Performance & Acceleration
 
-### Optional GPU Acceleration (NVIDIA/AMD)
+Qx works out-of-the-box with `Nx.BinaryBackend` on all platforms, but you can add acceleration backends for significant speedups, especially for circuits with 10+ qubits.
 
-For even better performance, you can enable GPU support on Linux/Windows systems:
+### Performance Options
 
-#### NVIDIA GPU (CUDA) - Linux/Windows
+| Backend | Platform | Compilation Required |
+|---------|----------|---------------------|
+| **Nx.BinaryBackend** | All | No (default) |
+| **EXLA (CPU)** | All | Yes (C++ compiler needed) |
+| **EXLA (CUDA)** | Linux/Windows + NVIDIA GPU | Yes + CUDA Toolkit |
+| **EXLA (ROCm)** | Linux + AMD GPU | Yes + ROCm |
+| **EMLX (Metal)** | macOS Apple Silicon | No (precompiled) |
+
+### Choose Your Acceleration Backend
+
+Select the option that matches your platform and needs:
+
+- **[EXLA CPU (All Platforms)](#exla-cpu-acceleration-recommended-for-most-users)** ← Recommended for most users
+- **[EXLA + NVIDIA GPU (Linux/Windows)](#exla--nvidia-gpu-cuda)** ← For NVIDIA GPU acceleration
+- **[EXLA + AMD GPU (Linux)](#exla--amd-gpu-rocm)** ← For AMD GPU acceleration
+- **[EMLX + Apple Silicon GPU (macOS)](#emlx--apple-silicon-gpu-metal)** ← For M1/M2/M3/M4 Macs
+
+---
+
+### EXLA CPU Acceleration (Recommended for Most Users)
+
+**Best for**: All platforms • No GPU required
+
+EXLA provides significant speedup through XLA's LLVM optimizations without requiring GPU hardware.
+
+#### Prerequisites
+
+**macOS:**
 ```bash
-# 1. Install CUDA Toolkit (11.8 or later)
-# https://developer.nvidia.com/cuda-downloads
-
-# 2. Set environment variable before running
-export XLA_TARGET=cuda118  # or cuda120
-
-# 3. Configure in config/config.exs
-config :nx, :default_backend, {EXLA.Backend, client: :cuda}
+# Install Xcode Command Line Tools
+xcode-select --install
 ```
 
-#### AMD GPU (ROCm) - Linux
+**Linux (Debian/Ubuntu):**
 ```bash
-# 1. Install ROCm (5.4 or later)
-# https://rocm.docs.amd.com/
-
-# 2. Configure in config/config.exs
-config :nx, :default_backend, {EXLA.Backend, client: :rocm}
+sudo apt install build-essential
 ```
 
-**Note for macOS/Apple Silicon Users**: EXLA does not currently support Metal GPU acceleration on M1/M2/M3/M4 Macs. However, you have two excellent options:
-1. **EXLA CPU backend** (recommended): speedup through XLA's LLVM optimizations
-2. **EMLX with Metal GPU**: additional speedup using MLX framework (see below)
+**Linux (Fedora/RHEL):**
+```bash
+sudo dnf groupinstall "Development Tools"
+```
 
-### Apple Silicon GPU Acceleration with EMLX (M1/M2/M3/M4)
+**Windows:**
+- Install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/) with C++ support, OR
+- Use [WSL2](https://docs.microsoft.com/en-us/windows/wsl/install) (recommended)
 
-EMLX provides Metal GPU acceleration on Apple Silicon through the MLX framework, designed specifically for Apple's unified memory architecture:
+#### Step 1: Add EXLA Dependency
+
+Edit your `mix.exs`:
 
 ```elixir
-# Add to mix.exs dependencies
-defp deps do
+def deps do
   [
-    {:qx, github: "richarc/qx", tag: "v0.2.0"},
-    {:emlx, github: "elixir-nx/emlx", branch: "main"}
+    {:qx, github: "richarc/qx", branch: "main"},
+    {:exla, "~> 0.10"}  # Add this line
   ]
 end
 ```
 
+#### Step 2: Install Dependencies
+
+```bash
+mix deps.get
+```
+
+**Note**: First-time EXLA compilation takes several minutes. See [EXLA installation guide](https://hexdocs.pm/exla/EXLA.html) if compilation fails.
+
+#### Step 3: Configure Backend
+
+Create or edit `config/config.exs`:
+
 ```elixir
-# Configure in config/config.exs
+import Config
+
+# Use EXLA with CPU
+config :nx, :default_backend, EXLA.Backend
+```
+
+#### Step 4: Verify Setup
+
+```bash
+iex -S mix
+```
+
+```elixir
+iex> Nx.default_backend()
+EXLA.Backend
+
+iex> # Test with a quantum circuit
+iex> Qx.create_circuit(10, 0) |> Qx.h(0) |> Qx.get_state()
+# Should execute quickly with EXLA
+```
+
+---
+
+### EXLA + NVIDIA GPU (CUDA)
+
+**Best for**: Linux/Windows with NVIDIA GPU
+
+Provides massive acceleration for larger quantum circuits using CUDA.
+
+#### Step 1: Install CUDA Toolkit
+
+Download and install CUDA Toolkit 11.8 or 12.0:
+- **[CUDA Downloads](https://developer.nvidia.com/cuda-downloads)**
+
+Verify installation:
+```bash
+nvcc --version
+```
+
+You should see output like: `Cuda compilation tools, release 11.8` or `release 12.0`
+
+#### Step 2: Set Environment Variable
+
+Add to your shell profile (`~/.bashrc`, `~/.zshrc`, or `~/.bash_profile`):
+
+```bash
+# For CUDA 11.x
+export XLA_TARGET=cuda118
+
+# For CUDA 12.x
+export XLA_TARGET=cuda120
+```
+
+Then reload your shell:
+```bash
+source ~/.bashrc  # or source ~/.zshrc
+```
+
+#### Step 3: Add EXLA Dependency
+
+Edit your `mix.exs`:
+
+```elixir
+def deps do
+  [
+    {:qx, github: "richarc/qx", branch: "main"},
+    {:exla, "~> 0.10"}  # Add this line
+  ]
+end
+```
+
+#### Step 4: Install Dependencies
+
+```bash
+mix deps.get
+```
+
+**Note**: EXLA will compile with CUDA support (15-45 minutes on first install).
+
+#### Step 5: Configure Backend
+
+Create or edit `config/config.exs`:
+
+```elixir
+import Config
+
+# Use EXLA with CUDA GPU
+config :nx, :default_backend, {EXLA.Backend, client: :cuda}
+```
+
+#### Step 6: Verify GPU Setup
+
+```bash
+iex -S mix
+```
+
+```elixir
+iex> Nx.default_backend()
+{EXLA.Backend, [client: :cuda]}
+
+iex> EXLA.Client.get_supported_platforms()
+# Should show :cuda in the list
+
+iex> # Check GPU is detected
+iex> :cuda in EXLA.Client.get_supported_platforms()
+true
+```
+
+#### Troubleshooting
+
+- **"CUDA not found"**: Ensure `XLA_TARGET` environment variable is set correctly (check with `echo $XLA_TARGET`)
+- **Compilation fails**: Verify CUDA toolkit version matches `XLA_TARGET` value
+- **Runtime errors**: Update NVIDIA drivers to latest version (`nvidia-smi` to check current version)
+- **Out of memory**: Reduce circuit size or qubit count
+
+---
+
+### EXLA + AMD GPU (ROCm)
+
+**Best for**: Linux with AMD GPU
+
+Provides similar acceleration to CUDA for AMD GPUs on Linux.
+
+#### Step 1: Install ROCm
+
+Follow the official installation guide for your Linux distribution:
+- **[ROCm Installation Guide](https://rocm.docs.amd.com/)**
+
+Minimum version: ROCm 5.4 or later
+
+Verify installation:
+```bash
+rocm-smi
+```
+
+#### Step 2: Add EXLA Dependency
+
+Edit your `mix.exs`:
+
+```elixir
+def deps do
+  [
+    {:qx, github: "richarc/qx", branch: "main"},
+    {:exla, "~> 0.10"}  # Add this line
+  ]
+end
+```
+
+#### Step 3: Install Dependencies
+
+```bash
+mix deps.get
+```
+
+**Note**: EXLA will compile with ROCm support (Several minutes on first install).
+
+#### Step 4: Configure Backend
+
+Create or edit `config/config.exs`:
+
+```elixir
+import Config
+
+# Use EXLA with ROCm GPU
+config :nx, :default_backend, {EXLA.Backend, client: :rocm}
+```
+
+#### Step 5: Verify Setup
+
+```bash
+iex -S mix
+```
+
+```elixir
+iex> Nx.default_backend()
+{EXLA.Backend, [client: :rocm]}
+
+iex> EXLA.Client.get_supported_platforms()
+# Should show :rocm in the list
+```
+
+---
+
+### EMLX + Apple Silicon GPU (Metal)
+
+**Best for**: macOS M1/M2/M3/M4 • No compilation required
+
+**Note**: EXLA does not support Metal GPU acceleration. For Apple Silicon GPU acceleration, use EMLX. For CPU-only acceleration on Apple Silicon, use [EXLA CPU](#exla-cpu-acceleration-recommended-for-most-users) instead.
+
+EMLX provides Metal GPU acceleration through Apple's MLX framework, designed specifically for Apple's unified memory architecture.
+
+#### Step 1: Add EMLX Dependency
+
+Edit your `mix.exs`:
+
+```elixir
+def deps do
+  [
+    {:qx, github: "richarc/qx", branch: "main"},
+    {:emlx, github: "elixir-nx/emlx", branch: "main"}  # Add this line
+  ]
+end
+```
+
+#### Step 2: Install Dependencies
+
+```bash
+mix deps.get
+```
+
+**Note**: EMLX automatically downloads precompiled MLX binaries (no compilation needed).
+
+#### Step 3: Configure Backend
+
+Create or edit `config/config.exs`:
+
+```elixir
 import Config
 
 # Use EMLX with Metal GPU
 config :nx, :default_backend, {EMLX.Backend, device: :gpu}
-
-# Optional: Enable JIT compilation for Metal kernels
-# System.put_env("LIBMLX_ENABLE_JIT", "1")
 ```
 
-**Installation:**
+#### Step 4: Verify Setup
+
 ```bash
-# Get dependencies - EMLX automatically downloads precompiled MLX binaries
-mix deps.get
-
-# Verify in IEx
 iex -S mix
-iex> Nx.default_backend({EMLX.Backend, device: :gpu})
-iex> Nx.tensor([1, 2, 3]) |> IO.inspect()
 ```
 
-**Note**: Metal does not support 64-bit floats, but Qx uses Complex64 which is fully supported.
+```elixir
+iex> Nx.default_backend()
+{EMLX.Backend, [device: :gpu]}
+
+iex> # Test with a simple tensor
+iex> Nx.tensor([1, 2, 3]) |> IO.inspect()
+# Should show EMLX backend in use
+```
+
+#### Notes
+
+- Metal does not support 64-bit floats, but Qx uses Complex64 which is fully supported
+- EMLX downloads precompiled binaries, so no C++ compiler is needed
+- For CPU-only acceleration on Apple Silicon, use EXLA CPU instead (requires compilation but works without GPU)
 
 ## Quick Start
 
@@ -112,8 +372,8 @@ iex> Nx.tensor([1, 2, 3]) |> IO.inspect()
 # Create and manipulate qubits directly - gates apply immediately!
 q = Qx.Qubit.new()
   |> Qx.Qubit.h()
-  |> Qx.Qubit.show_state()
 
+Qx.Qubit.show_state(q)
 # Output:
 # %{
 #   state: "0.707|0⟩ + 0.707|1⟩",
@@ -158,6 +418,183 @@ result = Qx.run(qc, 1000)  # 1000 measurement shots
 # Display results
 IO.inspect(result.counts)
 ```
+
+## Using Qx with LiveBook
+
+[LiveBook](https://livebook.dev/) is the perfect environment for interactive quantum computing with Qx!
+
+### Basic Setup (No Acceleration)
+
+Create a new LiveBook notebook and add this in the 'setup' cell:
+
+```elixir
+Mix.install([
+  {:qx, github: "richarc/qx", branch: "main"},
+  {:kino, "~> 0.12"},
+  {:vega_lite, "~> 0.1.11"},
+  {:kino_vega_lite, "~> 0.1.11"}
+])
+```
+
+This works immediately on all platforms without compilation or acceleration libraries. Best for small circuits (< 10 qubits) and learning.
+
+### Accelerated Setup Options
+
+For better performance with larger circuits, choose the setup that matches your platform:
+
+#### EXLA CPU Acceleration (All Platforms - Recommended)
+
+
+```elixir
+Mix.install([
+  {:qx, github: "richarc/qx", branch: "main"},
+  {:exla, "~> 0.10"},
+  {:kino, "~> 0.12"},
+  {:vega_lite, "~> 0.1.11"},
+  {:kino_vega_lite, "~> 0.1.11"}
+])
+
+# Configure EXLA backend
+Application.put_env(:nx, :default_backend, EXLA.Backend)
+```
+
+**Prerequisites**: See [EXLA CPU setup](#exla-cpu-acceleration-recommended-for-most-users) for installing C++ compiler.
+
+#### EMLX GPU for Apple Silicon (M1/M2/M3/M4 Macs)
+
+```elixir
+Mix.install([
+  {:qx, github: "richarc/qx", branch: "main"},
+  {:emlx, github: "elixir-nx/emlx", branch: "main"},
+  {:kino, "~> 0.12"},
+  {:vega_lite, "~> 0.1.11"},
+  {:kino_vega_lite, "~> 0.1.11"}
+])
+
+# Configure for Metal GPU
+Application.put_env(:nx, :default_backend, {EMLX.Backend, device: :gpu})
+```
+
+#### EXLA GPU for NVIDIA (Linux/Windows)
+
+
+**Prerequisites**:
+1. Install CUDA Toolkit (see [NVIDIA GPU setup](#exla--nvidia-gpu-cuda))
+2. Set `export XLA_TARGET=cuda118` (or `cuda120`) in your shell profile
+3. Restart your terminal/shell
+
+```elixir
+Mix.install([
+  {:qx, github: "richarc/qx", branch: "main"},
+  {:exla, "~> 0.10"},
+  {:kino, "~> 0.12"},
+  {:vega_lite, "~> 0.1.11"},
+  {:kino_vega_lite, "~> 0.1.11"}
+])
+
+# Configure for CUDA GPU
+Application.put_env(:nx, :default_backend, {EXLA.Backend, client: :cuda})
+```
+
+#### EXLA GPU for AMD (Linux Only)
+
+
+**Prerequisites**: Install ROCm (see [AMD GPU setup](#exla--amd-gpu-rocm))
+
+```elixir
+Mix.install([
+  {:qx, github: "richarc/qx", branch: "main"},
+  {:exla, "~> 0.10"},
+  {:kino, "~> 0.12"},
+  {:vega_lite, "~> 0.1.11"},
+  {:kino_vega_lite, "~> 0.1.11"}
+])
+
+# Configure for ROCm GPU
+Application.put_env(:nx, :default_backend, {EXLA.Backend, client: :rocm})
+```
+
+### Interactive Visualization Example
+
+Once set up, you can create beautiful interactive visualizations:
+
+```elixir
+# Create a Bell state
+circuit = Qx.create_circuit(2, 2)
+          |> Qx.h(0)
+          |> Qx.cx(0, 1)
+          |> Qx.measure(0, 0)
+          |> Qx.measure(1, 1)
+
+# Run simulation
+result = Qx.run(circuit, 1000)
+
+# Visualize with Kino
+Qx.draw_counts(result)
+```
+
+### Real-Time State Inspection
+
+LiveBook's reactive cells make quantum state exploration intuitive:
+
+```elixir
+# Calculation Mode - perfect for learning!
+import Qx.Qubit
+
+# Create a qubit and apply Hadamard gate
+qubit = new() |> h()
+
+# Display the state
+show_state(qubit) |> Kino.render()
+
+# Apply more gates and see immediate results
+qubit
+|> x()
+|> show_state()
+|> Kino.render()
+```
+
+### Performance Verification
+
+Check that EXLA is active:
+
+```elixir
+# Verify backend
+IO.inspect(Nx.default_backend(), label: "Active Backend")
+
+# Run a quick benchmark
+{time, _result} = :timer.tc(fn ->
+  Qx.create_circuit(15, 0)
+  |> Qx.h(0)
+  |> Qx.cx(0, 1)
+  |> Qx.cx(1, 2)
+  |> Qx.get_state()
+end)
+
+IO.puts("15-qubit circuit execution: #{time / 1000} ms")
+# Should see ~90ms with EXLA, vs 15+ seconds without
+```
+
+### Tips for LiveBook Users
+
+1. **Start Simple**: Begin with the basic setup (no acceleration) for learning and small circuits, then add acceleration when needed
+
+2. **Use Calculation Mode for Learning**: Real-time gate application with `Qx.Qubit` and `Qx.Register` is perfect for understanding quantum mechanics interactively
+
+3. **Leverage Kino Widgets**: Use `Kino.render()` to create interactive controls for gate parameters
+
+4. **Performance**: Add EXLA or EMLX to your Mix.install for better performance with larger circuits (10+ qubits)
+
+5. **Visualization**: `Qx.draw_counts/1` returns VegaLite specs that render beautifully in LiveBook
+
+6. **Debugging**: Use tap functions (`tap_state`, `tap_probabilities`) in pipelines with `IO.inspect` for immediate feedback
+
+### Example LiveBook Notebooks
+
+Check out example notebooks in the repository:
+- `examples/livebook/getting_started.livemd` - Basic introduction
+- `examples/livebook/quantum_teleportation.livemd` - Complete teleportation tutorial
+- `examples/livebook/grovers_algorithm.livemd` - Search algorithm implementation
 
 ## API Reference
 
@@ -372,153 +809,6 @@ end
 - `Qx.ghz_state()` - Create GHZ state circuit
 - `Qx.superposition()` - Create single-qubit superposition
 
-## Using Qx with LiveBook
-
-[LiveBook](https://livebook.dev/) is the perfect environment for interactive quantum computing with Qx! Here's how to set it up with full EXLA acceleration.
-
-### Basic Setup
-
-Create a new LiveBook notebook and add this setup cell:
-
-```elixir
-Mix.install([
-  {:qx, github: "richarc/qx"},
-  {:kino, "~> 0.12"},
-  {:vega_lite, "~> 0.1.11"},
-  {:kino_vega_lite, "~> 0.1.11"}
-])
-```
-
-### Setup with EXLA Acceleration (Recommended)
-
-For maximum performance, include EXLA in your setup:
-
-```elixir
-Mix.install([
-  {:qx, github: "richarc/qx"},
-  {:exla, "~> 0.10"},
-  {:kino, "~> 0.12"},
-  {:vega_lite, "~> 0.1.11"},
-  {:kino_vega_lite, "~> 0.1.11"}
-])
-
-# Configure EXLA backend for speedup
-Application.put_env(:nx, :default_backend, EXLA.Backend)
-```
-
-### GPU Acceleration in LiveBook
-
-**For Apple Silicon (M1/M2/M3/M4 Macs)**:
-
-```elixir
-Mix.install([
-  {:qx, github: "richarc/qx"},
-  {:emlx, github: "elixir-nx/emlx", branch: "main"},
-  {:kino, "~> 0.12"},
-  {:vega_lite, "~> 0.1.11"},
-  {:kino_vega_lite, "~> 0.1.11"}
-])
-
-# Configure for Metal GPU
-Application.put_env(:nx, :default_backend, {EMLX.Backend, device: :gpu})
-```
-
-**For NVIDIA/AMD GPUs (Linux/Windows)**:
-
-```elixir
-Mix.install([
-  {:qx, github: "richarc/qx"},
-  {:exla, "~> 0.10"},
-  {:kino, "~> 0.12"},
-  {:vega_lite, "~> 0.1.11"},
-  {:kino_vega_lite, "~> 0.1.11"}
-])
-
-# Configure for CUDA GPU (NVIDIA - Linux/Windows)
-Application.put_env(:nx, :default_backend, {EXLA.Backend, client: :cuda})
-
-# Or for AMD ROCm GPU (Linux only)
-# Application.put_env(:nx, :default_backend, {EXLA.Backend, client: :rocm})
-```
-
-### Interactive Visualization Example
-
-Once set up, you can create beautiful interactive visualizations:
-
-```elixir
-# Create a Bell state
-circuit = Qx.create_circuit(2, 2)
-          |> Qx.h(0)
-          |> Qx.cx(0, 1)
-          |> Qx.measure(0, 0)
-          |> Qx.measure(1, 1)
-
-# Run simulation
-result = Qx.run(circuit, 1000)
-
-# Visualize with Kino
-Qx.draw_counts(result)
-```
-
-### Real-Time State Inspection
-
-LiveBook's reactive cells make quantum state exploration intuitive:
-
-```elixir
-# Calculation Mode - perfect for learning!
-import Qx.Qubit
-
-qubit = new()
-        |> h()
-        |> show_state()
-        |> Kino.render()
-
-# Apply more gates and see immediate results
-qubit
-|> x()
-|> show_state()
-```
-
-### Performance Verification
-
-Check that EXLA is active:
-
-```elixir
-# Verify backend
-IO.inspect(Nx.default_backend(), label: "Active Backend")
-
-# Run a quick benchmark
-{time, _result} = :timer.tc(fn ->
-  Qx.create_circuit(15, 0)
-  |> Qx.h(0)
-  |> Qx.cx(0, 1)
-  |> Qx.cx(1, 2)
-  |> Qx.get_state()
-end)
-
-IO.puts("15-qubit circuit execution: #{time / 1000} ms")
-# Should see ~90ms with EXLA, vs 15+ seconds without
-```
-
-### Tips for LiveBook Users
-
-1. **Use Calculation Mode for Learning**: Real-time gate application with `Qx.Qubit` and `Qx.Register` is perfect for understanding quantum mechanics interactively
-
-2. **Leverage Kino Widgets**: Use `Kino.render()` to create interactive controls for gate parameters
-
-3. **Performance**: Always include EXLA in your Mix.install for best performance
-
-4. **Visualization**: `Qx.draw_counts/1` returns VegaLite specs that render beautifully in LiveBook
-
-5. **Debugging**: Use tap functions (`tap_state`, `tap_probabilities`) in pipelines with `IO.inspect` for immediate feedback
-
-### Example LiveBook Notebooks
-
-Check out example notebooks in the repository:
-- `examples/livebook/getting_started.livemd` - Basic introduction
-- `examples/livebook/quantum_teleportation.livemd` - Complete teleportation tutorial
-- `examples/livebook/grovers_algorithm.livemd` - Search algorithm implementation
-
 ## Examples
 
 ### Circuit Visualization
@@ -623,25 +913,27 @@ Qx.histogram(probs)
 q = Qx.Qubit.new()
   |> Qx.Qubit.h()
   |> Qx.Qubit.z()
-  |> Qx.Qubit.show_state()
 
-IO.puts(q.state)  # "0.707|0⟩ - 0.707|1⟩"
-IO.inspect(q.probabilities)  # [{"|0⟩", 0.5}, {"|1⟩", 0.5}]
+# Show the state
+state_info = Qx.Qubit.show_state(q)
+IO.puts(state_info.state)  # "0.707|0⟩ - 0.707|1⟩"
+IO.inspect(state_info.probabilities)  # [{"|0⟩", 0.5}, {"|1⟩", 0.5}]
 
-# 🆕 Using new constructors
+# From basis constructors
 q = Qx.Qubit.from_basis(1)         # Create |1⟩ directly
   |> Qx.Qubit.h()
 
-# 🆕 Create from Bloch sphere (theta=π/2, phi=0 gives |+⟩)
+# Create from Bloch sphere (theta=π/2, phi=0 gives |+⟩)
 q = Qx.Qubit.from_bloch(:math.pi() / 2, 0)
-  |> Qx.Qubit.show_state()
+Qx.Qubit.show_state(q)
 
 # Chain multiple operations
-final_state = Qx.Qubit.new()
+q = Qx.Qubit.new()
   |> Qx.Qubit.rx(:math.pi() / 4)
   |> Qx.Qubit.ry(:math.pi() / 3)
   |> Qx.Qubit.rz(:math.pi() / 6)
-  |> Qx.Qubit.show_state()
+
+Qx.Qubit.show_state(q)
 ```
 
 **Calculation Mode (Multi-Qubit Register):**
@@ -650,8 +942,8 @@ final_state = Qx.Qubit.new()
 reg = Qx.Register.new(2)
   |> Qx.Register.h(0)
   |> Qx.Register.cx(0, 1)
-  |> Qx.Register.show_state()
 
+Qx.Register.show_state(reg)
 # Output shows entangled state:
 # %{
 #   state: "0.707|00⟩ + 0.707|11⟩",
@@ -659,20 +951,21 @@ reg = Qx.Register.new(2)
 #   probabilities: [{"|00⟩", 0.5}, {"|01⟩", 0.0}, {"|10⟩", 0.0}, {"|11⟩", 0.5}]
 # }
 
-# 🆕 Create from basis states
+# Create from basis states
 reg = Qx.Register.from_basis_states([0, 1, 0])  # |010⟩ state
-  |> Qx.Register.show_state()
+Qx.Register.show_state(reg)
 
-# 🆕 Create in equal superposition
+# Create in equal superposition
 reg = Qx.Register.from_superposition(3)  # All 8 states equally likely
-  |> Qx.Register.get_probabilities()
+Qx.Register.get_probabilities(reg)
 
 # Create register from existing qubits
 q1 = Qx.Qubit.new(0.6, 0.8)  # Custom state
 q2 = Qx.Qubit.plus()          # |+⟩ state
 reg = Qx.Register.new([q1, q2])
   |> Qx.Register.h(0)
-  |> Qx.Register.get_probabilities()
+
+Qx.Register.get_probabilities(reg)
 ```
 
 ## Module Structure
@@ -710,11 +1003,20 @@ The Qx library consists of several modules:
 - Exporting to OpenQASM for real hardware
 
 ## Requirements
-These are the versions I've developed and tested with
+
+### Base Requirements
+These are the versions I've developed and tested with:
 
 - Elixir 1.18+
 - Nx 0.10+ (for numerical computations)
 - VegaLite 0.1+ (for visualization)
+
+### Optional Acceleration Dependencies
+
+For better performance, you can add:
+
+- **EXLA 0.10+** - CPU/GPU acceleration via XLA (see [Performance & Acceleration](#performance--acceleration))
+- **EMLX 0.2+** - Apple Silicon GPU acceleration via Metal (see [Apple Silicon GPU setup](#emlx--apple-silicon-gpu-metal))
 
 ## Limitations
 
@@ -726,18 +1028,50 @@ Current version limitations:
 
 ## Running Examples
 
-The library includes example scripts:
+### For Qx Developers (Cloned Repository)
+
+If you've cloned the Qx repository, you can run examples directly:
 
 ```bash
 # Run circuit visualization examples
 mix run examples/circuit_visualization_example.exs
 
-# Run basic usage examples (if available)
+# Run basic usage examples
 elixir examples/basic_usage.exs
 
-# Run validation tests (if available)
-elixir examples/validation.exs
+# Run conditional gates examples
+elixir examples/conditional_gates_example.exs
 ```
+
+### For Qx Users (Installed as Dependency)
+
+If you've installed Qx as a dependency in your project, **don't run examples from `deps/qx/`**. Instead:
+
+#### Option 1: Copy Examples to Your Project (Recommended)
+
+```bash
+# Copy example files to your project
+cp deps/qx/examples/*.exs ./
+
+# Run them from your project root
+mix run circuit_visualization_example.exs
+```
+
+#### Option 2: Use Code Examples in This README
+
+All major features have example code throughout this README that you can copy directly into:
+- Your own `.exs` scripts
+- IEx sessions (`iex -S mix`)
+- LiveBook notebooks (see [Using Qx with LiveBook](#using-qx-with-livebook))
+
+#### Option 3: Use LiveBook Examples
+
+Check out the interactive LiveBook notebooks in the repository:
+- `examples/livebook/getting_started.livemd`
+- `examples/livebook/quantum_teleportation.livemd`
+- `examples/livebook/grovers_algorithm.livemd`
+
+Copy these to your project or open them directly in LiveBook for an interactive experience.
 
 ## Testing
 
@@ -746,14 +1080,6 @@ Run the test suite:
 ```bash
 mix test
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure all tests pass
-5. Submit a pull request
 
 ## License
 
