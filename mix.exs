@@ -29,7 +29,7 @@ defmodule Qx.MixProject do
   defp deps do
     [
       {:nx, "~> 0.10"},
-      {:exla, "~> 0.10"},
+      # {:exla, "~> 0.10", optional: true},
       # {:emlx, "~> 0.2", optional: true},
       {:vega_lite, "~> 0.1"},
       {:complex, "~> 0.6"},
