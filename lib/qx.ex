@@ -31,7 +31,7 @@ defmodule Qx do
   - `Qx.Math` - Core mathematical functions for quantum mechanics
   """
 
-  alias Qx.{QuantumCircuit, Operations, Simulation, Draw}
+  alias Qx.{Draw, Operations, QuantumCircuit, Simulation}
 
   @type circuit :: QuantumCircuit.t()
   @type simulation_result :: Simulation.simulation_result()

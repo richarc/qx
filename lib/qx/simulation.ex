@@ -7,7 +7,7 @@ defmodule Qx.Simulation do
   All quantum states and operations properly support complex number arithmetic.
   """
 
-  alias Qx.{Math, QuantumCircuit, Gates, Calc, SimulationResult}
+  alias Qx.{Calc, Gates, Math, QuantumCircuit, SimulationResult}
 
   @type simulation_result :: SimulationResult.t()
 
@@ -117,7 +117,7 @@ defmodule Qx.Simulation do
 
   # Helper to check if circuit has measurements
   defp has_measurements?(%QuantumCircuit{measurements: measurements}) do
-    length(measurements) > 0
+    measurements != []
   end
 
   @doc """
@@ -166,7 +166,9 @@ defmodule Qx.Simulation do
   defp real_state_to_complex(state) do
     # If already c64, return as-is; otherwise convert real to complex
     case Nx.type(state) do
-      {:c, 64} -> state
+      {:c, 64} ->
+        state
+
       _ ->
         # Convert real tensor to c64
         real_list = Nx.to_flat_list(state)
@@ -176,87 +178,76 @@ defmodule Qx.Simulation do
   end
 
   defp apply_instruction({gate_name, qubits, params}, state, num_qubits) do
-    case {gate_name, length(qubits)} do
-      {:h, 1} ->
-        Calc.apply_single_qubit_gate(state, Gates.hadamard(), Enum.at(qubits, 0), num_qubits)
+    case length(qubits) do
+      0 ->
+        # Handle 0-qubit gates like :barrier
+        case gate_name do
+          :barrier -> state
+          _ -> raise "Unsupported 0-qubit gate: #{gate_name}"
+        end
 
-      {:x, 1} ->
-        Calc.apply_single_qubit_gate(state, Gates.pauli_x(), Enum.at(qubits, 0), num_qubits)
+      1 ->
+        apply_single_qubit_op(gate_name, qubits, params, state, num_qubits)
 
-      {:y, 1} ->
-        Calc.apply_single_qubit_gate(state, Gates.pauli_y(), Enum.at(qubits, 0), num_qubits)
+      2 ->
+        apply_two_qubit_op(gate_name, qubits, params, state, num_qubits)
 
-      {:z, 1} ->
-        Calc.apply_single_qubit_gate(state, Gates.pauli_z(), Enum.at(qubits, 0), num_qubits)
-
-      {:s, 1} ->
-        Calc.apply_single_qubit_gate(state, Gates.s_gate(), Enum.at(qubits, 0), num_qubits)
-
-      {:t, 1} ->
-        Calc.apply_single_qubit_gate(state, Gates.t_gate(), Enum.at(qubits, 0), num_qubits)
-
-      {:cx, 2} ->
-        Calc.apply_cnot(state, Enum.at(qubits, 0), Enum.at(qubits, 1), num_qubits)
-
-      {:ccx, 3} ->
-        Calc.apply_toffoli(
-          state,
-          Enum.at(qubits, 0),
-          Enum.at(qubits, 1),
-          Enum.at(qubits, 2),
-          num_qubits
-        )
-
-      {:cz, 2} ->
-        # CZ = H on target, CNOT, H on target
-        state
-        |> Calc.apply_single_qubit_gate(Gates.hadamard(), Enum.at(qubits, 1), num_qubits)
-        |> Calc.apply_cnot(Enum.at(qubits, 0), Enum.at(qubits, 1), num_qubits)
-        |> Calc.apply_single_qubit_gate(Gates.hadamard(), Enum.at(qubits, 1), num_qubits)
-
-      {:rx, 1} ->
-        Calc.apply_single_qubit_gate(
-          state,
-          Gates.rx(Enum.at(params, 0)),
-          Enum.at(qubits, 0),
-          num_qubits
-        )
-
-      {:ry, 1} ->
-        Calc.apply_single_qubit_gate(
-          state,
-          Gates.ry(Enum.at(params, 0)),
-          Enum.at(qubits, 0),
-          num_qubits
-        )
-
-      {:rz, 1} ->
-        Calc.apply_single_qubit_gate(
-          state,
-          Gates.rz(Enum.at(params, 0)),
-          Enum.at(qubits, 0),
-          num_qubits
-        )
-
-      {:phase, 1} ->
-        Calc.apply_single_qubit_gate(
-          state,
-          Gates.phase(Enum.at(params, 0)),
-          Enum.at(qubits, 0),
-          num_qubits
-        )
-
-      {:barrier, _} ->
-        # Barriers don't affect quantum state
-        state
-
-      {:measure, _} ->
-        # Measurements are handled separately in the timeline
-        state
+      3 ->
+        apply_three_qubit_op(gate_name, qubits, params, state, num_qubits)
 
       _ ->
         raise "Unsupported gate: #{gate_name} with #{length(qubits)} qubits"
     end
+  end
+
+  defp apply_single_qubit_op(gate_name, [qubit], params, state, num_qubits) do
+    case gate_name do
+      :h -> Calc.apply_single_qubit_gate(state, Gates.hadamard(), qubit, num_qubits)
+      :x -> Calc.apply_single_qubit_gate(state, Gates.pauli_x(), qubit, num_qubits)
+      :y -> Calc.apply_single_qubit_gate(state, Gates.pauli_y(), qubit, num_qubits)
+      :z -> Calc.apply_single_qubit_gate(state, Gates.pauli_z(), qubit, num_qubits)
+      :s -> Calc.apply_single_qubit_gate(state, Gates.s_gate(), qubit, num_qubits)
+      :t -> Calc.apply_single_qubit_gate(state, Gates.t_gate(), qubit, num_qubits)
+      _ -> apply_parameterized_single_qubit_op(gate_name, qubit, params, state, num_qubits)
+    end
+  end
+
+  defp apply_parameterized_single_qubit_op(gate_name, qubit, params, state, num_qubits) do
+    case gate_name do
+      :rx -> Calc.apply_single_qubit_gate(state, Gates.rx(hd(params)), qubit, num_qubits)
+      :ry -> Calc.apply_single_qubit_gate(state, Gates.ry(hd(params)), qubit, num_qubits)
+      :rz -> Calc.apply_single_qubit_gate(state, Gates.rz(hd(params)), qubit, num_qubits)
+      :phase -> Calc.apply_single_qubit_gate(state, Gates.phase(hd(params)), qubit, num_qubits)
+      :measure -> state
+      _ -> raise "Unsupported single-qubit gate: #{gate_name}"
+    end
+  end
+
+  defp apply_two_qubit_op(gate_name, [c, t], _params, state, num_qubits) do
+    case gate_name do
+      :cx ->
+        Calc.apply_cnot(state, c, t, num_qubits)
+
+      :cz ->
+        state
+        |> Calc.apply_single_qubit_gate(Gates.hadamard(), t, num_qubits)
+        |> Calc.apply_cnot(c, t, num_qubits)
+        |> Calc.apply_single_qubit_gate(Gates.hadamard(), t, num_qubits)
+
+      :measure ->
+        state
+
+      _ ->
+        raise "Unsupported two-qubit gate: #{gate_name}"
+    end
+  end
+
+  defp apply_three_qubit_op(:ccx, [c1, c2, t], _params, state, num_qubits) do
+    Calc.apply_toffoli(state, c1, c2, t, num_qubits)
+  end
+
+  defp apply_three_qubit_op(gate_name, qubits, _params, _state, _num_qubits) do
+    raise "Unsupported three-qubit gate: #{gate_name} with qubits #{inspect(qubits)}"
   end
 
   defp perform_measurements(%QuantumCircuit{} = circuit, final_state, shots) do
@@ -321,28 +312,7 @@ defmodule Qx.Simulation do
     # Execute timeline sequentially
     {final_state, final_classical_bits} =
       Enum.reduce(timeline, {initial_state, classical_bits}, fn item, {state, cbits} ->
-        case item do
-          {:instruction, instruction} ->
-            {apply_instruction(instruction, state, circuit.num_qubits), cbits}
-
-          {:measurement, {qubit, cbit}} ->
-            {new_state, measured_value} =
-              perform_single_measurement(state, qubit, circuit.num_qubits)
-
-            {new_state, List.replace_at(cbits, cbit, measured_value)}
-
-          {:conditional, {cbit, value, instructions}} ->
-            if Enum.at(cbits, cbit) == value do
-              new_state =
-                Enum.reduce(instructions, state, fn instr, s ->
-                  apply_instruction(instr, s, circuit.num_qubits)
-                end)
-
-              {new_state, cbits}
-            else
-              {state, cbits}
-            end
-        end
+        process_timeline_item(item, state, cbits, circuit.num_qubits)
       end)
 
     {final_state, final_classical_bits}
@@ -430,5 +400,34 @@ defmodule Qx.Simulation do
       end
 
     Nx.tensor(collapsed_data, type: :c64)
+  end
+
+  defp process_timeline_item(item, state, cbits, num_qubits) do
+    case item do
+      {:instruction, instruction} ->
+        {apply_instruction(instruction, state, num_qubits), cbits}
+
+      {:measurement, {qubit, cbit}} ->
+        {new_state, measured_value} =
+          perform_single_measurement(state, qubit, num_qubits)
+
+        {new_state, List.replace_at(cbits, cbit, measured_value)}
+
+      {:conditional, {cbit, value, instructions}} ->
+        process_conditional(cbits, cbit, value, instructions, state, num_qubits)
+    end
+  end
+
+  defp process_conditional(cbits, cbit, value, instructions, state, num_qubits) do
+    if Enum.at(cbits, cbit) == value do
+      new_state =
+        Enum.reduce(instructions, state, fn instr, s ->
+          apply_instruction(instr, s, num_qubits)
+        end)
+
+      {new_state, cbits}
+    else
+      {state, cbits}
+    end
   end
 end

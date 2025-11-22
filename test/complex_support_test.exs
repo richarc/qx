@@ -3,7 +3,7 @@ defmodule ComplexSupportTest do
   doctest Qx
 
   alias Complex, as: C
-  alias Qx.{Math, Gates, Qubit}
+  alias Qx.{Gates, Math, Qubit}
 
   test "complex number creation" do
     c = Math.complex(1.0, 2.0)

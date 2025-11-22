@@ -162,15 +162,38 @@ defmodule Qx.QuantumCircuit do
         target,
         params \\ []
       )
-      when is_atom(gate_name) and is_integer(control1) and is_integer(control2) and
-             is_integer(target) and
-             control1 >= 0 and control1 < circuit.num_qubits and
-             control2 >= 0 and control2 < circuit.num_qubits and
-             target >= 0 and target < circuit.num_qubits and
-             control1 != control2 and control1 != target and control2 != target do
+      when is_atom(gate_name) do
+    validate_three_qubit_args!(circuit, control1, control2, target)
+
     instruction = {gate_name, [control1, control2, target], params}
 
     %{circuit | instructions: circuit.instructions ++ [instruction]}
+  end
+
+  defp validate_three_qubit_args!(circuit, c1, c2, t) do
+    validate_indices_integers!(c1, c2, t)
+    validate_indices_bounds!(circuit, c1, c2, t)
+    validate_indices_distinct!(c1, c2, t)
+  end
+
+  defp validate_indices_integers!(c1, c2, t) do
+    unless is_integer(c1) and is_integer(c2) and is_integer(t) do
+      raise ArgumentError, "Qubit indices must be integers"
+    end
+  end
+
+  defp validate_indices_bounds!(circuit, c1, c2, t) do
+    unless c1 >= 0 and c1 < circuit.num_qubits and
+             c2 >= 0 and c2 < circuit.num_qubits and
+             t >= 0 and t < circuit.num_qubits do
+      raise ArgumentError, "Qubit indices out of bounds"
+    end
+  end
+
+  defp validate_indices_distinct!(c1, c2, t) do
+    if c1 == c2 or c1 == t or c2 == t do
+      raise ArgumentError, "Control and target qubits must be different"
+    end
   end
 
   @doc """
@@ -292,12 +315,12 @@ defmodule Qx.QuantumCircuit do
 
       iex> qc = Qx.QuantumCircuit.new(2, 2)
       iex> qc = Qx.QuantumCircuit.add_measurement(qc, 0, 0)
-      iex> Qx.QuantumCircuit.is_measured?(qc, 0)
+      iex> Qx.QuantumCircuit.measured?(qc, 0)
       true
-      iex> Qx.QuantumCircuit.is_measured?(qc, 1)
+      iex> Qx.QuantumCircuit.measured?(qc, 1)
       false
   """
-  def is_measured?(%__MODULE__{} = circuit, qubit) do
+  def measured?(%__MODULE__{} = circuit, qubit) do
     MapSet.member?(circuit.measured_qubits, qubit)
   end
 

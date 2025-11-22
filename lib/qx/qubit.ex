@@ -78,8 +78,8 @@ defmodule Qx.Qubit do
 
   import Nx.Defn
 
-  alias Qx.Register
   alias Complex, as: C
+  alias Qx.Register
 
   @type t :: Nx.Tensor.t()
 
@@ -538,13 +538,7 @@ defmodule Qx.Qubit do
     IO.puts("\n#{label}: #{state_info.state}")
 
     if Keyword.get(opts, :verbose, false) do
-      IO.puts("  Probabilities:")
-
-      Enum.each(state_info.probabilities, fn {basis, prob} ->
-        if prob > 1.0e-6 do
-          IO.puts("    #{basis}: #{Float.round(prob, 6)}")
-        end
-      end)
+      print_probabilities(state_info.probabilities)
     end
 
     qubit
@@ -582,4 +576,14 @@ defmodule Qx.Qubit do
 
   # Extracts state vector from Register
   defp extract_state(%Register{state: state}), do: state
+
+  defp print_probabilities(probabilities) do
+    IO.puts("  Probabilities:")
+
+    Enum.each(probabilities, fn {basis, prob} ->
+      if prob > 1.0e-6 do
+        IO.puts("    #{basis}: #{Float.round(prob, 6)}")
+      end
+    end)
+  end
 end

@@ -262,14 +262,14 @@ defmodule Qx.Math do
   ## Examples
 
       iex> pauli_x = Nx.tensor([[0.0, 1.0], [1.0, 0.0]])
-      iex> Qx.Math.is_unitary?(pauli_x)
+      iex> Qx.Math.unitary?(pauli_x)
       true
 
       iex> not_unitary = Nx.tensor([[2.0, 0.0], [0.0, 2.0]])
-      iex> Qx.Math.is_unitary?(not_unitary)
+      iex> Qx.Math.unitary?(not_unitary)
       false
   """
-  def is_unitary?(matrix) do
+  def unitary?(matrix) do
     {n, m} = Nx.shape(matrix)
 
     if n != m do
@@ -289,10 +289,11 @@ defmodule Qx.Math do
       abs_diff = Nx.abs(diff_matrix)
 
       # If still complex type (c64), extract real part
-      real_diff = case Nx.type(abs_diff) do
-        {:c, _} -> Nx.real(abs_diff)
-        _ -> abs_diff
-      end
+      real_diff =
+        case Nx.type(abs_diff) do
+          {:c, _} -> Nx.real(abs_diff)
+          _ -> abs_diff
+        end
 
       max_diff = Nx.reduce_max(real_diff) |> Nx.to_number()
 
@@ -300,7 +301,4 @@ defmodule Qx.Math do
       max_diff < 1.0e-6
     end
   end
-
-
-
 end

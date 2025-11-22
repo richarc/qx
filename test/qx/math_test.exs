@@ -2,8 +2,8 @@ defmodule Qx.MathTest do
   use ExUnit.Case
   doctest Qx.Math
 
-  alias Qx.Math
   alias Complex, as: C
+  alias Qx.Math
 
   defp approx_equal?(a, b, tolerance \\ 0.01) do
     # Handle complex numbers
@@ -24,12 +24,13 @@ defmodule Qx.MathTest do
       b = Nx.tensor([[0, 5], [6, 7]])
       result = Math.kron(a, b)
 
-      expected = Nx.tensor([
-        [0, 5, 0, 10],
-        [6, 7, 12, 14],
-        [0, 15, 0, 20],
-        [18, 21, 24, 28]
-      ])
+      expected =
+        Nx.tensor([
+          [0, 5, 0, 10],
+          [6, 7, 12, 14],
+          [0, 15, 0, 20],
+          [18, 21, 24, 28]
+        ])
 
       assert tensor_approx_equal?(result, expected, 0.01)
     end
@@ -243,15 +244,18 @@ defmodule Qx.MathTest do
     end
 
     test "creates matrix from complex numbers" do
-      matrix = Math.complex_matrix([[C.new(1.0, 0.0), C.new(0.0, 1.0)],
-                                     [C.new(0.0, -1.0), C.new(1.0, 0.0)]])
+      matrix =
+        Math.complex_matrix([
+          [C.new(1.0, 0.0), C.new(0.0, 1.0)],
+          [C.new(0.0, -1.0), C.new(1.0, 0.0)]
+        ])
+
       assert Nx.shape(matrix) == {2, 2}
       assert Nx.type(matrix) == {:c, 64}
     end
 
     test "creates matrix from mixed real and complex" do
-      matrix = Math.complex_matrix([[1, C.new(0.0, 1.0)],
-                                     [C.new(0.0, -1.0), 0]])
+      matrix = Math.complex_matrix([[1, C.new(0.0, 1.0)], [C.new(0.0, -1.0), 0]])
       assert Nx.shape(matrix) == {2, 2}
       assert Nx.type(matrix) == {:c, 64}
     end
@@ -320,30 +324,30 @@ defmodule Qx.MathTest do
     end
   end
 
-  describe "is_unitary?/1" do
+  describe "unitary?/1" do
     test "Pauli-X is unitary" do
       pauli_x = Nx.tensor([[0.0, 1.0], [1.0, 0.0]])
-      assert Math.is_unitary?(pauli_x)
+      assert Math.unitary?(pauli_x)
     end
 
     test "Hadamard is unitary" do
       h = Nx.tensor([[1.0, 1.0], [1.0, -1.0]]) |> Nx.divide(Nx.sqrt(2.0))
-      assert Math.is_unitary?(h)
+      assert Math.unitary?(h)
     end
 
     test "identity is unitary" do
       id = Math.identity(2)
-      assert Math.is_unitary?(id)
+      assert Math.unitary?(id)
     end
 
     test "non-square matrix is not unitary" do
       matrix = Nx.tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
-      refute Math.is_unitary?(matrix)
+      refute Math.unitary?(matrix)
     end
 
     test "non-unitary matrix returns false" do
       matrix = Nx.tensor([[2.0, 0.0], [0.0, 2.0]])
-      refute Math.is_unitary?(matrix)
+      refute Math.unitary?(matrix)
     end
   end
 end

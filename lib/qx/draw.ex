@@ -276,9 +276,15 @@ defmodule Qx.Draw do
     # Extract state vector
     state =
       case register_or_state do
-        %Qx.Register{state: s} -> s
-        tensor when is_struct(tensor, Nx.Tensor) -> tensor
-        _ -> raise ArgumentError, "Expected Qx.Register or Nx.Tensor, got: #{inspect(register_or_state)}"
+        %Qx.Register{state: s} ->
+          s
+
+        tensor when is_struct(tensor, Nx.Tensor) ->
+          tensor
+
+        _ ->
+          raise ArgumentError,
+                "Expected Qx.Register or Nx.Tensor, got: #{inspect(register_or_state)}"
       end
 
     # Build table data
@@ -286,15 +292,7 @@ defmodule Qx.Draw do
 
     case format do
       :auto ->
-        # Auto-detect best format based on environment
-        if kino_available?() do
-          # LiveBook environment - use Kino.Markdown for best display
-          markdown = format_state_table_markdown(table_data)
-          apply(Kino.Markdown, :new, [markdown])
-        else
-          # Terminal/IEx - use plain text
-          format_state_table_text(table_data)
-        end
+        format_auto(table_data)
 
       :text ->
         format_state_table_text(table_data)
@@ -303,25 +301,43 @@ defmodule Qx.Draw do
         format_state_table_html(table_data)
 
       :markdown ->
-        markdown = format_state_table_markdown(table_data)
-
-        if kino_available?() do
-          # Wrap in Kino.Markdown if available
-          apply(Kino.Markdown, :new, [markdown])
-        else
-          # Return plain markdown string if Kino not available
-          markdown
-        end
+        format_markdown(table_data)
 
       _ ->
-        raise ArgumentError, "Unsupported format: #{format}. Use :auto, :text, :html, or :markdown"
+        raise ArgumentError,
+              "Unsupported format: #{format}. Use :auto, :text, :html, or :markdown"
     end
+  end
+
+  defp format_auto(table_data) do
+    if kino_available?() do
+      format_markdown_kino(table_data)
+    else
+      format_state_table_text(table_data)
+    end
+  end
+
+  defp format_markdown(table_data) do
+    markdown = format_state_table_markdown(table_data)
+
+    if kino_available?() do
+      # credo:disable-for-next-line Credo.Check.Refactor.Apply
+      apply(Kino.Markdown, :new, [markdown])
+    else
+      markdown
+    end
+  end
+
+  defp format_markdown_kino(table_data) do
+    markdown = format_state_table_markdown(table_data)
+    # credo:disable-for-next-line Credo.Check.Refactor.Apply
+    apply(Kino.Markdown, :new, [markdown])
   end
 
   # Private helper functions
 
   # Check if Kino is available (indicates LiveBook environment)
-  defp kino_available?() do
+  defp kino_available? do
     Code.ensure_loaded?(Kino)
   end
 
@@ -400,7 +416,8 @@ defmodule Qx.Draw do
     # Draw a 2D projection (XZ plane view)
     # State point on sphere
     state_x = center + x * radius
-    state_z = center - z * radius  # Negative because SVG Y increases downward
+    # Negative because SVG Y increases downward
+    state_z = center - z * radius
 
     # Circle representing the sphere (equator view)
     """
@@ -472,14 +489,12 @@ defmodule Qx.Draw do
     separator = "------------|------------------------|------------\n"
 
     rows =
-      table_data
-      |> Enum.map(fn {basis, amplitude, probability} ->
+      Enum.map_join(table_data, fn {basis, amplitude, probability} ->
         String.pad_trailing(basis, 11) <>
           " | " <>
           String.pad_trailing(amplitude, 22) <>
           " | " <> to_string(probability) <> "\n"
       end)
-      |> Enum.join()
 
     header <> separator <> rows
   end
@@ -487,11 +502,9 @@ defmodule Qx.Draw do
   # Format state table as HTML
   defp format_state_table_html(table_data) do
     rows =
-      table_data
-      |> Enum.map(fn {basis, amplitude, probability} ->
+      Enum.map_join(table_data, "\n", fn {basis, amplitude, probability} ->
         "<tr><td>#{basis}</td><td>#{amplitude}</td><td>#{probability}</td></tr>"
       end)
-      |> Enum.join("\n")
 
     """
     <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
@@ -515,13 +528,11 @@ defmodule Qx.Draw do
     separator = "|-------------|-----------|-------------|\n"
 
     rows =
-      table_data
-      |> Enum.map(fn {basis, amplitude, probability} ->
+      Enum.map_join(table_data, "\n", fn {basis, amplitude, probability} ->
         # Escape pipes in basis state to prevent markdown column confusion
         escaped_basis = String.replace(basis, "|", "\\|")
         "| #{escaped_basis} | #{amplitude} | #{probability} |"
       end)
-      |> Enum.join("\n")
 
     header <> separator <> rows
   end
@@ -591,7 +602,7 @@ defmodule Qx.Draw do
     bars =
       probabilities
       |> Enum.with_index()
-      |> Enum.map(fn {prob, index} ->
+      |> Enum.map_join("\n", fn {prob, index} ->
         bar_height = if max_prob > 0, do: prob / max_prob * (height - 50), else: 0
         x = index * (bar_width + bar_spacing) + bar_spacing / 2
         y = height - 30 - bar_height
@@ -607,7 +618,6 @@ defmodule Qx.Draw do
               font-size="8" font-family="Arial">#{Float.round(prob, 3)}</text>
         """
       end)
-      |> Enum.join("\n")
 
     """
     <svg width="#{width}" height="#{height}" xmlns="http://www.w3.org/2000/svg">
@@ -621,51 +631,58 @@ defmodule Qx.Draw do
 
   defp plot_counts_svg(result, title, width, height) do
     if result.counts == %{} do
-      """
-      <svg width="#{width}" height="#{height}" xmlns="http://www.w3.org/2000/svg">
-        <title>No Measurements</title>
-        <text x="#{width / 2}" y="#{height / 2}" text-anchor="middle" font-size="14" font-family="Arial">No Measurements</text>
-      </svg>
-      """
+      render_empty_counts_svg(width, height)
     else
-      counts = Enum.to_list(result.counts)
-      max_count = counts |> Enum.map(&elem(&1, 1)) |> Enum.max()
-      num_outcomes = length(counts)
-
-      # Calculate bar dimensions
-      bar_width = width / num_outcomes * 0.8
-      bar_spacing = width / num_outcomes * 0.2
-
-      bars =
-        counts
-        |> Enum.with_index()
-        |> Enum.map(fn {{bit_string, count}, index} ->
-          bar_height = if max_count > 0, do: count / max_count * (height - 50), else: 0
-          x = index * (bar_width + bar_spacing) + bar_spacing / 2
-          y = height - 30 - bar_height
-
-          label = Enum.join(bit_string, "")
-
-          """
-          <rect x="#{x}" y="#{y}" width="#{bar_width}" height="#{bar_height}"
-                fill="#ff7f0e" stroke="#000" stroke-width="0.5"/>
-          <text x="#{x + bar_width / 2}" y="#{height - 10}" text-anchor="middle"
-                font-size="10" font-family="Arial">#{label}</text>
-          <text x="#{x + bar_width / 2}" y="#{y - 5}" text-anchor="middle"
-                font-size="8" font-family="Arial">#{count}</text>
-          """
-        end)
-        |> Enum.join("\n")
-
-      """
-      <svg width="#{width}" height="#{height}" xmlns="http://www.w3.org/2000/svg">
-        <title>#{title}</title>
-        <text x="#{width / 2}" y="20" text-anchor="middle" font-size="14" font-family="Arial" font-weight="bold">#{title}</text>
-        #{bars}
-        <text x="#{width / 2}" y="#{height - 2}" text-anchor="middle" font-size="12" font-family="Arial">Measurement Outcome</text>
-      </svg>
-      """
+      render_counts_histogram_svg(result.counts, title, width, height)
     end
+  end
+
+  defp render_empty_counts_svg(width, height) do
+    """
+    <svg width="#{width}" height="#{height}" xmlns="http://www.w3.org/2000/svg">
+      <title>No Measurements</title>
+      <text x="#{width / 2}" y="#{height / 2}" text-anchor="middle" font-size="14" font-family="Arial">No Measurements</text>
+    </svg>
+    """
+  end
+
+  defp render_counts_histogram_svg(counts_map, title, width, height) do
+    counts = Enum.to_list(counts_map)
+    max_count = counts |> Enum.map(&elem(&1, 1)) |> Enum.max()
+    num_outcomes = length(counts)
+
+    # Calculate bar dimensions
+    bar_width = width / num_outcomes * 0.8
+    bar_spacing = width / num_outcomes * 0.2
+
+    bars =
+      counts
+      |> Enum.with_index()
+      |> Enum.map_join("\n", fn {{bit_string, count}, index} ->
+        bar_height = if max_count > 0, do: count / max_count * (height - 50), else: 0
+        x = index * (bar_width + bar_spacing) + bar_spacing / 2
+        y = height - 30 - bar_height
+
+        label = Enum.join(bit_string, "")
+
+        """
+        <rect x="#{x}" y="#{y}" width="#{bar_width}" height="#{bar_height}"
+              fill="#ff7f0e" stroke="#000" stroke-width="0.5"/>
+        <text x="#{x + bar_width / 2}" y="#{height - 10}" text-anchor="middle"
+              font-size="10" font-family="Arial">#{label}</text>
+        <text x="#{x + bar_width / 2}" y="#{y - 5}" text-anchor="middle"
+              font-size="8" font-family="Arial">#{count}</text>
+        """
+      end)
+
+    """
+    <svg width="#{width}" height="#{height}" xmlns="http://www.w3.org/2000/svg">
+      <title>#{title}</title>
+      <text x="#{width / 2}" y="20" text-anchor="middle" font-size="14" font-family="Arial" font-weight="bold">#{title}</text>
+      #{bars}
+      <text x="#{width / 2}" y="#{height - 2}" text-anchor="middle" font-size="12" font-family="Arial">Measurement Outcome</text>
+    </svg>
+    """
   end
 
   defp histogram_svg(data, title, width, height) do
@@ -679,7 +696,7 @@ defmodule Qx.Draw do
     bars =
       data
       |> Enum.with_index()
-      |> Enum.map(fn {%{"state" => state, "probability" => prob}, index} ->
+      |> Enum.map_join("\n", fn {%{"state" => state, "probability" => prob}, index} ->
         bar_height = if max_prob > 0, do: prob / max_prob * (height - 50), else: 0
         x = index * (bar_width + bar_spacing) + bar_spacing / 2
         y = height - 30 - bar_height
@@ -693,7 +710,6 @@ defmodule Qx.Draw do
               font-size="8" font-family="Arial">#{Float.round(prob, 3)}</text>
         """
       end)
-      |> Enum.join("\n")
 
     """
     <svg width="#{width}" height="#{height}" xmlns="http://www.w3.org/2000/svg">
@@ -809,7 +825,24 @@ defmodule Qx.Draw do
   # Validates a gate instruction
   defp validate_gate!(gate_name, qubits, _params, num_qubits) do
     # Check if gate is supported
-    supported_gates = [:h, :x, :y, :z, :s, :t, :rx, :ry, :rz, :p, :cx, :cz, :ccx, :barrier, :measure, :c_if]
+    supported_gates = [
+      :h,
+      :x,
+      :y,
+      :z,
+      :s,
+      :t,
+      :rx,
+      :ry,
+      :rz,
+      :p,
+      :cx,
+      :cz,
+      :ccx,
+      :barrier,
+      :measure,
+      :c_if
+    ]
 
     unless gate_name in supported_gates do
       raise ArgumentError, "Unsupported gate type: #{gate_name}"
@@ -817,12 +850,16 @@ defmodule Qx.Draw do
 
     # Validate qubit indices (skip for c_if which has classical bit indices)
     unless gate_name == :c_if do
-      Enum.each(qubits, fn qubit ->
-        if qubit < 0 or qubit >= num_qubits do
-          raise ArgumentError, "Invalid qubit index #{qubit} for gate #{gate_name}"
-        end
-      end)
+      validate_qubit_indices!(qubits, num_qubits, gate_name)
     end
+  end
+
+  defp validate_qubit_indices!(qubits, num_qubits, gate_name) do
+    Enum.each(qubits, fn qubit ->
+      if qubit < 0 or qubit >= num_qubits do
+        raise ArgumentError, "Invalid qubit index #{qubit} for gate #{gate_name}"
+      end
+    end)
   end
 
   # Analyzes circuit and creates layout
@@ -869,87 +906,86 @@ defmodule Qx.Draw do
       Enum.reduce(operations, initial_state, fn operation, {layout, columns, max_col} ->
         {gate_name, qubits, params} = operation
 
-        # Handle c_if by expanding sub-instructions
         if gate_name == :c_if do
-          # Extract conditional metadata
-          [classical_bit, value] = qubits
-          sub_instructions = params
-
-          # Process each sub-instruction as a conditional gate
-          Enum.reduce(sub_instructions, {layout, columns, max_col}, fn sub_instr, {sub_layout, sub_columns, sub_max_col} ->
-            {sub_gate_name, sub_qubits, sub_params} = sub_instr
-
-            # Find column for this gate
-            column = find_available_column(sub_gate_name, sub_qubits, sub_columns, num_qubits)
-
-            # Update columns - conditionals also need vertical lines to classical register
-            qubits_to_update =
-              if needs_vertical_line?(sub_gate_name) do
-                if sub_gate_name == :measure do
-                  qubit = hd(sub_qubits)
-                  Enum.to_list(qubit..(num_qubits - 1))
-                else
-                  min_q = Enum.min(sub_qubits)
-                  max_q = Enum.max(sub_qubits)
-                  Enum.to_list(min_q..max_q)
-                end
-              else
-                # For conditional gates, mark from gate qubit to last qubit (classical register below)
-                qubit = hd(sub_qubits)
-                Enum.to_list(qubit..(num_qubits - 1))
-              end
-
-            new_columns =
-              Enum.reduce(qubits_to_update, sub_columns, fn qubit, cols ->
-                Map.put(cols, qubit, column + 1)
-              end)
-
-            # Add to layout with conditional metadata
-            gate_info = %{
-              gate: sub_gate_name,
-              qubits: sub_qubits,
-              params: sub_params,
-              column: column,
-              conditional: %{classical_bit: classical_bit, value: value}
-            }
-
-            {[gate_info | sub_layout], new_columns, max(sub_max_col, column)}
-          end)
+          process_conditional_gate(qubits, params, layout, columns, max_col, num_qubits)
         else
-          # Regular gate processing
-          column = find_available_column(gate_name, qubits, columns, num_qubits)
-
-          qubits_to_update =
-            if needs_vertical_line?(gate_name) do
-              if gate_name == :measure do
-                qubit = hd(qubits)
-                Enum.to_list(qubit..(num_qubits - 1))
-              else
-                min_q = Enum.min(qubits)
-                max_q = Enum.max(qubits)
-                Enum.to_list(min_q..max_q)
-              end
-            else
-              qubits
-            end
-
-          new_columns =
-            Enum.reduce(qubits_to_update, columns, fn qubit, cols ->
-              Map.put(cols, qubit, column + 1)
-            end)
-
-          gate_info = %{
-            gate: gate_name,
-            qubits: qubits,
-            params: params,
-            column: column
-          }
-
-          {[gate_info | layout], new_columns, max(max_col, column)}
+          process_regular_gate(gate_name, qubits, params, layout, columns, max_col, num_qubits)
         end
       end)
 
     {Enum.reverse(layout), max_column + 1}
+  end
+
+  defp process_conditional_gate(
+         [classical_bit, value],
+         sub_instructions,
+         layout,
+         columns,
+         max_col,
+         num_qubits
+       ) do
+    Enum.reduce(sub_instructions, {layout, columns, max_col}, fn sub_instr,
+                                                                 {sub_layout, sub_columns,
+                                                                  sub_max_col} ->
+      {sub_gate_name, sub_qubits, sub_params} = sub_instr
+
+      # Find column for this gate
+      column = find_available_column(sub_gate_name, sub_qubits, sub_columns, num_qubits)
+
+      # Update columns
+      qubits_to_update = get_qubits_to_update(sub_gate_name, sub_qubits, num_qubits, true)
+
+      new_columns = update_columns(sub_columns, qubits_to_update, column)
+
+      # Add to layout with conditional metadata
+      gate_info = %{
+        gate: sub_gate_name,
+        qubits: sub_qubits,
+        params: sub_params,
+        column: column,
+        conditional: %{classical_bit: classical_bit, value: value}
+      }
+
+      {[gate_info | sub_layout], new_columns, max(sub_max_col, column)}
+    end)
+  end
+
+  defp process_regular_gate(gate_name, qubits, params, layout, columns, max_col, num_qubits) do
+    column = find_available_column(gate_name, qubits, columns, num_qubits)
+
+    qubits_to_update = get_qubits_to_update(gate_name, qubits, num_qubits, false)
+
+    new_columns = update_columns(columns, qubits_to_update, column)
+
+    gate_info = %{
+      gate: gate_name,
+      qubits: qubits,
+      params: params,
+      column: column
+    }
+
+    {[gate_info | layout], new_columns, max(max_col, column)}
+  end
+
+  defp get_qubits_to_update(gate_name, qubits, num_qubits, is_conditional) do
+    if is_conditional or needs_vertical_line?(gate_name) do
+      if gate_name == :measure or is_conditional do
+        qubit = hd(qubits)
+        Enum.to_list(qubit..(num_qubits - 1))
+      else
+        min_q = Enum.min(qubits)
+        max_q = Enum.max(qubits)
+        Enum.to_list(min_q..max_q)
+      end
+    else
+      qubits
+    end
+  end
+
+  defp update_columns(columns, qubits_to_update, column) do
+    Enum.reduce(qubits_to_update, columns, fn qubit, cols ->
+      Map.put(cols, qubit, column + 1)
+    end)
   end
 
   # Find the first available column for a gate considering collision avoidance
@@ -1039,15 +1075,14 @@ defmodule Qx.Draw do
 
     # Render qubit lines
     qubit_lines =
-      for q <- 0..(diagram.num_qubits - 1) do
+      Enum.map_join(0..(diagram.num_qubits - 1), "\n", fn q ->
         y = start_y + q * @qubit_spacing
 
         """
           <line x1="#{start_x}" y1="#{y}" x2="#{line_end_x}" y2="#{y}" stroke="#000000" stroke-width="#{@line_thickness}"/>
           <text x="#{start_x - 10}" y="#{y + 5}" text-anchor="end" font-family="#{@font_family}" font-size="#{@label_font_size}">q<tspan baseline-shift="sub" font-size="#{@label_font_size * 0.7}">#{q}</tspan></text>
         """
-      end
-      |> Enum.join("\n")
+      end)
 
     # Render classical bit lines if present
     classical_lines =
@@ -1070,10 +1105,9 @@ defmodule Qx.Draw do
   # Render all gates
   defp render_gates(%CircuitDiagram{} = diagram, start_x, start_y) do
     diagram.gate_layout
-    |> Enum.map(fn gate_info ->
+    |> Enum.map_join("\n", fn gate_info ->
       render_gate(gate_info, diagram, start_x, start_y)
     end)
-    |> Enum.join("\n")
   end
 
   # Render a single gate
@@ -1291,6 +1325,12 @@ defmodule Qx.Draw do
       :z -> {"Z", @color_pauli_x}
       :s -> {"S", @color_hadamard}
       :t -> {"T", @color_hadamard}
+      _ -> parameterized_gate_label(gate_name, params)
+    end
+  end
+
+  defp parameterized_gate_label(gate_name, params) do
+    case gate_name do
       :rx -> {"RX(#{format_param(params)})", @color_hadamard}
       :ry -> {"RY(#{format_param(params)})", @color_hadamard}
       :rz -> {"RZ(#{format_param(params)})", @color_hadamard}

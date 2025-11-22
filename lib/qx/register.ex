@@ -86,7 +86,7 @@ defmodule Qx.Register do
   end
 
   def new(qubits) when is_list(qubits) do
-    if length(qubits) == 0 do
+    if qubits == [] do
       raise ArgumentError, "Cannot create register from empty list of qubits"
     end
 
@@ -227,7 +227,15 @@ defmodule Qx.Register do
   """
   def h(%__MODULE__{} = register, qubit_index) do
     validate_qubit_index!(register, qubit_index)
-    new_state = Qx.Calc.apply_single_qubit_gate(register.state, Qx.Gates.hadamard(), qubit_index, register.num_qubits)
+
+    new_state =
+      Qx.Calc.apply_single_qubit_gate(
+        register.state,
+        Qx.Gates.hadamard(),
+        qubit_index,
+        register.num_qubits
+      )
+
     %{register | state: new_state}
   end
 
@@ -242,7 +250,15 @@ defmodule Qx.Register do
   """
   def x(%__MODULE__{} = register, qubit_index) do
     validate_qubit_index!(register, qubit_index)
-    new_state = Qx.Calc.apply_single_qubit_gate(register.state, Qx.Gates.pauli_x(), qubit_index, register.num_qubits)
+
+    new_state =
+      Qx.Calc.apply_single_qubit_gate(
+        register.state,
+        Qx.Gates.pauli_x(),
+        qubit_index,
+        register.num_qubits
+      )
+
     %{register | state: new_state}
   end
 
@@ -257,7 +273,15 @@ defmodule Qx.Register do
   """
   def y(%__MODULE__{} = register, qubit_index) do
     validate_qubit_index!(register, qubit_index)
-    new_state = Qx.Calc.apply_single_qubit_gate(register.state, Qx.Gates.pauli_y(), qubit_index, register.num_qubits)
+
+    new_state =
+      Qx.Calc.apply_single_qubit_gate(
+        register.state,
+        Qx.Gates.pauli_y(),
+        qubit_index,
+        register.num_qubits
+      )
+
     %{register | state: new_state}
   end
 
@@ -272,7 +296,15 @@ defmodule Qx.Register do
   """
   def z(%__MODULE__{} = register, qubit_index) do
     validate_qubit_index!(register, qubit_index)
-    new_state = Qx.Calc.apply_single_qubit_gate(register.state, Qx.Gates.pauli_z(), qubit_index, register.num_qubits)
+
+    new_state =
+      Qx.Calc.apply_single_qubit_gate(
+        register.state,
+        Qx.Gates.pauli_z(),
+        qubit_index,
+        register.num_qubits
+      )
+
     %{register | state: new_state}
   end
 
@@ -287,7 +319,15 @@ defmodule Qx.Register do
   """
   def s(%__MODULE__{} = register, qubit_index) do
     validate_qubit_index!(register, qubit_index)
-    new_state = Qx.Calc.apply_single_qubit_gate(register.state, Qx.Gates.s_gate(), qubit_index, register.num_qubits)
+
+    new_state =
+      Qx.Calc.apply_single_qubit_gate(
+        register.state,
+        Qx.Gates.s_gate(),
+        qubit_index,
+        register.num_qubits
+      )
+
     %{register | state: new_state}
   end
 
@@ -302,7 +342,15 @@ defmodule Qx.Register do
   """
   def t(%__MODULE__{} = register, qubit_index) do
     validate_qubit_index!(register, qubit_index)
-    new_state = Qx.Calc.apply_single_qubit_gate(register.state, Qx.Gates.t_gate(), qubit_index, register.num_qubits)
+
+    new_state =
+      Qx.Calc.apply_single_qubit_gate(
+        register.state,
+        Qx.Gates.t_gate(),
+        qubit_index,
+        register.num_qubits
+      )
+
     %{register | state: new_state}
   end
 
@@ -322,7 +370,15 @@ defmodule Qx.Register do
   """
   def rx(%__MODULE__{} = register, qubit_index, theta) do
     validate_qubit_index!(register, qubit_index)
-    new_state = Qx.Calc.apply_single_qubit_gate(register.state, Qx.Gates.rx(theta), qubit_index, register.num_qubits)
+
+    new_state =
+      Qx.Calc.apply_single_qubit_gate(
+        register.state,
+        Qx.Gates.rx(theta),
+        qubit_index,
+        register.num_qubits
+      )
+
     %{register | state: new_state}
   end
 
@@ -337,7 +393,15 @@ defmodule Qx.Register do
   """
   def ry(%__MODULE__{} = register, qubit_index, theta) do
     validate_qubit_index!(register, qubit_index)
-    new_state = Qx.Calc.apply_single_qubit_gate(register.state, Qx.Gates.ry(theta), qubit_index, register.num_qubits)
+
+    new_state =
+      Qx.Calc.apply_single_qubit_gate(
+        register.state,
+        Qx.Gates.ry(theta),
+        qubit_index,
+        register.num_qubits
+      )
+
     %{register | state: new_state}
   end
 
@@ -352,7 +416,15 @@ defmodule Qx.Register do
   """
   def rz(%__MODULE__{} = register, qubit_index, theta) do
     validate_qubit_index!(register, qubit_index)
-    new_state = Qx.Calc.apply_single_qubit_gate(register.state, Qx.Gates.rz(theta), qubit_index, register.num_qubits)
+
+    new_state =
+      Qx.Calc.apply_single_qubit_gate(
+        register.state,
+        Qx.Gates.rz(theta),
+        qubit_index,
+        register.num_qubits
+      )
+
     %{register | state: new_state}
   end
 
@@ -372,7 +444,15 @@ defmodule Qx.Register do
   """
   def phase(%__MODULE__{} = register, qubit_index, phi) do
     validate_qubit_index!(register, qubit_index)
-    new_state = Qx.Calc.apply_single_qubit_gate(register.state, Qx.Gates.phase(phi), qubit_index, register.num_qubits)
+
+    new_state =
+      Qx.Calc.apply_single_qubit_gate(
+        register.state,
+        Qx.Gates.phase(phi),
+        qubit_index,
+        register.num_qubits
+      )
+
     %{register | state: new_state}
   end
 
@@ -405,7 +485,9 @@ defmodule Qx.Register do
       raise ArgumentError, "Control and target qubits must be different"
     end
 
-    new_state = Qx.Calc.apply_cnot(register.state, control_qubit, target_qubit, register.num_qubits)
+    new_state =
+      Qx.Calc.apply_cnot(register.state, control_qubit, target_qubit, register.num_qubits)
+
     %{register | state: new_state}
   end
 
@@ -462,7 +544,9 @@ defmodule Qx.Register do
       raise ArgumentError, "All qubit indices must be different"
     end
 
-    new_state = Qx.Calc.apply_toffoli(register.state, control1, control2, target, register.num_qubits)
+    new_state =
+      Qx.Calc.apply_toffoli(register.state, control1, control2, target, register.num_qubits)
+
     %{register | state: new_state}
   end
 

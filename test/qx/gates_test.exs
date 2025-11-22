@@ -1,12 +1,12 @@
 defmodule Qx.GatesTest do
   use ExUnit.Case
 
-  alias Qx.Gates
   alias Complex, as: C
+  alias Qx.Gates
 
   defp complex_approx_equal?(c1, c2, tolerance \\ 0.01) do
     abs(Complex.real(c1) - Complex.real(c2)) < tolerance and
-    abs(Complex.imag(c1) - Complex.imag(c2)) < tolerance
+      abs(Complex.imag(c1) - Complex.imag(c2)) < tolerance
   end
 
   defp matrix_elem(matrix, row, col) do
@@ -160,9 +160,9 @@ defmodule Qx.GatesTest do
         # Check all elements match
         for i <- 0..1, j <- 0..1 do
           assert complex_approx_equal?(
-            matrix_elem(gate, i, j),
-            matrix_elem(ct, i, j)
-          )
+                   matrix_elem(gate, i, j),
+                   matrix_elem(ct, i, j)
+                 )
         end
       end
     end
@@ -174,9 +174,9 @@ defmodule Qx.GatesTest do
 
       for i <- 0..1, j <- 0..1 do
         assert complex_approx_equal?(
-          matrix_elem(x_squared, i, j),
-          matrix_elem(id, i, j)
-        )
+                 matrix_elem(x_squared, i, j),
+                 matrix_elem(id, i, j)
+               )
       end
     end
 
@@ -187,9 +187,9 @@ defmodule Qx.GatesTest do
 
       for i <- 0..1, j <- 0..1 do
         assert complex_approx_equal?(
-          matrix_elem(y_squared, i, j),
-          matrix_elem(id, i, j)
-        )
+                 matrix_elem(y_squared, i, j),
+                 matrix_elem(id, i, j)
+               )
       end
     end
 
@@ -200,9 +200,9 @@ defmodule Qx.GatesTest do
 
       for i <- 0..1, j <- 0..1 do
         assert complex_approx_equal?(
-          matrix_elem(z_squared, i, j),
-          matrix_elem(id, i, j)
-        )
+                 matrix_elem(z_squared, i, j),
+                 matrix_elem(id, i, j)
+               )
       end
     end
 
@@ -213,9 +213,9 @@ defmodule Qx.GatesTest do
 
       for i <- 0..1, j <- 0..1 do
         assert complex_approx_equal?(
-          matrix_elem(h_squared, i, j),
-          matrix_elem(id, i, j)
-        )
+                 matrix_elem(h_squared, i, j),
+                 matrix_elem(id, i, j)
+               )
       end
     end
 
@@ -226,9 +226,9 @@ defmodule Qx.GatesTest do
 
       for i <- 0..1, j <- 0..1 do
         assert complex_approx_equal?(
-          matrix_elem(s4, i, j),
-          matrix_elem(id, i, j)
-        )
+                 matrix_elem(s4, i, j),
+                 matrix_elem(id, i, j)
+               )
       end
     end
   end

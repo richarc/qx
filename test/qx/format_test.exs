@@ -2,8 +2,8 @@ defmodule Qx.FormatTest do
   use ExUnit.Case
   doctest Qx.Format
 
-  alias Qx.Format
   alias Complex, as: C
+  alias Qx.Format
 
   describe "complex/2" do
     test "formats positive imaginary part" do

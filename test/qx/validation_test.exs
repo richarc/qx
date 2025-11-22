@@ -2,8 +2,8 @@ defmodule Qx.ValidationTest do
   use ExUnit.Case
   doctest Qx.Validation
 
-  alias Qx.Validation
   alias Complex, as: C
+  alias Qx.Validation
 
   describe "valid_qubit?/2" do
     test "validates normalized single qubit" do

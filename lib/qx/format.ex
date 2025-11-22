@@ -142,12 +142,11 @@ defmodule Qx.Format do
       "0.000#{basis}"
     else
       significant_terms
-      |> Enum.map(fn {basis, _amp_str, prob} ->
+      |> Enum.map_join(" + ", fn {basis, _amp_str, prob} ->
         magnitude = :math.sqrt(prob)
         mag_str = :erlang.float_to_binary(magnitude, decimals: precision)
         "#{mag_str}#{basis}"
       end)
-      |> Enum.join(" + ")
     end
   end
 
@@ -168,7 +167,7 @@ defmodule Qx.Format do
   """
   def state_label(index, num_qubits_or_size) do
     num_qubits =
-      if is_power_of_two?(num_qubits_or_size) and num_qubits_or_size > 2 do
+      if power_of_two?(num_qubits_or_size) and num_qubits_or_size > 2 do
         # It's a state size (dimension), convert to num_qubits
         trunc(:math.log2(num_qubits_or_size))
       else
@@ -182,9 +181,9 @@ defmodule Qx.Format do
   # Private helpers
 
   # Check if a number is a power of 2
-  defp is_power_of_two?(n) when n > 0 do
+  defp power_of_two?(n) when n > 0 do
     Bitwise.band(n, n - 1) == 0
   end
 
-  defp is_power_of_two?(_), do: false
+  defp power_of_two?(_), do: false
 end

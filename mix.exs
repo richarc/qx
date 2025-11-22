@@ -36,7 +36,8 @@ defmodule Qx.MixProject do
       {:usage_rules, "~> 0.1"},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       {:benchee, "~> 1.3", only: :dev},
-      {:benchee_html, "~> 1.0", only: :dev}
+      {:benchee_html, "~> 1.0", only: :dev},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end
 
