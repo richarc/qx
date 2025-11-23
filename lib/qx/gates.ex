@@ -288,38 +288,41 @@ defmodule Qx.Gates do
   def controlled_gate(gate, control_qubit, target_qubit, num_qubits) do
     state_size = trunc(:math.pow(2, num_qubits))
 
-    # Create identity matrix of appropriate size
-    identity_matrix = Nx.broadcast(0.0, {state_size, state_size, 2})
+    # Create zero matrix of appropriate size (c64)
+    zero_matrix = Nx.broadcast(Nx.tensor(0, type: :c64), {state_size, state_size})
 
-    # Fill diagonal with identity
-    for i <- 0..(state_size - 1), reduce: identity_matrix do
+    # Calculate bit positions (MSB convention: qubit 0 is leftmost)
+    control_bit_pos = num_qubits - 1 - control_qubit
+    target_bit_pos = num_qubits - 1 - target_qubit
+
+    for i <- 0..(state_size - 1), reduce: zero_matrix do
       acc ->
-        # Real part = 1
-        Nx.put_slice(acc, [i, i, 0], Nx.tensor([[[1.0]]]))
-        # Imaginary part = 0
-        |> Nx.put_slice([i, i, 1], Nx.tensor([[[0.0]]]))
+        control_bit = Bitwise.band(Bitwise.bsr(i, control_bit_pos), 1)
+
+        if control_bit == 1 do
+          # Apply gate transformation
+          target_bit = Bitwise.band(Bitwise.bsr(i, target_bit_pos), 1)
+          j = Bitwise.bxor(i, Bitwise.bsl(1, target_bit_pos))
+
+          # Get gate matrix elements
+          # If target_bit is 0, we want gate[0][0] for (i,i) and gate[1][0] for (j,i)
+          # If target_bit is 1, we want gate[1][1] for (i,i) and gate[0][1] for (j,i)
+          # Note: gate matrix is [row][col], so gate[out][in]
+
+          # Diagonal element (stay in state i)
+          diag_element = gate[target_bit][target_bit]
+
+          # Off-diagonal element (transition to state j)
+          off_diag_element = gate[1 - target_bit][target_bit]
+
+          acc
+          |> Nx.put_slice([i, i], Nx.reshape(diag_element, {1, 1}))
+          |> Nx.put_slice([j, i], Nx.reshape(off_diag_element, {1, 1}))
+        else
+          # Identity on this basis state (control not satisfied)
+          Nx.put_slice(acc, [i, i], Nx.tensor([[1]], type: :c64))
+        end
     end
-    |> then(fn id_matrix ->
-      # Apply controlled gate logic
-      for i <- 0..(state_size - 1), reduce: id_matrix do
-        acc ->
-          control_bit = Bitwise.band(Bitwise.bsr(i, control_qubit), 1)
-          target_bit = Bitwise.band(Bitwise.bsr(i, target_qubit), 1)
-
-          if control_bit == 1 do
-            # Apply gate transformation
-            j = Bitwise.bxor(i, Bitwise.bsl(1, target_qubit))
-
-            # Get gate matrix elements
-            # Flip target bit
-            gate_element = gate[target_bit][1 - target_bit]
-
-            Nx.put_slice(acc, [i, j], Nx.reshape(gate_element, {1, 1, 2}))
-          else
-            acc
-          end
-      end
-    end)
   end
 
   @doc """

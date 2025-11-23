@@ -100,10 +100,10 @@ defmodule Qx.FormatTest do
     test "formats Bell state |Φ+⟩" do
       # (|00⟩ + |11⟩)/√2
       amplitudes = [
-        {"|00⟩", "0.707+0.000i", 0.5},
-        {"|01⟩", "0.000+0.000i", 0.0},
-        {"|10⟩", "0.000+0.000i", 0.0},
-        {"|11⟩", "0.707+0.000i", 0.5}
+        {"|00⟩", C.new(0.707, 0.0), 0.5},
+        {"|01⟩", C.new(0.0, 0.0), 0.0},
+        {"|10⟩", C.new(0.0, 0.0), 0.0},
+        {"|11⟩", C.new(0.707, 0.0), 0.5}
       ]
 
       result = Format.dirac_notation(amplitudes)
@@ -112,8 +112,8 @@ defmodule Qx.FormatTest do
 
     test "formats superposition state (|0⟩ + |1⟩)/√2" do
       amplitudes = [
-        {"|0⟩", "0.707+0.000i", 0.5},
-        {"|1⟩", "0.707+0.000i", 0.5}
+        {"|0⟩", C.new(0.707, 0.0), 0.5},
+        {"|1⟩", C.new(0.707, 0.0), 0.5}
       ]
 
       result = Format.dirac_notation(amplitudes)
@@ -122,8 +122,8 @@ defmodule Qx.FormatTest do
 
     test "formats |0⟩ state" do
       amplitudes = [
-        {"|0⟩", "1.000+0.000i", 1.0},
-        {"|1⟩", "0.000+0.000i", 0.0}
+        {"|0⟩", C.new(1.0, 0.0), 1.0},
+        {"|1⟩", C.new(0.0, 0.0), 0.0}
       ]
 
       result = Format.dirac_notation(amplitudes)
@@ -132,10 +132,10 @@ defmodule Qx.FormatTest do
 
     test "filters out near-zero amplitudes" do
       amplitudes = [
-        {"|00⟩", "0.707+0.000i", 0.5},
-        {"|01⟩", "0.000+0.000i", 1.0e-10},
-        {"|10⟩", "0.707+0.000i", 0.5},
-        {"|11⟩", "0.000+0.000i", 1.0e-10}
+        {"|00⟩", C.new(0.707, 0.0), 0.5},
+        {"|01⟩", C.new(0.0, 0.0), 1.0e-10},
+        {"|10⟩", C.new(0.707, 0.0), 0.5},
+        {"|11⟩", C.new(0.0, 0.0), 1.0e-10}
       ]
 
       result = Format.dirac_notation(amplitudes)
@@ -144,8 +144,8 @@ defmodule Qx.FormatTest do
 
     test "respects custom threshold" do
       amplitudes = [
-        {"|0⟩", "0.999+0.000i", 0.998},
-        {"|1⟩", "0.045+0.000i", 0.002}
+        {"|0⟩", C.new(0.999, 0.0), 0.998},
+        {"|1⟩", C.new(0.045, 0.0), 0.002}
       ]
 
       # With default threshold, both show
@@ -160,8 +160,8 @@ defmodule Qx.FormatTest do
 
     test "respects custom precision" do
       amplitudes = [
-        {"|0⟩", "0.707107+0.000i", 0.5},
-        {"|1⟩", "0.707107+0.000i", 0.5}
+        {"|0⟩", C.new(0.707107, 0.0), 0.5},
+        {"|1⟩", C.new(0.707107, 0.0), 0.5}
       ]
 
       result = Format.dirac_notation(amplitudes, precision: 2)
@@ -170,14 +170,14 @@ defmodule Qx.FormatTest do
 
     test "handles GHZ state (|000⟩ + |111⟩)/√2" do
       amplitudes = [
-        {"|000⟩", "0.707+0.000i", 0.5},
-        {"|001⟩", "0.000+0.000i", 0.0},
-        {"|010⟩", "0.000+0.000i", 0.0},
-        {"|011⟩", "0.000+0.000i", 0.0},
-        {"|100⟩", "0.000+0.000i", 0.0},
-        {"|101⟩", "0.000+0.000i", 0.0},
-        {"|110⟩", "0.000+0.000i", 0.0},
-        {"|111⟩", "0.707+0.000i", 0.5}
+        {"|000⟩", C.new(0.707, 0.0), 0.5},
+        {"|001⟩", C.new(0.0, 0.0), 0.0},
+        {"|010⟩", C.new(0.0, 0.0), 0.0},
+        {"|011⟩", C.new(0.0, 0.0), 0.0},
+        {"|100⟩", C.new(0.0, 0.0), 0.0},
+        {"|101⟩", C.new(0.0, 0.0), 0.0},
+        {"|110⟩", C.new(0.0, 0.0), 0.0},
+        {"|111⟩", C.new(0.707, 0.0), 0.5}
       ]
 
       result = Format.dirac_notation(amplitudes)
@@ -187,10 +187,10 @@ defmodule Qx.FormatTest do
     test "handles equal superposition" do
       # All four states with equal amplitude
       amplitudes = [
-        {"|00⟩", "0.500+0.000i", 0.25},
-        {"|01⟩", "0.500+0.000i", 0.25},
-        {"|10⟩", "0.500+0.000i", 0.25},
-        {"|11⟩", "0.500+0.000i", 0.25}
+        {"|00⟩", C.new(0.5, 0.0), 0.25},
+        {"|01⟩", C.new(0.5, 0.0), 0.25},
+        {"|10⟩", C.new(0.5, 0.0), 0.25},
+        {"|11⟩", C.new(0.5, 0.0), 0.25}
       ]
 
       result = Format.dirac_notation(amplitudes)
@@ -199,8 +199,8 @@ defmodule Qx.FormatTest do
 
     test "handles empty significant terms gracefully" do
       amplitudes = [
-        {"|0⟩", "0.000+0.000i", 0.0},
-        {"|1⟩", "0.000+0.000i", 0.0}
+        {"|0⟩", C.new(0.0, 0.0), 0.0},
+        {"|1⟩", C.new(0.0, 0.0), 0.0}
       ]
 
       result = Format.dirac_notation(amplitudes)
@@ -235,8 +235,8 @@ defmodule Qx.FormatTest do
     test "formats Hadamard superposition correctly" do
       # After H gate on |0⟩
       amplitudes = [
-        {"|0⟩", "0.707+0.000i", 0.5},
-        {"|1⟩", "0.707+0.000i", 0.5}
+        {"|0⟩", C.new(0.707, 0.0), 0.5},
+        {"|1⟩", C.new(0.707, 0.0), 0.5}
       ]
 
       result = Format.dirac_notation(amplitudes)
@@ -246,13 +246,24 @@ defmodule Qx.FormatTest do
     test "formats phase states with complex amplitudes" do
       # State with phase
       amplitudes = [
-        {"|0⟩", "0.707+0.000i", 0.5},
-        {"|1⟩", "0.000+0.707i", 0.5}
+        {"|0⟩", C.new(0.707, 0.0), 0.5},
+        {"|1⟩", C.new(0.0, 0.707), 0.5}
       ]
 
-      # Note: dirac_notation uses magnitude (sqrt of probability)
+      # Now dirac_notation shows the phase
       result = Format.dirac_notation(amplitudes)
-      assert result == "0.707|0⟩ + 0.707|1⟩"
+      assert result == "0.707|0⟩ + (0.000+0.707i)|1⟩"
+    end
+
+    test "formats minus state correctly" do
+      # State |-⟩
+      amplitudes = [
+        {"|0⟩", C.new(0.707, 0.0), 0.5},
+        {"|1⟩", C.new(-0.707, 0.0), 0.5}
+      ]
+
+      result = Format.dirac_notation(amplitudes)
+      assert result == "0.707|0⟩ - 0.707|1⟩"
     end
   end
 end

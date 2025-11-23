@@ -19,9 +19,9 @@ defmodule Qx.Format do
 
       # Build Dirac notation
       iex> amplitudes = [
-      ...>   {"|00⟩", "0.707+0.000i", 0.5},
-      ...>   {"|01⟩", "0.000+0.000i", 0.0},
-      ...>   {"|10⟩", "0.707+0.000i", 0.5}
+      ...>   {"|00⟩", Complex.new(0.707, 0.0), 0.5},
+      ...>   {"|01⟩", Complex.new(0.0, 0.0), 0.0},
+      ...>   {"|10⟩", Complex.new(0.707, 0.0), 0.5}
       ...> ]
       iex> Qx.Format.dirac_notation(amplitudes)
       "0.707|00⟩ + 0.707|10⟩"
@@ -102,7 +102,7 @@ defmodule Qx.Format do
   remaining terms in standard quantum notation.
 
   ## Parameters
-  - `amplitudes_and_probs` - List of tuples: `{basis_label, amplitude_string, probability}`
+  - `amplitudes_and_probs` - List of tuples: `{basis_label, amplitude, probability}`
 
   ## Options
   - `:threshold` - Minimum probability to include (default: 1.0e-6)
@@ -111,21 +111,29 @@ defmodule Qx.Format do
   ## Examples
 
       iex> amplitudes_and_probs = [
-      ...>   {"|00⟩", "0.707+0.000i", 0.5},
-      ...>   {"|01⟩", "0.000+0.000i", 0.0},
-      ...>   {"|10⟩", "0.707+0.000i", 0.5},
-      ...>   {"|11⟩", "0.000+0.000i", 0.0}
+      ...>   {"|00⟩", Complex.new(0.707, 0.0), 0.5},
+      ...>   {"|01⟩", Complex.new(0.0, 0.0), 0.0},
+      ...>   {"|10⟩", Complex.new(0.707, 0.0), 0.5},
+      ...>   {"|11⟩", Complex.new(0.0, 0.0), 0.0}
       ...> ]
       iex> Qx.Format.dirac_notation(amplitudes_and_probs)
       "0.707|00⟩ + 0.707|10⟩"
 
       iex> # Bell state |Φ+⟩ = (|00⟩ + |11⟩)/√2
       iex> bell_state = [
-      ...>   {"|00⟩", "0.707+0.000i", 0.5},
-      ...>   {"|11⟩", "0.707+0.000i", 0.5}
+      ...>   {"|00⟩", Complex.new(0.707, 0.0), 0.5},
+      ...>   {"|11⟩", Complex.new(0.707, 0.0), 0.5}
       ...> ]
       iex> Qx.Format.dirac_notation(bell_state)
       "0.707|00⟩ + 0.707|11⟩"
+
+      iex> # Minus state |-⟩ = (|0⟩ - |1⟩)/√2
+      iex> minus_state = [
+      ...>   {"|0⟩", Complex.new(0.707, 0.0), 0.5},
+      ...>   {"|1⟩", Complex.new(-0.707, 0.0), 0.5}
+      ...> ]
+      iex> Qx.Format.dirac_notation(minus_state)
+      "0.707|0⟩ - 0.707|1⟩"
   """
   def dirac_notation(amplitudes_and_probs, opts \\ []) do
     threshold = Keyword.get(opts, :threshold, 1.0e-6)
@@ -134,7 +142,7 @@ defmodule Qx.Format do
     # Filter out near-zero amplitudes
     significant_terms =
       amplitudes_and_probs
-      |> Enum.filter(fn {_basis, _amp_str, prob} -> prob > threshold end)
+      |> Enum.filter(fn {_basis, _amp, prob} -> prob > threshold end)
 
     if Enum.empty?(significant_terms) do
       # Shouldn't happen with normalized state, but handle it gracefully
@@ -142,11 +150,41 @@ defmodule Qx.Format do
       "0.000#{basis}"
     else
       significant_terms
-      |> Enum.map_join(" + ", fn {basis, _amp_str, prob} ->
-        magnitude = :math.sqrt(prob)
-        mag_str = :erlang.float_to_binary(magnitude, decimals: precision)
-        "#{mag_str}#{basis}"
+      |> Enum.with_index()
+      |> Enum.map_join(" ", fn {{basis, amplitude, _prob}, index} ->
+        format_term(basis, amplitude, precision, index == 0)
       end)
+    end
+  end
+
+  defp format_term(basis, amplitude, precision, is_first) do
+    # Handle Complex struct or number
+    {re, im} =
+      case amplitude do
+        %Complex{re: r, im: i} -> {r, i}
+        n when is_number(n) -> {n, 0.0}
+      end
+
+    if abs(im) < 1.0e-6 do
+      # Real number
+      val = re
+      abs_val = abs(val)
+      val_str = :erlang.float_to_binary(abs_val, decimals: precision)
+
+      cond do
+        val >= 0 and is_first -> "#{val_str}#{basis}"
+        val >= 0 -> "+ #{val_str}#{basis}"
+        val < 0 -> "- #{val_str}#{basis}"
+      end
+    else
+      # Complex number
+      c_str = complex(amplitude, precision: precision)
+
+      if is_first do
+        "(#{c_str})#{basis}"
+      else
+        "+ (#{c_str})#{basis}"
+      end
     end
   end
 

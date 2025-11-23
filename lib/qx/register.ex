@@ -605,8 +605,7 @@ defmodule Qx.Register do
       |> Enum.with_index()
       |> Enum.map(fn {{amplitude, probability}, index} ->
         basis_label = Qx.Format.basis_state(index, register.num_qubits)
-        amplitude_str = Qx.Format.complex(amplitude)
-        {basis_label, amplitude_str, probability}
+        {basis_label, amplitude, probability}
       end)
 
     # Build Dirac notation (only show non-zero terms)
@@ -614,7 +613,10 @@ defmodule Qx.Register do
 
     %{
       state: state_str,
-      amplitudes: Enum.map(amplitudes_and_probs, fn {basis, amp, _prob} -> {basis, amp} end),
+      amplitudes:
+        Enum.map(amplitudes_and_probs, fn {basis, amp, _prob} ->
+          {basis, Qx.Format.complex(amp)}
+        end),
       probabilities: Enum.map(amplitudes_and_probs, fn {basis, _amp, prob} -> {basis, prob} end)
     }
   end
