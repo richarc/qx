@@ -409,45 +409,219 @@ defmodule Qx.Draw do
   end
 
   # Render Bloch sphere as SVG
-  defp bloch_sphere_svg({x, y, z, _theta, _phi}, title, size) do
-    center = size / 2
+  defp bloch_sphere_svg({x, y, z, theta, phi}, title, size) do
+    # 3D Projection Parameters
+    # View angles (in radians)
+    # Elevation (30 degrees)
+    view_theta = :math.pi() / 6
+    # Azimuth (-45 degrees)
+    view_phi = -:math.pi() / 4
+
+    # Center and scale
+    cx = size / 2
+    cy = size / 2
     radius = size * 0.35
 
-    # Draw a 2D projection (XZ plane view)
-    # State point on sphere
-    state_x = center + x * radius
-    # Negative because SVG Y increases downward
-    state_z = center - z * radius
+    # 1. Generate 3D points for all elements
+    # -------------------------------------
 
-    # Circle representing the sphere (equator view)
+    # Sphere wireframe (Latitude lines)
+    latitudes =
+      for lat <- [-60, -30, 0, 30, 60] do
+        lat_rad = lat * :math.pi() / 180
+        r_lat = :math.cos(lat_rad)
+        y_lat = :math.sin(lat_rad)
+
+        for lon <- 0..360//10 do
+          lon_rad = lon * :math.pi() / 180
+          x_3d = r_lat * :math.cos(lon_rad)
+          z_3d = r_lat * :math.sin(lon_rad)
+          {x_3d, z_3d, y_lat}
+        end
+      end
+
+    # Sphere wireframe (Longitude lines)
+    longitudes =
+      for lon <- [0, 45, 90, 135, 180, 225, 270, 315] do
+        lon_rad = lon * :math.pi() / 180
+        cos_lon = :math.cos(lon_rad)
+        sin_lon = :math.sin(lon_rad)
+
+        for lat <- -90..90//10 do
+          lat_rad = lat * :math.pi() / 180
+          r_lat = :math.cos(lat_rad)
+          y_lat = :math.sin(lat_rad)
+          x_3d = r_lat * cos_lon
+          z_3d = r_lat * sin_lon
+          {x_3d, z_3d, y_lat}
+        end
+      end
+
+    # Axes
+    axes = [
+      # Start, End, Label, Color
+      {{-1.2, 0, 0}, {1.2, 0, 0}, "x", "#FF5733"},
+      # Y is Z in our 3D coords for vertical
+      {{0, 0, -1.2}, {0, 0, 1.2}, "y", "#33FF57"},
+      # Z is Y in our 3D coords for depth
+      {{0, -1.2, 0}, {0, 1.2, 0}, "z", "#3357FF"}
+    ]
+
+    # Note on Coordinate System Mapping:
+    # Standard Bloch Sphere:
+    # Z-axis is vertical (North/South poles) -> Maps to our 3D Y
+    # X-axis is forward/back (Equator) -> Maps to our 3D Z
+    # Y-axis is left/right (Equator) -> Maps to our 3D X
+    #
+    # Input {x, y, z} from qubit_to_bloch_coordinates is:
+    # x: projection on X-axis (Bloch X)
+    # y: projection on Y-axis (Bloch Y)
+    # z: projection on Z-axis (Bloch Z)
+    #
+    # So we map input {x, y, z} to our 3D engine {x3d, y3d, z3d} as:
+    # x3d = y (Bloch Y)
+    # y3d = z (Bloch Z) - Vertical
+    # z3d = x (Bloch X) - Depth
+
+    # State Vector
+    # Map Bloch coordinates to 3D engine coordinates
+    state_vector_tip = {y, z, x}
+
+    # Labels
+    labels = [
+      # Pos, Text, Anchor
+      {{0, 1.1, 0}, "|0⟩", "middle"},
+      {{0, -1.1, 0}, "|1⟩", "middle"},
+      {{0, 0, 1.1}, "|+⟩", "start"},
+      {{0, 0, -1.1}, "|-⟩", "end"},
+      {{1.1, 0, 0}, "|i⟩", "start"},
+      {{-1.1, 0, 0}, "|-i⟩", "end"}
+    ]
+
+    # 2. Project and Render
+    # ---------------------
+
+    # Helper to project 3D point to 2D SVG coordinates
+    project = fn {x3d, y3d, z3d} ->
+      # Rotation around Y axis (Azimuth)
+      x1 = x3d * :math.cos(view_phi) - z3d * :math.sin(view_phi)
+      z1 = x3d * :math.sin(view_phi) + z3d * :math.cos(view_phi)
+
+      # Rotation around X axis (Elevation)
+      y2 = y3d * :math.cos(view_theta) - z1 * :math.sin(view_theta)
+      z2 = y3d * :math.sin(view_theta) + z1 * :math.cos(view_theta)
+
+      # Perspective projection (optional, using orthographic for scientific look)
+      # scale = 1 / (1 - z2 * 0.2)
+      scale = 1.0
+
+      svg_x = cx + x1 * radius * scale
+      # Invert Y for SVG
+      svg_y = cy - y2 * radius * scale
+
+      # Return depth for sorting
+      {svg_x, svg_y, z2}
+    end
+
+    # Render Wireframe (Back)
+    wireframe_paths_back =
+      (latitudes ++ longitudes)
+      |> Enum.map(fn points ->
+        projected = Enum.map(points, project)
+        # Check if average depth is behind center
+        avg_z = Enum.sum(Enum.map(projected, &elem(&1, 2))) / length(projected)
+        {avg_z, projected}
+      end)
+      |> Enum.filter(fn {z, _} -> z < 0 end)
+      |> Enum.map(fn {_, points} -> points_to_svg_path(points, "#e0e0e0", 1, "2,2") end)
+
+    # Render Wireframe (Front)
+    wireframe_paths_front =
+      (latitudes ++ longitudes)
+      |> Enum.map(fn points ->
+        projected = Enum.map(points, project)
+        avg_z = Enum.sum(Enum.map(projected, &elem(&1, 2))) / length(projected)
+        {avg_z, projected}
+      end)
+      |> Enum.filter(fn {z, _} -> z >= 0 end)
+      |> Enum.map(fn {_, points} -> points_to_svg_path(points, "#cccccc", 1) end)
+
+    # Render Axes
+    axes_svg =
+      axes
+      |> Enum.map(fn {p1, p2, label, color} ->
+        {x1, y1, _} = project.(p1)
+        {x2, y2, _} = project.(p2)
+
+        """
+        <line x1="#{x1}" y1="#{y1}" x2="#{x2}" y2="#{y2}" stroke="#{color}" stroke-width="1.5" opacity="0.8"/>
+        <text x="#{x2}" y="#{y2}" fill="#{color}" font-family="Arial" font-size="12" font-weight="bold">#{label}</text>
+        """
+      end)
+
+    # Render Labels
+    labels_svg =
+      labels
+      |> Enum.map(fn {pos, text, anchor} ->
+        {lx, ly, _} = project.(pos)
+        # Adjust position slightly to avoid overlap
+        ly = ly + 4
+        # Move slightly right to avoid axis occlusion
+        lx = lx + 10
+
+        """
+        <text x="#{lx}" y="#{ly}" text-anchor="#{anchor}" font-family="Arial" font-size="14" font-weight="bold" fill="#333">#{text}</text>
+        """
+      end)
+
+    # Render State Vector
+    {vx, vy, _} = project.(state_vector_tip)
+    {ox, oy, _} = project.({0, 0, 0})
+
+    vector_svg = """
+    <line x1="#{ox}" y1="#{oy}" x2="#{vx}" y2="#{vy}" stroke="#FF0000" stroke-width="3"/>
+    <circle cx="#{vx}" cy="#{vy}" r="5" fill="#FF0000"/>
     """
-    <svg width="#{size}" height="#{size}" xmlns="http://www.w3.org/2000/svg">
-      <rect width="#{size}" height="#{size}" fill="#ffffff"/>
-      <text x="#{center}" y="25" text-anchor="middle" font-family="Arial" font-size="16" font-weight="bold">#{title}</text>
 
-      <!-- Sphere outline -->
-      <circle cx="#{center}" cy="#{center}" r="#{radius}" fill="none" stroke="#cccccc" stroke-width="2"/>
+    # Assemble SVG
+    """
+    <svg width="#{size}" height="#{size}" xmlns="http://www.w3.org/2000/svg" style="background: white;">
+      <title>#{title}</title>
+      <rect width="100%" height="100%" fill="white"/>
+      <text x="#{cx}" y="25" text-anchor="middle" font-family="Arial" font-size="18" font-weight="bold">#{title}</text>
+
+      <!-- Back Wireframe -->
+      #{Enum.join(wireframe_paths_back, "\n")}
 
       <!-- Axes -->
-      <line x1="#{center - radius * 1.1}" y1="#{center}" x2="#{center + radius * 1.1}" y2="#{center}" stroke="#999999" stroke-width="1"/>
-      <line x1="#{center}" y1="#{center - radius * 1.1}" x2="#{center}" y2="#{center + radius * 1.1}" stroke="#999999" stroke-width="1"/>
+      #{Enum.join(axes_svg, "\n")}
 
-      <!-- Axis labels -->
-      <text x="#{center + radius * 1.2}" y="#{center + 5}" font-family="Arial" font-size="14">|+⟩</text>
-      <text x="#{center - radius * 1.3}" y="#{center + 5}" font-family="Arial" font-size="14">|-⟩</text>
-      <text x="#{center}" y="#{center - radius * 1.15}" text-anchor="middle" font-family="Arial" font-size="14">|0⟩</text>
-      <text x="#{center}" y="#{center + radius * 1.25}" text-anchor="middle" font-family="Arial" font-size="14">|1⟩</text>
+      <!-- Front Wireframe -->
+      #{Enum.join(wireframe_paths_front, "\n")}
 
-      <!-- State vector -->
-      <line x1="#{center}" y1="#{center}" x2="#{state_x}" y2="#{state_z}" stroke="#ff0000" stroke-width="3"/>
-      <circle cx="#{state_x}" cy="#{state_z}" r="6" fill="#ff0000"/>
+      <!-- State Vector -->
+      #{vector_svg}
 
-      <!-- Coordinates -->
-      <text x="#{size / 2}" y="#{size - 10}" text-anchor="middle" font-family="Arial" font-size="12">
-        (x: #{Float.round(x, 3)}, y: #{Float.round(y, 3)}, z: #{Float.round(z, 3)})
+      <!-- Labels -->
+      #{Enum.join(labels_svg, "\n")}
+
+      <!-- Info Footer -->
+      <text x="#{cx}" y="#{size - 10}" text-anchor="middle" font-family="monospace" font-size="11" fill="#666">
+        θ: #{Float.round(theta / :math.pi(), 2)}π, φ: #{Float.round(phi / :math.pi(), 2)}π
       </text>
     </svg>
     """
+  end
+
+  defp points_to_svg_path(points, color, width, dash \\ "") do
+    d =
+      points
+      |> Enum.map(fn {x, y, _} -> "#{x},#{y}" end)
+      |> Enum.join(" L ")
+
+    dash_attr = if dash != "", do: "stroke-dasharray=\"#{dash}\"", else: ""
+
+    "<path d=\"M #{d}\" fill=\"none\" stroke=\"#{color}\" stroke-width=\"#{width}\" #{dash_attr}/>"
   end
 
   # Build state table data

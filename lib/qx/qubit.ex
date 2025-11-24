@@ -74,6 +74,7 @@ defmodule Qx.Qubit do
   - `Qx.Register` - Multi-qubit calculation mode
   - `Qx.QuantumCircuit` - Circuit mode for building quantum circuits
   - `Qx.Draw.bloch_sphere/2` - Visualize single qubit states
+  - `Qx.Qubit.draw_bloch/2` - Visualize qubit on Bloch sphere
   """
 
   import Nx.Defn
@@ -82,6 +83,35 @@ defmodule Qx.Qubit do
   alias Qx.Register
 
   @type t :: Nx.Tensor.t()
+
+  # ============================================================================
+  # VISUALIZATION
+  # ============================================================================
+
+  @doc """
+  Draws the qubit state on a Bloch sphere.
+
+  This function generates a high-quality SVG visualization of the qubit's state
+  on the Bloch sphere, showing the state vector, axes, and key basis states.
+
+  ## Parameters
+    * `qubit` - The qubit state to visualize
+    * `options` - Optional visualization parameters
+      * `:title` - Title of the plot (default: "Bloch Sphere")
+      * `:size` - Size of the SVG in pixels (default: 400)
+
+  ## Examples
+
+      iex> q = Qx.Qubit.new() |> Qx.Qubit.h()
+      iex> svg = Qx.Qubit.draw_bloch(q)
+      iex> is_binary(svg)
+      true
+  """
+  def draw_bloch(qubit, options \\ []) do
+    # Force SVG format for this high-quality renderer
+    opts = Keyword.put(options, :format, :svg)
+    Qx.Draw.bloch_sphere(qubit, opts)
+  end
 
   # ============================================================================
   # STATE CREATION

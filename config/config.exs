@@ -2,7 +2,7 @@ import Config
 
 # Configure Nx to use EXLA backend for GPU/CPU acceleration
 # EXLA provides JIT compilation via Google's XLA compiler
-config :nx, :default_backend, EXLA.Backend
+# config :nx, :default_backend, EXLA.Backend
 
 # Optional: Configure EXLA-specific options
 # For example, to force CPU-only with specific optimizations:
