@@ -35,10 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Direct state access via `Qx.get_state/1`
 
 #### Visualization
-- Circuit visualization using VegaLite
-- Multiple chart styles: bar charts, probability distributions, Bloch sphere
-- SVG export capability for publication-quality figures
-- Example visualization scripts in `examples/` directory
+- Circuit diagram generation with `Qx.Draw.circuit/2` for publication-quality SVG output
+- State visualization using VegaLite: bar charts, probability distributions, Bloch sphere
+- SVG export capability for all visualization types
+- Example visualization scripts in `examples/` directory including `circuit_visualization_example.exs`
 
 #### Performance & Acceleration
 - EXLA backend integration for CPU acceleration (~100x speedup vs Binary)

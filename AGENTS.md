@@ -141,3 +141,5 @@ mix usage_rules.search_docs "Enum.zip" --query-by title
 
 <!-- usage_rules:otp-end -->
 <!-- usage-rules-end -->
+
+BEFORE ANYTHING ELSE: run 'bd onboard' and follow the instructions
