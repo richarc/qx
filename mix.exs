@@ -4,7 +4,7 @@ defmodule Qx.MixProject do
   def project do
     [
       app: :qx,
-      version: "0.2.2",
+      version: "0.2.3",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -21,7 +21,7 @@ defmodule Qx.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger, :nx, :complex]
+      extra_applications: [:logger]
     ]
   end
 

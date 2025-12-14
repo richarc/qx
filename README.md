@@ -30,7 +30,7 @@ Qx works immediately on any platform without additional acceleration libraries:
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.2.2"}
+    {:qx_sim, "~> 0.2.3"}
   ]
 end
 ```
@@ -1107,7 +1107,7 @@ This project is licensed under the Apache License 2.0.
 
 ## Version
 
-Current version: 0.2.2
+Current version: 0.2.3
 
 For detailed API documentation, run:
 
