@@ -1,5 +1,9 @@
 # Qx - Quantum Computing Simulator for Elixir
 
+[![Hex.pm](https://img.shields.io/hexpm/v/qx_sim.svg)](https://hex.pm/packages/qx_sim)
+[![Documentation](https://img.shields.io/badge/docs-hexpm-blue.svg)](https://hexdocs.pm/qx_sim/)
+[![License](https://img.shields.io/hexpm/l/qx_sim.svg)](LICENSE)
+
 Qx is a quantum computing simulator built for Elixir that provides an intuitive API for creating and simulating quantum circuits. The primary goal of the project is to enhance my understanding of quantum computing concepts, quantum simulators and the Elixir Nx library. My hope is that it is eventualy valuable for others to learn quantum computing. It supports up to 20 qubits (an arbitrary number that I feel is useful but still below the memory cliff that would occurs around 30 qubits).
 
 ## Features
@@ -26,7 +30,7 @@ Qx works immediately on any platform without additional acceleration libraries:
 ```elixir
 def deps do
   [
-    {:qx, github: "richarc/qx", branch: "main"}
+    {:qx_sim, "~> 0.2.1"}
   ]
 end
 ```
@@ -35,6 +39,16 @@ Then run:
 
 ```bash
 mix deps.get
+```
+
+Or install from GitHub for the latest development version:
+
+```elixir
+def deps do
+  [
+    {:qx_sim, github: "richarc/qx", branch: "main"}
+  ]
+end
 ```
 
 This installs Qx with the default `Nx.BinaryBackend`, which works on all platforms but is slower for larger quantum circuits (10+ qubits).
@@ -101,7 +115,7 @@ Edit your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:qx, github: "richarc/qx", branch: "main"},
+    {:qx_sim, "~> 0.2.1"},
     {:exla, "~> 0.10"}  # Add this line
   ]
 end
@@ -185,7 +199,7 @@ Edit your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:qx, github: "richarc/qx", branch: "main"},
+    {:qx_sim, "~> 0.2.1"},
     {:exla, "~> 0.10"}  # Add this line
   ]
 end
@@ -262,7 +276,7 @@ Edit your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:qx, github: "richarc/qx", branch: "main"},
+    {:qx_sim, "~> 0.2.1"},
     {:exla, "~> 0.10"}  # Add this line
   ]
 end
@@ -318,7 +332,7 @@ Edit your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:qx, github: "richarc/qx", branch: "main"},
+    {:qx_sim, "~> 0.2.1"},
     {:emlx, github: "elixir-nx/emlx", branch: "main"}  # Add this line
   ]
 end
@@ -429,7 +443,7 @@ Create a new LiveBook notebook and add this in the 'setup' cell:
 
 ```elixir
 Mix.install([
-  {:qx, github: "richarc/qx", branch: "main"},
+  {:qx_sim, "~> 0.2.1"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
   {:kino_vega_lite, "~> 0.1.11"}
@@ -447,7 +461,7 @@ For better performance with larger circuits, choose the setup that matches your 
 
 ```elixir
 Mix.install([
-  {:qx, github: "richarc/qx", branch: "main"},
+  {:qx_sim, "~> 0.2.1"},
   {:exla, "~> 0.10"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -464,7 +478,7 @@ Application.put_env(:nx, :default_backend, EXLA.Backend)
 
 ```elixir
 Mix.install([
-  {:qx, github: "richarc/qx", branch: "main"},
+  {:qx_sim, "~> 0.2.1"},
   {:emlx, github: "elixir-nx/emlx", branch: "main"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -485,7 +499,7 @@ Application.put_env(:nx, :default_backend, {EMLX.Backend, device: :gpu})
 
 ```elixir
 Mix.install([
-  {:qx, github: "richarc/qx", branch: "main"},
+  {:qx_sim, "~> 0.2.1"},
   {:exla, "~> 0.10"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -503,7 +517,7 @@ Application.put_env(:nx, :default_backend, {EXLA.Backend, client: :cuda})
 
 ```elixir
 Mix.install([
-  {:qx, github: "richarc/qx", branch: "main"},
+  {:qx_sim, "~> 0.2.1"},
   {:exla, "~> 0.10"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -1093,7 +1107,7 @@ This project is licensed under the Apache License 2.0.
 
 ## Version
 
-Current version: 0.2.0
+Current version: 0.2.1
 
 For detailed API documentation, run:
 

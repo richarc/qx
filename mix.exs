@@ -93,7 +93,7 @@ defmodule Qx.MixProject do
 
   defp package do
     [
-      name: "qx",
+      name: "qx_sim",
       files: [
         "lib",
         "mix.exs",
