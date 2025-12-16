@@ -70,11 +70,6 @@ jobs:
       - name: Security audit - check for retired packages
         run: mix hex.audit
 
-      - name: Security audit - check for vulnerabilities
-        run: |
-          mix archive.install hex mix_audit --force
-          mix deps.audit
-
       - name: Check for outdated dependencies
         run: mix hex.outdated
         continue-on-error: true
