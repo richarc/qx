@@ -116,7 +116,9 @@ jobs:
       # ========================================
 
       - name: Install dependencies
-        run: mix deps.get
+        run: |
+          mix deps.get
+          MIX_ENV=dev mix deps.get
 
       - name: Compile (warnings as errors)
         run: mix compile --warnings-as-errors
@@ -166,6 +168,7 @@ jobs:
       - name: Publish to Hex.pm
         run: mix hex.publish --yes
         env:
+          MIX_ENV: dev
           HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
 
       - name: Create GitHub Release
