@@ -1,0 +1,213 @@
+name: Release to Hex.pm
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (without v prefix, e.g., 0.2.4)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, Test, and Publish
+    runs-on: ubuntu-latest
+
+    env:
+      MIX_ENV: test
+      ELIXIR_VERSION: "1.18"
+      OTP_VERSION: "27"
+
+    steps:
+      # ========================================
+      # Setup Phase
+      # ========================================
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
+
+      - name: Restore dependency cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-
+
+      # ========================================
+      # Version Validation
+      # ========================================
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG_VERSION="${{ github.event.inputs.version }}"
+          else
+            TAG_VERSION=$(echo $GITHUB_REF | sed 's/refs\/tags\/v//')
+          fi
+          echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $TAG_VERSION"
+
+      - name: Validate version matches mix.exs
+        run: |
+          TAG_VERSION="${{ steps.version.outputs.tag_version }}"
+          MIX_VERSION=$(grep 'version:' mix.exs | sed 's/.*version: "\(.*\)".*/\1/')
+
+          echo "Tag version: $TAG_VERSION"
+          echo "mix.exs version: $MIX_VERSION"
+
+          if [ "$TAG_VERSION" != "$MIX_VERSION" ]; then
+            echo "❌ ERROR: Tag version ($TAG_VERSION) doesn't match mix.exs version ($MIX_VERSION)"
+            echo ""
+            echo "Please update mix.exs version to match the tag, or delete and recreate the tag:"
+            echo "  git tag -d v$TAG_VERSION"
+            echo "  git push origin :refs/tags/v$TAG_VERSION"
+            exit 1
+          fi
+
+          echo "✅ Version validation passed"
+
+      - name: Extract CHANGELOG for this version
+        id: changelog
+        uses: mindsers/changelog-reader-action@v2
+        with:
+          path: ./CHANGELOG.md
+          version: ${{ steps.version.outputs.tag_version }}
+          validation_level: warn
+
+      - name: Verify CHANGELOG entry exists
+        run: |
+          if [ -z "${{ steps.changelog.outputs.changes }}" ]; then
+            echo "❌ ERROR: No CHANGELOG entry found for version ${{ steps.version.outputs.tag_version }}"
+            echo ""
+            echo "Please add a CHANGELOG entry following Keep a Changelog format:"
+            echo ""
+            echo "## [${{ steps.version.outputs.tag_version }}] - $(date +%Y-%m-%d)"
+            echo ""
+            echo "### Added"
+            echo "- Your changes here"
+            echo ""
+            echo "### Changed"
+            echo "- Your changes here"
+            echo ""
+            echo "### Fixed"
+            echo "- Your changes here"
+            exit 1
+          fi
+          echo "✅ CHANGELOG entry found"
+
+      # ========================================
+      # Quality Gates
+      # ========================================
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Compile (warnings as errors)
+        run: mix compile --warnings-as-errors
+        env:
+          MIX_ENV: test
+
+      - name: Run Credo (strict mode)
+        run: mix credo --strict
+
+      - name: Run tests
+        run: mix test
+
+      - name: Build documentation
+        run: mix docs
+        env:
+          MIX_ENV: dev
+
+      - name: Security audit - check for retired packages
+        run: mix hex.audit
+
+      - name: Security audit - check for vulnerabilities
+        run: |
+          mix archive.install hex mix_audit --force
+          mix deps.audit
+
+      - name: Check for outdated dependencies (informational)
+        run: mix hex.outdated
+        continue-on-error: true
+
+      # ========================================
+      # Publishing
+      # ========================================
+
+      - name: Verify HEX_API_KEY is configured
+        run: |
+          if [ -z "${{ secrets.HEX_API_KEY }}" ]; then
+            echo "❌ ERROR: HEX_API_KEY secret is not configured"
+            echo ""
+            echo "Please follow these steps to configure it:"
+            echo "1. Generate a key locally: mix hex.user key generate"
+            echo "2. Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            echo "3. Click 'New repository secret'"
+            echo "4. Name: HEX_API_KEY"
+            echo "5. Value: [paste the key from step 1]"
+            echo "6. Click 'Add secret'"
+            echo ""
+            echo "Then re-run this workflow or re-push the tag."
+            exit 1
+          fi
+          echo "✅ HEX_API_KEY is configured"
+
+      - name: Publish to Hex.pm
+        run: mix hex.publish --yes
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.tag_version }}
+          name: Release ${{ steps.version.outputs.tag_version }}
+          body: |
+            ## What's Changed
+
+            ${{ steps.changelog.outputs.changes }}
+
+            ## Installation
+
+            Add to your `mix.exs`:
+
+            ```elixir
+            def deps do
+              [
+                {:qx_sim, "~> ${{ steps.version.outputs.tag_version }}"}
+              ]
+            end
+            ```
+
+            ## Documentation
+
+            - **Hex.pm**: https://hex.pm/packages/qx_sim/${{ steps.version.outputs.tag_version }}
+            - **Docs**: https://hexdocs.pm/qx_sim/${{ steps.version.outputs.tag_version }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release summary
+        run: |
+          echo "🎉 Release ${{ steps.version.outputs.tag_version }} published successfully!"
+          echo ""
+          echo "📦 Package: https://hex.pm/packages/qx_sim/${{ steps.version.outputs.tag_version }}"
+          echo "📚 Documentation: https://hexdocs.pm/qx_sim/${{ steps.version.outputs.tag_version }}"
+          echo "🏷️  GitHub Release: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.tag_version }}"

@@ -3,6 +3,8 @@
 [![Hex.pm](https://img.shields.io/hexpm/v/qx_sim.svg)](https://hex.pm/packages/qx_sim)
 [![Documentation](https://img.shields.io/badge/docs-hexpm-blue.svg)](https://hexdocs.pm/qx_sim/)
 [![License](https://img.shields.io/hexpm/l/qx_sim.svg)](LICENSE)
+[![CI](https://github.com/richarc/qx/actions/workflows/ci.yml/badge.svg)](https://github.com/richarc/qx/actions/workflows/ci.yml)
+[![Release](https://github.com/richarc/qx/actions/workflows/release.yml/badge.svg)](https://github.com/richarc/qx/actions/workflows/release.yml)
 
 Qx is a quantum computing simulator built for Elixir that provides an intuitive API for creating and simulating quantum circuits. The primary goal of the project is to enhance my understanding of quantum computing concepts, quantum simulators and the Elixir Nx library. My hope is that it is eventualy valuable for others to learn quantum computing. It supports up to 20 qubits (an arbitrary number that I feel is useful but still below the memory cliff that would occurs around 30 qubits).
 
@@ -1094,6 +1096,22 @@ Run the test suite:
 ```bash
 mix test
 ```
+
+## Contributing
+
+Contributions are welcome! If you'd like to contribute to Qx:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes and ensure tests pass (`mix test`)
+4. Run code quality checks (`mix credo --strict`)
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+### For Maintainers
+
+If you're a maintainer preparing a release, see [RELEASE.md](RELEASE.md) for detailed instructions on the automated release process.
 
 ## License
 

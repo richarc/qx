@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+
+    env:
+      MIX_ENV: test
+      ELIXIR_VERSION: "1.18"
+      OTP_VERSION: "27"
+
+    steps:
+      # ========================================
+      # Setup Phase
+      # ========================================
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
+
+      - name: Restore dependency cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-
+
+      # ========================================
+      # Quality Gates
+      # ========================================
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Check for unused dependencies
+        run: mix deps.unlock --check-unused
+
+      - name: Compile (warnings as errors)
+        run: mix compile --warnings-as-errors
+
+      - name: Check formatting
+        run: mix format --check-formatted
+
+      - name: Run Credo (strict mode)
+        run: mix credo --strict
+
+      - name: Run tests
+        run: mix test
+
+      - name: Build documentation
+        run: mix docs
+        env:
+          MIX_ENV: dev
+
+      - name: Security audit - check for retired packages
+        run: mix hex.audit
+
+      - name: Security audit - check for vulnerabilities
+        run: |
+          mix archive.install hex mix_audit --force
+          mix deps.audit
+
+      - name: Check for outdated dependencies
+        run: mix hex.outdated
+        continue-on-error: true
+
+      # ========================================
+      # Summary
+      # ========================================
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "✅ All quality checks passed!"
+          echo ""
+          echo "Tests: ✅"
+          echo "Code quality (Credo): ✅"
+          echo "Documentation: ✅"
+          echo "Security: ✅"
