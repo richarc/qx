@@ -38,8 +38,7 @@ defmodule Qx.StateNormalizationError do
     %__MODULE__{
       total_probability: total,
       tolerance: tolerance,
-      message:
-        "State not normalized: total probability = #{total} (expected 1.0 ± #{tolerance})"
+      message: "State not normalized: total probability = #{total} (expected 1.0 ± #{tolerance})"
     }
   end
 

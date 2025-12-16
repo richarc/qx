@@ -129,7 +129,8 @@ defmodule Qx.Validation do
       iex> Qx.Validation.validate_qubit_index!(-1, 3)
       ** (Qx.QubitIndexError) Qubit index -1 out of range (0..2)
   """
-  def validate_qubit_index!(index, num_qubits) when is_integer(index) and is_integer(num_qubits) do
+  def validate_qubit_index!(index, num_qubits)
+      when is_integer(index) and is_integer(num_qubits) do
     if index < 0 or index >= num_qubits do
       raise Qx.QubitIndexError, {index, num_qubits}
     end

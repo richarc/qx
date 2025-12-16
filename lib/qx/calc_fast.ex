@@ -78,10 +78,11 @@ defmodule Qx.CalcFast do
 
     # Determine which states have target qubit = 0 vs 1
     # target_bit = (indices >>> qubit_bit_position) & 1
-    target_bits = Nx.bitwise_and(
-      Nx.right_shift(indices, qubit_bit_position),
-      1
-    )
+    target_bits =
+      Nx.bitwise_and(
+        Nx.right_shift(indices, qubit_bit_position),
+        1
+      )
 
     # For each index, compute its pair (index with target qubit flipped)
     paired_indices = Nx.bitwise_xor(indices, qubit_mask)
@@ -135,10 +136,11 @@ defmodule Qx.CalcFast do
     target_bit_pos = num_qubits - 1 - target_qubit
 
     # Extract control bit value for each basis state
-    control_bits = Nx.bitwise_and(
-      Nx.right_shift(indices, control_bit_pos),
-      1
-    )
+    control_bits =
+      Nx.bitwise_and(
+        Nx.right_shift(indices, control_bit_pos),
+        1
+      )
 
     # For states with control=1, we need to flip the target bit
     # Mask to flip target bit
@@ -178,20 +180,24 @@ defmodule Qx.CalcFast do
     target_bit_pos = num_qubits - 1 - target
 
     # Extract control bit values
-    control1_bits = Nx.bitwise_and(
-      Nx.right_shift(indices, control1_bit_pos),
-      1
-    )
-    control2_bits = Nx.bitwise_and(
-      Nx.right_shift(indices, control2_bit_pos),
-      1
-    )
+    control1_bits =
+      Nx.bitwise_and(
+        Nx.right_shift(indices, control1_bit_pos),
+        1
+      )
+
+    control2_bits =
+      Nx.bitwise_and(
+        Nx.right_shift(indices, control2_bit_pos),
+        1
+      )
 
     # Check if both controls are 1
-    both_controls_set = Nx.logical_and(
-      Nx.equal(control1_bits, 1),
-      Nx.equal(control2_bits, 1)
-    )
+    both_controls_set =
+      Nx.logical_and(
+        Nx.equal(control1_bits, 1),
+        Nx.equal(control2_bits, 1)
+      )
 
     # Mask to flip target bit
     target_mask = Nx.left_shift(1, target_bit_pos)

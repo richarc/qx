@@ -197,7 +197,8 @@ defmodule Qx.StateInitTest do
       probs2 = Qx.Math.probabilities(state2) |> Nx.to_flat_list()
 
       # Very unlikely to get identical random states
-      refute Enum.zip(probs1, probs2) |> Enum.all?(fn {p1, p2} -> approx_equal?(p1, p2, 0.001) end)
+      refute Enum.zip(probs1, probs2)
+             |> Enum.all?(fn {p1, p2} -> approx_equal?(p1, p2, 0.001) end)
     end
 
     test "has correct dimension" do
@@ -212,10 +213,14 @@ defmodule Qx.StateInitTest do
       probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
 
       # |Φ+⟩ = (|00⟩ + |11⟩)/√2
-      assert approx_equal?(Enum.at(probs, 0), 0.5)  # |00⟩
-      assert approx_equal?(Enum.at(probs, 1), 0.0)  # |01⟩
-      assert approx_equal?(Enum.at(probs, 2), 0.0)  # |10⟩
-      assert approx_equal?(Enum.at(probs, 3), 0.5)  # |11⟩
+      # |00⟩
+      assert approx_equal?(Enum.at(probs, 0), 0.5)
+      # |01⟩
+      assert approx_equal?(Enum.at(probs, 1), 0.0)
+      # |10⟩
+      assert approx_equal?(Enum.at(probs, 2), 0.0)
+      # |11⟩
+      assert approx_equal?(Enum.at(probs, 3), 0.5)
     end
 
     test "is normalized" do
@@ -250,8 +255,10 @@ defmodule Qx.StateInitTest do
       probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
 
       # (|000⟩ + |111⟩)/√2
-      assert approx_equal?(Enum.at(probs, 0), 0.5)  # |000⟩
-      assert approx_equal?(Enum.at(probs, 7), 0.5)  # |111⟩
+      # |000⟩
+      assert approx_equal?(Enum.at(probs, 0), 0.5)
+      # |111⟩
+      assert approx_equal?(Enum.at(probs, 7), 0.5)
 
       # All others are zero
       assert Enum.sum(Enum.slice(probs, 1..6)) == 0.0
@@ -262,8 +269,10 @@ defmodule Qx.StateInitTest do
       probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
 
       # (|0000⟩ + |1111⟩)/√2
-      assert approx_equal?(Enum.at(probs, 0), 0.5)   # |0000⟩
-      assert approx_equal?(Enum.at(probs, 15), 0.5)  # |1111⟩
+      # |0000⟩
+      assert approx_equal?(Enum.at(probs, 0), 0.5)
+      # |1111⟩
+      assert approx_equal?(Enum.at(probs, 15), 0.5)
 
       # All others are zero
       assert Enum.sum(Enum.slice(probs, 1..14)) == 0.0
@@ -286,14 +295,22 @@ defmodule Qx.StateInitTest do
       expected_prob = 1.0 / 3.0
 
       # (|001⟩ + |010⟩ + |100⟩)/√3
-      assert approx_equal?(Enum.at(probs, 0), 0.0)  # |000⟩
-      assert approx_equal?(Enum.at(probs, 1), expected_prob)  # |001⟩
-      assert approx_equal?(Enum.at(probs, 2), expected_prob)  # |010⟩
-      assert approx_equal?(Enum.at(probs, 3), 0.0)  # |011⟩
-      assert approx_equal?(Enum.at(probs, 4), expected_prob)  # |100⟩
-      assert approx_equal?(Enum.at(probs, 5), 0.0)  # |101⟩
-      assert approx_equal?(Enum.at(probs, 6), 0.0)  # |110⟩
-      assert approx_equal?(Enum.at(probs, 7), 0.0)  # |111⟩
+      # |000⟩
+      assert approx_equal?(Enum.at(probs, 0), 0.0)
+      # |001⟩
+      assert approx_equal?(Enum.at(probs, 1), expected_prob)
+      # |010⟩
+      assert approx_equal?(Enum.at(probs, 2), expected_prob)
+      # |011⟩
+      assert approx_equal?(Enum.at(probs, 3), 0.0)
+      # |100⟩
+      assert approx_equal?(Enum.at(probs, 4), expected_prob)
+      # |101⟩
+      assert approx_equal?(Enum.at(probs, 5), 0.0)
+      # |110⟩
+      assert approx_equal?(Enum.at(probs, 6), 0.0)
+      # |111⟩
+      assert approx_equal?(Enum.at(probs, 7), 0.0)
     end
 
     test "creates W state for 4 qubits" do
