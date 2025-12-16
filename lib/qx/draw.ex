@@ -614,10 +614,7 @@ defmodule Qx.Draw do
   end
 
   defp points_to_svg_path(points, color, width, dash \\ "") do
-    d =
-      points
-      |> Enum.map(fn {x, y, _} -> "#{x},#{y}" end)
-      |> Enum.join(" L ")
+    d = Enum.map_join(points, " L ", fn {x, y, _} -> "#{x},#{y}" end)
 
     dash_attr = if dash != "", do: "stroke-dasharray=\"#{dash}\"", else: ""
 
