@@ -29,5 +29,8 @@ qx_sim-*.tar
 # Ignore output
 /output/
 
+# ignore the history
+/history/
+
 # Ignore agents documentation
 AGENTS.md
