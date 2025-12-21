@@ -29,6 +29,24 @@ defmodule Qx do
   - `Qx.Simulation` - Circuit execution and simulation
   - `Qx.Draw` - Visualization of results
   - `Qx.Math` - Core mathematical functions for quantum mechanics
+  - `Qx.Export.OpenQASM` - Export circuits to OpenQASM for real quantum hardware
+
+  ## Exporting to Real Quantum Hardware
+
+  Qx can export circuits to OpenQASM format for execution on real quantum computers:
+
+      # Create a Bell state circuit
+      circuit = Qx.create_circuit(2, 2)
+        |> Qx.h(0)
+        |> Qx.cx(0, 1)
+        |> Qx.measure(0, 0)
+        |> Qx.measure(1, 1)
+
+      # Export to OpenQASM 3.0
+      qasm = Qx.Export.OpenQASM.to_qasm(circuit)
+      File.write!("bell_state.qasm", qasm)
+
+  See `Qx.Export.OpenQASM` for more details and examples.
   """
 
   alias Qx.{Draw, Operations, QuantumCircuit, Simulation}
