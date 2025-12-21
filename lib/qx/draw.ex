@@ -56,6 +56,9 @@ defmodule Qx.Draw do
       Qx.Draw.state_table(register, precision: 4, hide_zeros: true)
   """
 
+  alias Qx.Draw.SVG.{Bloch, Charts, Circuit}
+  alias Qx.Draw.{Tables, VegaLite}
+
   @doc """
   Plots the probability distribution from a simulation result.
 
@@ -86,10 +89,10 @@ defmodule Qx.Draw do
 
     case format do
       :vega_lite ->
-        Qx.Draw.VegaLite.plot(result, title, width, height)
+        VegaLite.plot(result, title, width, height)
 
       :svg ->
-        Qx.Draw.SVG.Charts.plot(result, title, width, height)
+        Charts.plot(result, title, width, height)
 
       _ ->
         raise ArgumentError, "Unsupported format: #{format}"
@@ -125,10 +128,10 @@ defmodule Qx.Draw do
 
     case format do
       :vega_lite ->
-        Qx.Draw.VegaLite.plot_counts(result, title, width, height)
+        VegaLite.plot_counts(result, title, width, height)
 
       :svg ->
-        Qx.Draw.SVG.Charts.plot_counts(result, title, width, height)
+        Charts.plot_counts(result, title, width, height)
 
       _ ->
         raise ArgumentError, "Unsupported format: #{format}"
@@ -163,14 +166,14 @@ defmodule Qx.Draw do
     size = Keyword.get(options, :size, 400)
 
     # Convert qubit state to Bloch coordinates
-    coords = Qx.Draw.SVG.Bloch.qubit_to_bloch_coordinates(qubit)
+    coords = Bloch.qubit_to_bloch_coordinates(qubit)
 
     case format do
       :vega_lite ->
-        Qx.Draw.VegaLite.bloch_sphere(coords, title, size)
+        VegaLite.bloch_sphere(coords, title, size)
 
       :svg ->
-        Qx.Draw.SVG.Bloch.render(coords, title, size)
+        Bloch.render(coords, title, size)
 
       _ ->
         raise ArgumentError, "Unsupported format: #{format}"
@@ -216,10 +219,10 @@ defmodule Qx.Draw do
 
     case format do
       :vega_lite ->
-        Qx.Draw.VegaLite.histogram(data, title, width, height)
+        VegaLite.histogram(data, title, width, height)
 
       :svg ->
-        Qx.Draw.SVG.Charts.histogram(data, title, width, height)
+        Charts.histogram(data, title, width, height)
 
       _ ->
         raise ArgumentError, "Unsupported format: #{format}"
@@ -249,7 +252,7 @@ defmodule Qx.Draw do
       Qx.Draw.state_table(register, format: :html, precision: 4)
   """
   def state_table(register_or_state, options \\ []) do
-    Qx.Draw.Tables.render(register_or_state, options)
+    Tables.render(register_or_state, options)
   end
 
   @doc """
@@ -274,6 +277,6 @@ defmodule Qx.Draw do
       File.write!("bell.svg", svg)
   """
   def circuit(%Qx.QuantumCircuit{} = circuit, title \\ nil) do
-    Qx.Draw.SVG.Circuit.render(circuit, title)
+    Circuit.render(circuit, title)
   end
 end
