@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-12-21
+
+### Added
+- **Runtime Backend Selection** - Major new feature allowing backend specification at runtime without compile-time configuration
+  - Added `:backend` option to `Qx.run/2`, `Qx.get_state/2`, and `Qx.get_probabilities/2`
+  - Users can now specify different backends for different circuits: `Qx.run(circuit, backend: EXLA.Backend)`
+  - Supports all Nx backends including EXLA (CPU/CUDA/ROCm) and EMLX (Apple Silicon GPU)
+  - Combines with other options: `Qx.run(circuit, backend: EXLA.Backend, shots: 2048)`
+  - Maintains full backward compatibility with existing code
+  - Implemented using `Nx.with_default_backend/2` for proper scoped execution
+  - Comprehensive documentation added to README.md with usage examples and best practices
+
+### Changed
+- **Draw Module Refactoring** - Reorganized visualization code for better maintainability and clarity
+  - Split large 1,531-line `Qx.Draw` module into 5 focused sub-modules:
+    - `Qx.Draw.VegaLite` - VegaLite chart generation for LiveBook (178 lines)
+    - `Qx.Draw.SVG.Charts` - SVG histogram and bar charts (199 lines)
+    - `Qx.Draw.SVG.Bloch` - Bloch sphere visualization with 3D projection (267 lines)
+    - `Qx.Draw.SVG.Circuit` - Quantum circuit diagrams with IEEE notation (596 lines)
+    - `Qx.Draw.Tables` - State table formatting with Kino support (196 lines)
+  - `Qx.Draw` now serves as a clean API facade, delegating to specialized sub-modules
+  - Maintains 100% backward compatibility - no API changes required
+  - Improved code organization following single responsibility principle
+  - Better separation of concerns between rendering formats and visualization types
+  - All 557 tests continue to pass
+
+### Fixed
+- Fixed Nx backend configuration anti-pattern where library imposed compile-time backend choices on users
+- Eliminated warnings about undefined `Nx.default_backend/2` function
+
 ## [0.2.5] - 2025-12-16
 ### Fixed
 - More fixes to the pipeline
@@ -155,6 +185,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.3.0]: https://github.com/richarc/qx/releases/tag/v0.3.0
+[0.2.5]: https://github.com/richarc/qx/releases/tag/v0.2.5
+[0.2.4]: https://github.com/richarc/qx/releases/tag/v0.2.4
+[0.2.3]: https://github.com/richarc/qx/releases/tag/v0.2.3
+[0.2.2]: https://github.com/richarc/qx/releases/tag/v0.2.2
 [0.2.1]: https://github.com/richarc/qx/releases/tag/v0.2.1
 [0.2.0]: https://github.com/richarc/qx/releases/tag/v0.2.0
 [0.1.0]: https://github.com/richarc/qx/releases/tag/v0.1.0

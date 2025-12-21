@@ -32,7 +32,7 @@ Qx works immediately on any platform without additional acceleration libraries:
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.2.3"}
+    {:qx_sim, "~> 0.3.0"}
   ]
 end
 ```
@@ -117,7 +117,7 @@ Edit your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.2.3"},
+    {:qx_sim, "~> 0.3.0"},
     {:exla, "~> 0.10"}  # Add this line
   ]
 end
@@ -201,7 +201,7 @@ Edit your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.2.3"},
+    {:qx_sim, "~> 0.3.0"},
     {:exla, "~> 0.10"}  # Add this line
   ]
 end
@@ -278,7 +278,7 @@ Edit your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.2.3"},
+    {:qx_sim, "~> 0.3.0"},
     {:exla, "~> 0.10"}  # Add this line
   ]
 end
@@ -334,7 +334,7 @@ Edit your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.2.3"},
+    {:qx_sim, "~> 0.3.0"},
     {:emlx, github: "elixir-nx/emlx", branch: "main"}  # Add this line
   ]
 end
@@ -379,6 +379,63 @@ iex> Nx.tensor([1, 2, 3]) |> IO.inspect()
 - Metal does not support 64-bit floats, but Qx uses Complex64 which is fully supported
 - EMLX downloads precompiled binaries, so no C++ compiler is needed
 - For CPU-only acceleration on Apple Silicon, use EXLA CPU instead (requires compilation but works without GPU)
+
+---
+
+### Runtime Backend Selection
+
+Starting with Qx v0.3.0, you can select backends at runtime without compile-time configuration. This is useful for:
+- Testing different backends without recompiling
+- Using different backends for different circuits in the same application
+- Overriding the default backend for specific operations
+
+#### Using the `:backend` Option
+
+```elixir
+# Create a circuit
+qc = Qx.create_circuit(10) |> Qx.h(0) |> Qx.cx(0, 1)
+
+# Run with EXLA backend (even if binary backend is default)
+result = Qx.run(qc, backend: EXLA.Backend)
+
+# Run with EXLA + CUDA
+result = Qx.run(qc, backend: {EXLA.Backend, client: :cuda})
+
+# Run with EMLX on Apple Silicon
+result = Qx.run(qc, backend: {EMLX.Backend, device: :gpu})
+
+# Combine with other options
+result = Qx.run(qc, backend: EXLA.Backend, shots: 2048)
+```
+
+#### Available on All Simulation Functions
+
+The `:backend` option works with all simulation functions:
+
+```elixir
+# Get final state with specific backend
+state = Qx.get_state(qc, backend: EXLA.Backend)
+
+# Get probabilities with specific backend
+probs = Qx.get_probabilities(qc, backend: EXLA.Backend)
+```
+
+#### When to Use Runtime vs Compile-Time Configuration
+
+**Runtime backend selection** (`:backend` option):
+- ✅ Best for applications that need flexibility
+- ✅ No recompilation needed to switch backends
+- ✅ Can use different backends for different circuits
+- ✅ Great for testing and benchmarking
+
+**Compile-time configuration** (`config/config.exs`):
+- ✅ Sets a project-wide default
+- ✅ No need to specify backend on every call
+- ✅ Traditional approach, widely documented
+
+You can combine both approaches: set a default in `config/config.exs` and override it at runtime with the `:backend` option when needed.
+
+---
 
 ## Quick Start
 
@@ -445,7 +502,7 @@ Create a new LiveBook notebook and add this in the 'setup' cell:
 
 ```elixir
 Mix.install([
-  {:qx, "~> 0.2.3", hex: :qx_sim},
+  {:qx, "~> 0.3.0", hex: :qx_sim},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
   {:kino_vega_lite, "~> 0.1.11"}
@@ -463,7 +520,7 @@ For better performance with larger circuits, choose the setup that matches your 
 
 ```elixir
 Mix.install([
-  {:qx, "~> 0.2.3", hex: :qx_sim},
+  {:qx, "~> 0.3.0", hex: :qx_sim},
   {:exla, "~> 0.10"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -480,7 +537,7 @@ Application.put_env(:nx, :default_backend, EXLA.Backend)
 
 ```elixir
 Mix.install([
-  {:qx, "~> 0.2.3", hex: :qx_sim},
+  {:qx, "~> 0.3.0", hex: :qx_sim},
   {:emlx, github: "elixir-nx/emlx", branch: "main"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -501,7 +558,7 @@ Application.put_env(:nx, :default_backend, {EMLX.Backend, device: :gpu})
 
 ```elixir
 Mix.install([
-  {:qx, "~> 0.2.3", hex: :qx_sim},
+  {:qx, "~> 0.3.0", hex: :qx_sim},
   {:exla, "~> 0.10"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -519,7 +576,7 @@ Application.put_env(:nx, :default_backend, {EXLA.Backend, client: :cuda})
 
 ```elixir
 Mix.install([
-  {:qx, "~> 0.2.3", hex: :qx_sim},
+  {:qx, "~> 0.3.0", hex: :qx_sim},
   {:exla, "~> 0.10"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -1125,7 +1182,7 @@ This project is licensed under the Apache License 2.0.
 
 ## Version
 
-Current version: 0.2.3
+Current version: 0.3.0
 
 For detailed API documentation, run:
 

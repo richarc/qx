@@ -16,7 +16,24 @@ defmodule Qx.Simulation do
 
   ## Parameters
     * `circuit` - The quantum circuit to execute
-    * `shots` - Number of measurement shots (default: 1024)
+    * `options` - Optional keyword list (default: [])
+
+  ## Options
+    * `:shots` - Number of measurement shots (default: 1024)
+    * `:backend` - Nx backend to use for computation (default: current Nx default)
+
+  ## Backend Selection
+
+  You can specify which Nx backend to use for this simulation:
+
+      # Use EXLA for GPU/CPU acceleration
+      Qx.Simulation.run(circuit, backend: EXLA.Backend)
+
+      # Force binary backend (no acceleration)
+      Qx.Simulation.run(circuit, backend: Nx.BinaryBackend)
+
+      # Use default backend
+      Qx.Simulation.run(circuit)
 
   ## Examples
 
@@ -25,14 +42,31 @@ defmodule Qx.Simulation do
       iex> result = Qx.Simulation.run(qc)
       iex> is_map(result)
       true
+
+      # With custom shots
+      iex> result = Qx.Simulation.run(qc, shots: 2048)
+      iex> result.shots
+      2048
   """
-  def run(%QuantumCircuit{} = circuit, shots \\ 1024) do
-    # Check if circuit has conditionals - if so, use shot-by-shot execution
-    if has_conditionals?(circuit) do
-      run_with_conditionals(circuit, shots)
+  def run(%QuantumCircuit{} = circuit, options \\ []) do
+    shots = Keyword.get(options, :shots, 1024)
+    backend = Keyword.get(options, :backend)
+
+    run_fn = fn ->
+      # Check if circuit has conditionals - if so, use shot-by-shot execution
+      if has_conditionals?(circuit) do
+        run_with_conditionals(circuit, shots)
+      else
+        # Use optimized path for non-conditional circuits
+        run_without_conditionals(circuit, shots)
+      end
+    end
+
+    # Use specified backend if provided, otherwise use current default
+    if backend do
+      Nx.with_default_backend(backend, run_fn)
     else
-      # Use optimized path for non-conditional circuits
-      run_without_conditionals(circuit, shots)
+      run_fn.()
     end
   end
 
@@ -93,6 +127,10 @@ defmodule Qx.Simulation do
 
   ## Parameters
     * `circuit` - The quantum circuit to execute
+    * `options` - Optional keyword list (default: [])
+
+  ## Options
+    * `:backend` - Nx backend to use for computation (default: current Nx default)
 
   ## Examples
 
@@ -105,14 +143,22 @@ defmodule Qx.Simulation do
 
     * `Qx.MeasurementError` - If circuit contains measurements or conditionals
   """
-  def get_state(%QuantumCircuit{} = circuit) do
+  def get_state(%QuantumCircuit{} = circuit, options \\ []) do
     # Check if circuit has measurements or conditionals
     if has_measurements?(circuit) or has_conditionals?(circuit) do
       raise Qx.MeasurementError,
             "Cannot get pure state from circuit with measurements or conditionals. Use run/2 instead."
     end
 
-    execute_circuit(circuit)
+    backend = Keyword.get(options, :backend)
+
+    exec_fn = fn -> execute_circuit(circuit) end
+
+    if backend do
+      Nx.with_default_backend(backend, exec_fn)
+    else
+      exec_fn.()
+    end
   end
 
   # Helper to check if circuit has measurements
@@ -128,6 +174,10 @@ defmodule Qx.Simulation do
 
   ## Parameters
     * `circuit` - The quantum circuit
+    * `options` - Optional keyword list (default: [])
+
+  ## Options
+    * `:backend` - Nx backend to use for computation (default: current Nx default)
 
   ## Examples
 
@@ -140,15 +190,25 @@ defmodule Qx.Simulation do
 
     * `Qx.MeasurementError` - If circuit contains measurements or conditionals
   """
-  def get_probabilities(%QuantumCircuit{} = circuit) do
+  def get_probabilities(%QuantumCircuit{} = circuit, options \\ []) do
     # Check if circuit has measurements or conditionals
     if has_measurements?(circuit) or has_conditionals?(circuit) do
       raise Qx.MeasurementError,
             "Cannot get probabilities from circuit with measurements or conditionals. Use run/2 instead."
     end
 
-    final_state = execute_circuit(circuit)
-    Math.probabilities(final_state)
+    backend = Keyword.get(options, :backend)
+
+    prob_fn = fn ->
+      final_state = execute_circuit(circuit)
+      Math.probabilities(final_state)
+    end
+
+    if backend do
+      Nx.with_default_backend(backend, prob_fn)
+    else
+      prob_fn.()
+    end
   end
 
   # Private functions

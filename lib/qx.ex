@@ -362,7 +362,11 @@ defmodule Qx do
 
   ## Parameters
     * `circuit` - Quantum circuit to execute
-    * `shots` - Number of measurement shots (default: 1024)
+    * `options` - Optional parameters (can be keyword list or integer for backward compatibility)
+
+  ## Options
+    * `:shots` - Number of measurement shots (default: 1024)
+    * `:backend` - Nx backend to use (e.g., `{EXLA.Backend, client: :host}`)
 
   ## Returns
   A map containing:
@@ -380,15 +384,33 @@ defmodule Qx do
       true
       iex> Map.has_key?(result, :probabilities)
       true
+
+      # Specify backend at runtime
+      # Qx.run(qc, backend: {EXLA.Backend, client: :host})
+
+      # Backward compatible: pass shots as integer
+      # Qx.run(qc, 2048)
   """
-  @spec run(circuit(), pos_integer()) :: simulation_result()
-  defdelegate run(circuit, shots \\ 1024), to: Simulation
+  @spec run(circuit(), pos_integer() | keyword()) :: simulation_result()
+  def run(circuit, options \\ [])
+
+  def run(circuit, shots) when is_integer(shots) do
+    Simulation.run(circuit, shots: shots)
+  end
+
+  def run(circuit, options) when is_list(options) do
+    Simulation.run(circuit, options)
+  end
 
   @doc """
   Executes a circuit and returns only the final quantum state.
 
   ## Parameters
     * `circuit` - Quantum circuit to execute
+    * `options` - Optional parameters
+
+  ## Options
+    * `:backend` - Nx backend to use (e.g., `{EXLA.Backend, client: :host}`)
 
   ## Examples
 
@@ -396,15 +418,24 @@ defmodule Qx do
       iex> state = Qx.get_state(qc)
       iex> Nx.shape(state)
       {2}
+
+      # Specify backend at runtime
+      # Qx.get_state(qc, backend: {EXLA.Backend, client: :host})
   """
-  @spec get_state(circuit()) :: Nx.Tensor.t()
-  defdelegate get_state(circuit), to: Simulation
+  @spec get_state(circuit(), keyword()) :: Nx.Tensor.t()
+  def get_state(circuit, options \\ []) do
+    Simulation.get_state(circuit, options)
+  end
 
   @doc """
   Gets probability distribution for computational basis states.
 
   ## Parameters
     * `circuit` - Quantum circuit
+    * `options` - Optional parameters
+
+  ## Options
+    * `:backend` - Nx backend to use (e.g., `{EXLA.Backend, client: :host}`)
 
   ## Examples
 
@@ -412,9 +443,14 @@ defmodule Qx do
       iex> probs = Qx.get_probabilities(qc)
       iex> Nx.shape(probs)
       {2}
+
+      # Specify backend at runtime
+      # Qx.get_probabilities(qc, backend: {EXLA.Backend, client: :host})
   """
-  @spec get_probabilities(circuit()) :: Nx.Tensor.t()
-  defdelegate get_probabilities(circuit), to: Simulation, as: :get_probabilities
+  @spec get_probabilities(circuit(), keyword()) :: Nx.Tensor.t()
+  def get_probabilities(circuit, options \\ []) do
+    Simulation.get_probabilities(circuit, options)
+  end
 
   @doc """
   Visualizes probability distribution from simulation results.

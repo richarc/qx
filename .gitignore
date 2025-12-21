@@ -34,3 +34,4 @@ qx_sim-*.tar
 
 # Ignore agents documentation
 AGENTS.md
+.claude/
