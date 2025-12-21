@@ -87,8 +87,10 @@ defmodule Qx.Draw.SVG.Bloch do
   def render({x, y, z, theta, phi}, title, size) do
     # 3D Projection Parameters
     # View angles (in radians)
-    view_theta = :math.pi() / 6  # Elevation (30 degrees)
-    view_phi = -:math.pi() / 4   # Azimuth (-45 degrees)
+    # Elevation (30 degrees)
+    view_theta = :math.pi() / 6
+    # Azimuth (-45 degrees)
+    view_phi = -:math.pi() / 4
 
     # Center and scale
     cx = size / 2
@@ -163,7 +165,8 @@ defmodule Qx.Draw.SVG.Bloch do
       scale = 1.0
 
       svg_x = cx + x1 * radius * scale
-      svg_y = cy - y2 * radius * scale  # Invert Y for SVG
+      # Invert Y for SVG
+      svg_y = cy - y2 * radius * scale
 
       # Return depth for sorting
       {svg_x, svg_y, z2}
