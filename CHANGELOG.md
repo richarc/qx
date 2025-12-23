@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-12-23
+
+### Added
+- **OpenQASM 3.0 Export** - Export quantum circuits to OpenQASM format for real quantum hardware execution
+  - Full support for OpenQASM 3.0 syntax including conditionals
+  - Export via `Qx.Export.OpenQASM.to_qasm/2` with customizable options
+  - Supports all quantum gates, measurements, barriers, and conditional operations
+  - Enables seamless integration with IBM Quantum, Rigetti, and other quantum hardware platforms
+- **Error Handling Documentation (qx-gd5)** - Comprehensive CONTRIBUTING.md with error handling philosophy and best practices
+  - Detailed guidelines for error types, messages, and recovery strategies
+  - Error handling patterns for library developers
+  - Examples of proper error propagation and context enrichment
+  - Documentation of all custom error types and their use cases
+- **Test Coverage Integration (qx-xbf)** - Complete test coverage metrics and CI/CD integration
+  - Added ExCoveralls dependency for code coverage reporting
+  - Achieved 66.4% test coverage across the codebase
+  - Integrated coverage reporting into CI/CD pipeline
+  - Configured multiple coverage output formats (HTML, JSON, Cobertura)
+  - Added GitHub Actions integration for coverage tracking
+
+### Changed
+- **Predicate Function Conventions (qx-7iw)** - Enhanced predicate naming and specifications
+  - Added `@spec` type specifications to all predicate functions
+  - Improved naming conventions for boolean-returning functions
+  - Enhanced documentation for predicate function usage patterns
+  - Better consistency across module APIs
+- **Module Documentation (qx-sdb)** - Verified comprehensive module documentation
+  - Confirmed all modules have proper `@moduledoc` documentation
+  - Ensured consistent documentation style across the codebase
+  - Enhanced module-level descriptions and usage examples
+
+### Fixed
+- Credo strict mode compliance in OpenQASM export module
+  - Refactored complex pattern matching to reduce cyclomatic complexity
+  - Used `Enum.map_join/3` for better performance
+  - Added inline Credo exception for legitimate gate mapping complexity
+
+### Improved
+- Development workflow with better error handling guidelines
+- Code quality with comprehensive type specifications
+- Test coverage visibility and tracking
+- Documentation completeness and consistency
+- Hardware integration capabilities via OpenQASM export
+
 ## [0.3.0] - 2025-12-21
 
 ### Added
@@ -185,6 +229,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.4.0]: https://github.com/richarc/qx/releases/tag/v0.4.0
 [0.3.0]: https://github.com/richarc/qx/releases/tag/v0.3.0
 [0.2.5]: https://github.com/richarc/qx/releases/tag/v0.2.5
 [0.2.4]: https://github.com/richarc/qx/releases/tag/v0.2.4

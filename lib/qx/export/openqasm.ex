@@ -183,56 +183,58 @@ defmodule Qx.Export.OpenQASM do
   end
 
   defp generate_instructions(%QuantumCircuit{instructions: instructions}, options) do
-    instructions
-    |> Enum.map(&instruction_to_qasm(&1, options))
-    |> Enum.join("\n")
+    Enum.map_join(instructions, "\n", &instruction_to_qasm(&1, options))
   end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp instruction_to_qasm(instruction, _options) do
     case instruction do
-      # Single-qubit gates
-      {:h, [qubit], []} -> "h q[#{qubit}];"
-      {:x, [qubit], []} -> "x q[#{qubit}];"
-      {:y, [qubit], []} -> "y q[#{qubit}];"
-      {:z, [qubit], []} -> "z q[#{qubit}];"
-      {:s, [qubit], []} -> "s q[#{qubit}];"
-      {:t, [qubit], []} -> "t q[#{qubit}];"
-
-      # Parameterized single-qubit gates
-      {:rx, [qubit], [theta]} -> "rx(#{format_param(theta)}) q[#{qubit}];"
-      {:ry, [qubit], [theta]} -> "ry(#{format_param(theta)}) q[#{qubit}];"
-      {:rz, [qubit], [theta]} -> "rz(#{format_param(theta)}) q[#{qubit}];"
-      {:phase, [qubit], [theta]} -> "p(#{format_param(theta)}) q[#{qubit}];"
-
-      # Two-qubit gates
-      {:cx, [control, target], []} -> "cx q[#{control}], q[#{target}];"
-      {:cz, [control, target], []} -> "cz q[#{control}], q[#{target}];"
-
-      # Three-qubit gates
+      {:h, qubits, params} -> single_qubit_gate_to_qasm("h", qubits, params)
+      {:x, qubits, params} -> single_qubit_gate_to_qasm("x", qubits, params)
+      {:y, qubits, params} -> single_qubit_gate_to_qasm("y", qubits, params)
+      {:z, qubits, params} -> single_qubit_gate_to_qasm("z", qubits, params)
+      {:s, qubits, params} -> single_qubit_gate_to_qasm("s", qubits, params)
+      {:t, qubits, params} -> single_qubit_gate_to_qasm("t", qubits, params)
+      {:rx, qubits, params} -> parametric_gate_to_qasm("rx", qubits, params)
+      {:ry, qubits, params} -> parametric_gate_to_qasm("ry", qubits, params)
+      {:rz, qubits, params} -> parametric_gate_to_qasm("rz", qubits, params)
+      {:phase, qubits, params} -> parametric_gate_to_qasm("p", qubits, params)
+      {:cx, qubits, params} -> two_qubit_gate_to_qasm("cx", qubits, params)
+      {:cz, qubits, params} -> two_qubit_gate_to_qasm("cz", qubits, params)
       {:ccx, [c1, c2, target], []} -> "ccx q[#{c1}], q[#{c2}], q[#{target}];"
-
-      # Measurements
       {:measure, [qubit, cbit], []} -> "c[#{cbit}] = measure q[#{qubit}];"
-
-      # Barriers
-      {:barrier, qubits, []} ->
-        qubit_list = Enum.map_join(qubits, ", ", &"q[#{&1}]")
-        "barrier #{qubit_list};"
-
-      # Conditional operations (OpenQASM 3.0 only)
-      {:c_if, [cbit, value], conditional_instructions} ->
-        # Generate QASM for all instructions in the conditional block
-        conditional_qasm =
-          conditional_instructions
-          |> Enum.map(&instruction_to_qasm(&1, []))
-          |> Enum.map(&String.trim_trailing(&1, ";"))
-          |> Enum.join("; ")
-
-        "if (c[#{cbit}] == #{value}) { #{conditional_qasm}; }"
-
-      unsupported ->
-        raise Qx.GateError, {:unsupported_gate, unsupported}
+      {:barrier, qubits, []} -> barrier_to_qasm(qubits)
+      {:c_if, [cbit, value], conditional_instructions} -> conditional_to_qasm(cbit, value, conditional_instructions)
+      unsupported -> raise Qx.GateError, {:unsupported_gate, unsupported}
     end
+  end
+
+  defp single_qubit_gate_to_qasm(gate_name, [qubit], []) do
+    "#{gate_name} q[#{qubit}];"
+  end
+
+  defp parametric_gate_to_qasm(gate_name, [qubit], [theta]) do
+    "#{gate_name}(#{format_param(theta)}) q[#{qubit}];"
+  end
+
+  defp two_qubit_gate_to_qasm(gate_name, [control, target], []) do
+    "#{gate_name} q[#{control}], q[#{target}];"
+  end
+
+  defp barrier_to_qasm(qubits) do
+    qubit_list = Enum.map_join(qubits, ", ", &"q[#{&1}]")
+    "barrier #{qubit_list};"
+  end
+
+  defp conditional_to_qasm(cbit, value, conditional_instructions) do
+    conditional_qasm =
+      Enum.map_join(
+        conditional_instructions,
+        "; ",
+        &(&1 |> instruction_to_qasm([]) |> String.trim_trailing(";"))
+      )
+
+    "if (c[#{cbit}] == #{value}) { #{conditional_qasm}; }"
   end
 
   defp format_param(param) when is_float(param) do
