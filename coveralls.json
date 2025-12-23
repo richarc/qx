@@ -1,0 +1,17 @@
+{
+  "coverage_options": {
+    "minimum_coverage": 80,
+    "treat_no_relevant_lines_as_covered": false,
+    "output_dir": "cover/",
+    "template_path": null
+  },
+  "skip_files": [
+    "test/",
+    "deps/"
+  ],
+  "stop_words": [
+    "_build",
+    "deps"
+  ],
+  "_comment": "Current coverage is 66.4%. Target is 80% - work in progress to improve test coverage for untested modules (draw/svg/*, simulation_result, errors)"
+}
