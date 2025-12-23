@@ -32,7 +32,7 @@ Qx works immediately on any platform without additional acceleration libraries:
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.3.0"}
+    {:qx_sim, "~> 0.4.0"}
   ]
 end
 ```
@@ -117,7 +117,7 @@ Edit your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.3.0"},
+    {:qx_sim, "~> 0.4.0"},
     {:exla, "~> 0.10"}  # Add this line
   ]
 end
@@ -201,7 +201,7 @@ Edit your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.3.0"},
+    {:qx_sim, "~> 0.4.0"},
     {:exla, "~> 0.10"}  # Add this line
   ]
 end
@@ -278,7 +278,7 @@ Edit your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.3.0"},
+    {:qx_sim, "~> 0.4.0"},
     {:exla, "~> 0.10"}  # Add this line
   ]
 end
@@ -334,7 +334,7 @@ Edit your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.3.0"},
+    {:qx_sim, "~> 0.4.0"},
     {:emlx, github: "elixir-nx/emlx", branch: "main"}  # Add this line
   ]
 end
@@ -502,7 +502,7 @@ Create a new LiveBook notebook and add this in the 'setup' cell:
 
 ```elixir
 Mix.install([
-  {:qx, "~> 0.3.0", hex: :qx_sim},
+  {:qx, "~> 0.4.0", hex: :qx_sim},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
   {:kino_vega_lite, "~> 0.1.11"}
@@ -520,7 +520,7 @@ For better performance with larger circuits, choose the setup that matches your 
 
 ```elixir
 Mix.install([
-  {:qx, "~> 0.3.0", hex: :qx_sim},
+  {:qx, "~> 0.4.0", hex: :qx_sim},
   {:exla, "~> 0.10"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -537,7 +537,7 @@ Application.put_env(:nx, :default_backend, EXLA.Backend)
 
 ```elixir
 Mix.install([
-  {:qx, "~> 0.3.0", hex: :qx_sim},
+  {:qx, "~> 0.4.0", hex: :qx_sim},
   {:emlx, github: "elixir-nx/emlx", branch: "main"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -558,7 +558,7 @@ Application.put_env(:nx, :default_backend, {EMLX.Backend, device: :gpu})
 
 ```elixir
 Mix.install([
-  {:qx, "~> 0.3.0", hex: :qx_sim},
+  {:qx, "~> 0.4.0", hex: :qx_sim},
   {:exla, "~> 0.10"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -576,7 +576,7 @@ Application.put_env(:nx, :default_backend, {EXLA.Backend, client: :cuda})
 
 ```elixir
 Mix.install([
-  {:qx, "~> 0.3.0", hex: :qx_sim},
+  {:qx, "~> 0.4.0", hex: :qx_sim},
   {:exla, "~> 0.10"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
