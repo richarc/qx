@@ -58,7 +58,7 @@ defmodule Qx do
   Creates a new quantum circuit with specified qubits and classical bits.
 
   ## Parameters
-    * `num_qubits` - Number of qubits (1-20)
+    * `num_qubits` - Number of qubits (1-20 recommended)
     * `num_classical_bits` - Number of classical bits for measurements
 
   ## Examples
@@ -68,6 +68,10 @@ defmodule Qx do
       2
       iex> qc.num_classical_bits
       2
+
+  ## Raises
+
+    * `FunctionClauseError` - If num_qubits <= 0 or num_classical_bits < 0
   """
   @spec create_circuit(pos_integer(), non_neg_integer()) :: circuit()
   defdelegate create_circuit(num_qubits, num_classical_bits), to: QuantumCircuit, as: :new
@@ -76,7 +80,7 @@ defmodule Qx do
   Creates a new quantum circuit with only qubits (no classical bits).
 
   ## Parameters
-    * `num_qubits` - Number of qubits (1-20)
+    * `num_qubits` - Number of qubits (1-20 recommended)
 
   ## Examples
 
@@ -85,6 +89,10 @@ defmodule Qx do
       3
       iex> qc.num_classical_bits
       0
+
+  ## Raises
+
+    * `FunctionClauseError` - If num_qubits <= 0
   """
   @spec create_circuit(pos_integer()) :: circuit()
   defdelegate create_circuit(num_qubits), to: QuantumCircuit, as: :new
@@ -103,6 +111,10 @@ defmodule Qx do
       iex> qc = Qx.create_circuit(1) |> Qx.h(0)
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
+
+  ## Raises
+
+    * `FunctionClauseError` - If qubit index is out of range
   """
   @spec h(circuit(), non_neg_integer()) :: circuit()
   defdelegate h(circuit, qubit), to: Operations
@@ -121,6 +133,10 @@ defmodule Qx do
       iex> qc = Qx.create_circuit(1) |> Qx.x(0)
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
+
+  ## Raises
+
+    * `FunctionClauseError` - If qubit index is out of range
   """
   @spec x(circuit(), non_neg_integer()) :: circuit()
   defdelegate x(circuit, qubit), to: Operations
@@ -139,6 +155,10 @@ defmodule Qx do
       iex> qc = Qx.create_circuit(1) |> Qx.y(0)
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
+
+  ## Raises
+
+    * `FunctionClauseError` - If qubit index is out of range
   """
   @spec y(circuit(), non_neg_integer()) :: circuit()
   defdelegate y(circuit, qubit), to: Operations
@@ -157,6 +177,10 @@ defmodule Qx do
       iex> qc = Qx.create_circuit(1) |> Qx.z(0)
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
+
+  ## Raises
+
+    * `FunctionClauseError` - If qubit index is out of range
   """
   @spec z(circuit(), non_neg_integer()) :: circuit()
   defdelegate z(circuit, qubit), to: Operations
@@ -176,6 +200,10 @@ defmodule Qx do
       iex> qc = Qx.create_circuit(2) |> Qx.cx(0, 1)
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
+
+  ## Raises
+
+    * `FunctionClauseError` - If qubit indices are out of range or equal
   """
   @spec cx(circuit(), non_neg_integer(), non_neg_integer()) :: circuit()
   defdelegate cx(circuit, control_qubit, target_qubit), to: Operations
@@ -333,6 +361,10 @@ defmodule Qx do
       iex> qc = Qx.create_circuit(2, 2) |> Qx.measure(0, 0)
       iex> length(Qx.QuantumCircuit.get_measurements(qc))
       1
+
+  ## Raises
+
+    * `FunctionClauseError` - If qubit or classical_bit index is out of range
   """
   @spec measure(circuit(), non_neg_integer(), non_neg_integer()) :: circuit()
   defdelegate measure(circuit, qubit, classical_bit), to: Operations
@@ -439,6 +471,10 @@ defmodule Qx do
 
       # Specify backend at runtime
       # Qx.get_state(qc, backend: {EXLA.Backend, client: :host})
+
+  ## Raises
+
+    * `Qx.MeasurementError` - If circuit contains measurements or conditionals
   """
   @spec get_state(circuit(), keyword()) :: Nx.Tensor.t()
   def get_state(circuit, options \\ []) do
@@ -464,6 +500,10 @@ defmodule Qx do
 
       # Specify backend at runtime
       # Qx.get_probabilities(qc, backend: {EXLA.Backend, client: :host})
+
+  ## Raises
+
+    * `Qx.MeasurementError` - If circuit contains measurements or conditionals
   """
   @spec get_probabilities(circuit(), keyword()) :: Nx.Tensor.t()
   def get_probabilities(circuit, options \\ []) do
