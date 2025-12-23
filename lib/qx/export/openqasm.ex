@@ -162,7 +162,10 @@ defmodule Qx.Export.OpenQASM do
     end
   end
 
-  defp generate_declarations(%QuantumCircuit{num_qubits: num_qubits, num_classical_bits: num_cbits}, version) do
+  defp generate_declarations(
+         %QuantumCircuit{num_qubits: num_qubits, num_classical_bits: num_cbits},
+         version
+       ) do
     case version do
       3 ->
         """
@@ -189,23 +192,56 @@ defmodule Qx.Export.OpenQASM do
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp instruction_to_qasm(instruction, _options) do
     case instruction do
-      {:h, qubits, params} -> single_qubit_gate_to_qasm("h", qubits, params)
-      {:x, qubits, params} -> single_qubit_gate_to_qasm("x", qubits, params)
-      {:y, qubits, params} -> single_qubit_gate_to_qasm("y", qubits, params)
-      {:z, qubits, params} -> single_qubit_gate_to_qasm("z", qubits, params)
-      {:s, qubits, params} -> single_qubit_gate_to_qasm("s", qubits, params)
-      {:t, qubits, params} -> single_qubit_gate_to_qasm("t", qubits, params)
-      {:rx, qubits, params} -> parametric_gate_to_qasm("rx", qubits, params)
-      {:ry, qubits, params} -> parametric_gate_to_qasm("ry", qubits, params)
-      {:rz, qubits, params} -> parametric_gate_to_qasm("rz", qubits, params)
-      {:phase, qubits, params} -> parametric_gate_to_qasm("p", qubits, params)
-      {:cx, qubits, params} -> two_qubit_gate_to_qasm("cx", qubits, params)
-      {:cz, qubits, params} -> two_qubit_gate_to_qasm("cz", qubits, params)
-      {:ccx, [c1, c2, target], []} -> "ccx q[#{c1}], q[#{c2}], q[#{target}];"
-      {:measure, [qubit, cbit], []} -> "c[#{cbit}] = measure q[#{qubit}];"
-      {:barrier, qubits, []} -> barrier_to_qasm(qubits)
-      {:c_if, [cbit, value], conditional_instructions} -> conditional_to_qasm(cbit, value, conditional_instructions)
-      unsupported -> raise Qx.GateError, {:unsupported_gate, unsupported}
+      {:h, qubits, params} ->
+        single_qubit_gate_to_qasm("h", qubits, params)
+
+      {:x, qubits, params} ->
+        single_qubit_gate_to_qasm("x", qubits, params)
+
+      {:y, qubits, params} ->
+        single_qubit_gate_to_qasm("y", qubits, params)
+
+      {:z, qubits, params} ->
+        single_qubit_gate_to_qasm("z", qubits, params)
+
+      {:s, qubits, params} ->
+        single_qubit_gate_to_qasm("s", qubits, params)
+
+      {:t, qubits, params} ->
+        single_qubit_gate_to_qasm("t", qubits, params)
+
+      {:rx, qubits, params} ->
+        parametric_gate_to_qasm("rx", qubits, params)
+
+      {:ry, qubits, params} ->
+        parametric_gate_to_qasm("ry", qubits, params)
+
+      {:rz, qubits, params} ->
+        parametric_gate_to_qasm("rz", qubits, params)
+
+      {:phase, qubits, params} ->
+        parametric_gate_to_qasm("p", qubits, params)
+
+      {:cx, qubits, params} ->
+        two_qubit_gate_to_qasm("cx", qubits, params)
+
+      {:cz, qubits, params} ->
+        two_qubit_gate_to_qasm("cz", qubits, params)
+
+      {:ccx, [c1, c2, target], []} ->
+        "ccx q[#{c1}], q[#{c2}], q[#{target}];"
+
+      {:measure, [qubit, cbit], []} ->
+        "c[#{cbit}] = measure q[#{qubit}];"
+
+      {:barrier, qubits, []} ->
+        barrier_to_qasm(qubits)
+
+      {:c_if, [cbit, value], conditional_instructions} ->
+        conditional_to_qasm(cbit, value, conditional_instructions)
+
+      unsupported ->
+        raise Qx.GateError, {:unsupported_gate, unsupported}
     end
   end
 
