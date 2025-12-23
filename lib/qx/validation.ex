@@ -44,6 +44,7 @@ defmodule Qx.Validation do
       iex> Qx.Validation.valid_qubit?(wrong_shape)
       false
   """
+  @spec valid_qubit?(Nx.Tensor.t(), float()) :: boolean()
   def valid_qubit?(state, tolerance \\ 1.0e-6) do
     case Nx.shape(state) do
       {2} ->
@@ -69,6 +70,7 @@ defmodule Qx.Validation do
       iex> Qx.Validation.valid_register?(reg)
       true
   """
+  @spec valid_register?(%{state: Nx.Tensor.t(), num_qubits: integer()}, float()) :: boolean()
   def valid_register?(%{state: state, num_qubits: num_qubits}, tolerance \\ 1.0e-6) do
     expected_size = trunc(:math.pow(2, num_qubits))
     actual_size = Nx.axis_size(state, 0)

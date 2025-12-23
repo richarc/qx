@@ -269,6 +269,7 @@ defmodule Qx.Math do
       iex> Qx.Math.unitary?(not_unitary)
       false
   """
+  @spec unitary?(Nx.Tensor.t()) :: boolean()
   def unitary?(matrix) do
     {n, m} = Nx.shape(matrix)
 

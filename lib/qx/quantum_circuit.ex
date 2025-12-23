@@ -320,6 +320,7 @@ defmodule Qx.QuantumCircuit do
       iex> Qx.QuantumCircuit.measured?(qc, 1)
       false
   """
+  @spec measured?(t(), non_neg_integer()) :: boolean()
   def measured?(%__MODULE__{} = circuit, qubit) do
     MapSet.member?(circuit.measured_qubits, qubit)
   end

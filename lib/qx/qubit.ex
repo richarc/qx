@@ -591,6 +591,7 @@ defmodule Qx.Qubit do
       iex> Qx.Qubit.valid?(invalid_qubit)
       false
   """
+  @spec valid?(Nx.Tensor.t()) :: boolean()
   def valid?(state) do
     Qx.Validation.valid_qubit?(state)
   end

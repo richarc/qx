@@ -220,8 +220,56 @@ Follow the [Elixir Style Guide](https://github.com/christopheradams/elixir_style
 
 ### Naming Conventions
 
-- **Predicate functions**: End with `?` (e.g., `valid_qubit?`, `has_conditionals?`)
-- **Guard functions**: Use `is_` prefix (e.g., `is_binary`, `is_integer`)
+#### Predicate Functions
+
+Predicate functions return boolean values and **must** end with `?`:
+
+```elixir
+# Good: Predicate functions end with ?
+def valid?(state), do: # returns boolean
+def measured?(circuit, qubit), do: # returns boolean
+def unitary?(matrix), do: # returns boolean
+
+# Bad: Boolean-returning functions without ?
+def is_valid(state), do: # should be valid?
+def check_measured(circuit, qubit), do: # should be measured?
+```
+
+**Requirements for predicate functions:**
+- Must end with `?` character
+- Must return `true` or `false` (not tuples, not nil)
+- Should have `@spec` with `:: boolean()` return type
+- Should be pure functions without side effects
+
+**Example:**
+```elixir
+@doc """
+Checks if a quantum state is properly normalized.
+"""
+@spec valid?(Nx.Tensor.t()) :: boolean()
+def valid?(state) do
+  norm = calculate_norm(state)
+  abs(norm - 1.0) < @tolerance
+end
+```
+
+#### Guard Functions
+
+Guard functions use `is_` prefix and can be used in guard clauses:
+
+```elixir
+# Good: Guards use is_ prefix
+when is_binary(name)
+when is_integer(qubit) and qubit >= 0
+
+# Bad: Don't use ? in guards
+when qubit?(index)  # This won't work in guards
+```
+
+**Note:** Elixir's built-in guards like `is_binary`, `is_integer`, `is_atom` don't end with `?` because they're special forms that can be used in guard expressions.
+
+#### Other Naming Conventions
+
 - **Validation functions**: End with `!` when they raise (e.g., `validate_qubit_index!`)
 - **Modules**: Use descriptive names that reflect purpose
 

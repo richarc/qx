@@ -630,6 +630,7 @@ defmodule Qx.Register do
       iex> Qx.Register.valid?(reg)
       true
   """
+  @spec valid?(t()) :: boolean()
   def valid?(%__MODULE__{} = register) do
     Qx.Validation.valid_register?(register)
   end
