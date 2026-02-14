@@ -43,12 +43,14 @@ defmodule Qx.MixProject do
       # {:emlx, "~> 0.2", optional: true},
       {:vega_lite, "~> 0.1"},
       {:complex, "~> 0.6"},
+      {:req, "~> 0.5"},
       {:usage_rules, "~> 0.1"},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       {:benchee, "~> 1.3", only: :dev},
       {:benchee_html, "~> 1.0", only: :dev},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:excoveralls, "~> 0.18", only: :test}
+      {:excoveralls, "~> 0.18", only: :test},
+      {:plug, "~> 1.0", only: :test}
     ]
   end
 
@@ -71,6 +73,11 @@ defmodule Qx.MixProject do
           Qx.SimulationResult
         ],
         Visualization: [Qx.Draw],
+        "Remote Execution": [
+          Qx.Remote,
+          Qx.Remote.Config,
+          Qx.ResultBuilder
+        ],
         "Error Handling": [
           Qx.Error,
           Qx.QubitIndexError,
@@ -79,7 +86,8 @@ defmodule Qx.MixProject do
           Qx.ConditionalError,
           Qx.ClassicalBitError,
           Qx.GateError,
-          Qx.QubitCountError
+          Qx.QubitCountError,
+          Qx.RemoteError
         ],
         "Validation & Utilities": [
           Qx.Validation,

@@ -21,6 +21,7 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 - **Growing Range of Gates**: Supports H, X, Y, Z, S, T, RX, RY, RZ, CNOT, CZ, and Toffoli gates
 - **Measurements**: Quantum measurements with classical bit storage
 - **Conditional Operations**: Mid-circuit measurement with classical feedback for quantum processes like teleportation and error correction
+- **Remote Execution**: Run circuits on real quantum hardware via QxServer, a standalone backend service supporting IBM Quantum and other providers
 - **LiveBook Integration**: Full support with interactive visualizations in LiveBook
 
 ## Installation
@@ -668,6 +669,7 @@ Check out example notebooks in the repository:
 - `examples/livebook/getting_started.livemd` - Basic introduction
 - `examples/livebook/quantum_teleportation.livemd` - Complete teleportation tutorial
 - `examples/livebook/grovers_algorithm.livemd` - Search algorithm implementation
+- `examples/remote/` - Running circuits on quantum hardware via QxServer
 
 ## API Reference
 
@@ -710,6 +712,49 @@ Work with qubits directly - gates apply immediately!
 - `Qx.Qubit.measure_probabilities/1` - Get measurement probabilities
 - `Qx.Qubit.alpha/1` - Get |0⟩ amplitude
 - `Qx.Qubit.beta/1` - Get |1⟩ amplitude
+
+#### Pipeline Patterns & Debugging
+
+When working with `Qx.Qubit` in pipelines, understand the difference between transformation and terminal operations:
+
+**Transformation operations** (return qubits, continue pipeline):
+```elixir
+# Chain gates together
+result = Qx.Qubit.new()
+  |> Qx.Qubit.h()
+  |> Qx.Qubit.x()
+  |> Qx.Qubit.ry(:math.pi() / 4)
+```
+
+**Debugging within pipelines** (use `tap_state/2`):
+```elixir
+# Inspect state at each step without breaking the chain
+result = Qx.Qubit.new()
+  |> Qx.Qubit.h()
+  |> Qx.Qubit.tap_state(label: "After Hadamard")  # Prints state, returns qubit
+  |> Qx.Qubit.x()
+  |> Qx.Qubit.tap_state(label: "After X gate")    # Prints state, returns qubit
+```
+
+**Terminal operations** (return data, end pipeline):
+```elixir
+# Get state information at the end
+state_info = Qx.Qubit.new()
+  |> Qx.Qubit.h()
+  |> Qx.Qubit.x()
+  |> Qx.Qubit.show_state()  # Returns map with state data
+
+IO.puts(state_info.state)  # "0.707|0⟩ - 0.707|1⟩"
+
+# Other terminal operations
+alpha = qubit |> Qx.Qubit.alpha()                    # Returns Complex number
+probs = qubit |> Qx.Qubit.measure_probabilities()    # Returns Nx.Tensor
+svg = qubit |> Qx.Qubit.draw_bloch()                 # Returns SVG string
+```
+
+**Key difference:**
+- `tap_state/2` - Shows state as side effect, **returns qubit** (continues pipeline)
+- `show_state/1` - Returns **map of state data** (ends pipeline)
 
 ### Calculation Mode (Qx.Register)
 
@@ -853,6 +898,7 @@ Qx provides domain-specific exception types for better error handling:
 - `Qx.ClassicalBitError` - Classical bit index errors
 - `Qx.GateError` - Gate operation errors
 - `Qx.QubitCountError` - Invalid qubit count
+- `Qx.RemoteError` - QxServer remote execution errors
 
 **Example:**
 ```elixir
@@ -1041,6 +1087,69 @@ reg = Qx.Register.new([q1, q2])
 Qx.Register.get_probabilities(reg)
 ```
 
+## Running on Quantum Hardware via QxServer
+
+Qx can submit circuits to real quantum hardware through [QxServer](https://github.com/richarc/qx_server), a standalone backend service. Circuits are exported to OpenQASM 3.0, submitted via HTTP, and results are returned as `Qx.SimulationResult` structs.
+
+### Prerequisites
+
+1. A running QxServer instance (see [qx_server](https://github.com/richarc/qx_server))
+2. Provider credentials configured on the server (e.g., IBM Quantum API key)
+
+### Setup
+
+```elixir
+config = Qx.Remote.Config.new!(
+  url: "http://localhost:4040",
+  api_key: System.get_env("QX_SERVER_API_KEY")
+)
+```
+
+### Run a Circuit on Hardware
+
+```elixir
+# Build a Bell state circuit
+circuit = Qx.create_circuit(2, 2)
+  |> Qx.h(0)
+  |> Qx.cx(0, 1)
+  |> Qx.measure(0, 0)
+  |> Qx.measure(1, 1)
+
+# Submit to hardware and wait for results
+{:ok, result} = Qx.Remote.run(circuit, config,
+  backend: "ibm_fez",
+  shots: 4096
+)
+
+IO.inspect(result.counts)
+# => %{"00" => 2048, "11" => 2048}  (approximately)
+```
+
+### Step-by-Step Execution
+
+For more control, submit and await separately:
+
+```elixir
+# Submit (non-blocking)
+{:ok, job} = Qx.Remote.submit(circuit, config, backend: "ibm_fez")
+IO.puts("Job submitted: #{job["job_id"]}")
+
+# Poll with status callback
+{:ok, result} = Qx.Remote.await(job["job_id"], config,
+  on_status: fn status -> IO.puts("Status: #{status["status"]}") end
+)
+```
+
+### List Available Backends
+
+```elixir
+{:ok, backends} = Qx.Remote.list_backends(config, provider: "ibm")
+
+for b <- backends do
+  IO.puts("#{b["name"]} - #{b["qubits"]} qubits")
+end
+```
+
 ## Module Structure
 
 The Qx library consists of several modules:
@@ -1053,6 +1162,9 @@ The Qx library consists of several modules:
 - **`Qx.Simulation`** - Circuit execution and simulation engine
 - **`Qx.SimulationResult`** - Structured simulation results with helper functions
 - **`Qx.Draw`** - Visualization and plotting functions
+- **`Qx.Remote`** - HTTP client for submitting circuits to QxServer
+- **`Qx.Remote.Config`** - Configuration for QxServer connection
+- **`Qx.ResultBuilder`** - Builds SimulationResult structs from counts data
 - **`Qx.Math`** - Core mathematical functions for quantum mechanics
 - **`Qx.Validation`** - Input validation with custom exceptions
 - **`Qx.Behaviours.QuantumState`** - Behaviour for consistent quantum state APIs
@@ -1074,6 +1186,7 @@ The Qx library consists of several modules:
 - Building reusable quantum circuits
 - Performance-critical batch simulations
 - Exporting to OpenQASM for real hardware
+- Running on quantum hardware via `Qx.Remote` and QxServer
 
 ## Requirements
 

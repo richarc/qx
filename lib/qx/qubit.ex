@@ -59,6 +59,39 @@ defmodule Qx.Qubit do
   - `rz/2` - Rotation around Z-axis
   - `phase/2` - Arbitrary phase gate
 
+  ## Pipeline Patterns
+
+  The Qx.Qubit module supports both transformation pipelines and terminal operations:
+
+  **Transformation Pipelines** (return qubits):
+
+  Gates and state manipulations that return qubits for chaining:
+
+      Qx.Qubit.new()
+      |> Qx.Qubit.h()           # Hadamard gate
+      |> Qx.Qubit.x()           # Pauli-X gate
+      |> Qx.Qubit.ry(angle)     # Rotation
+
+  **Debugging Within Pipelines**:
+
+  Use `tap_state/2` to inspect state without breaking the chain:
+
+      Qx.Qubit.new()
+      |> Qx.Qubit.h()
+      |> Qx.Qubit.tap_state(label: "After H")  # Side effect: prints state
+      |> Qx.Qubit.x()                          # Returns qubit, pipeline continues
+
+  **Terminal Operations** (return data):
+
+  Functions that extract information and end the pipeline:
+
+      state_map = qubit |> Qx.Qubit.h() |> Qx.Qubit.show_state()         # Returns map
+      prob_tensor = qubit |> Qx.Qubit.measure_probabilities()            # Returns Nx.Tensor
+      svg = qubit |> Qx.Qubit.draw_bloch()                               # Returns SVG string
+      is_valid = qubit |> Qx.Qubit.valid?()                              # Returns boolean
+
+  Choose the right pattern for your use case!
+
   ## Architecture Note
 
   This module is implemented as a thin wrapper around `Qx.Register`. All gate
@@ -112,6 +145,11 @@ defmodule Qx.Qubit do
       iex> svg = Qx.Qubit.draw_bloch(q, format: :svg)
       iex> is_binary(svg)
       true
+
+  ## Pipeline Usage
+
+  ⚠️ This is a terminal operation that returns an SVG string or VegaLite struct, not a qubit.
+  For pipeline-friendly state inspection, use `tap_state/2`.
   """
   def draw_bloch(qubit, options \\ []) do
     Qx.Draw.bloch_sphere(qubit, options)
@@ -480,6 +518,11 @@ defmodule Qx.Qubit do
       iex> alpha = Qx.Qubit.alpha(qubit)
       iex> abs(Complex.abs(alpha) - 0.6) < 0.01
       true
+
+  ## Pipeline Usage
+
+  ⚠️ This is a terminal operation that returns a `Complex` number, not a qubit.
+  For pipeline-friendly state inspection, use `tap_state/2`.
   """
   def alpha(qubit) do
     Nx.to_number(qubit[0])
@@ -494,6 +537,11 @@ defmodule Qx.Qubit do
       iex> beta = Qx.Qubit.beta(qubit)
       iex> abs(Complex.abs(beta) - 0.8) < 0.01
       true
+
+  ## Pipeline Usage
+
+  ⚠️ This is a terminal operation that returns a `Complex` number, not a qubit.
+  For pipeline-friendly state inspection, use `tap_state/2`.
   """
   def beta(qubit) do
     Nx.to_number(qubit[1])
@@ -528,13 +576,50 @@ defmodule Qx.Qubit do
       iex> probs = Qx.Qubit.measure_probabilities(qubit)
       iex> Nx.shape(probs)
       {2}
+
+  ## Pipeline Usage
+
+  ⚠️ This is a terminal operation that returns an `Nx.Tensor`, not a qubit.
+  For pipeline-friendly state inspection, use `tap_state/2`.
   """
   defn measure_probabilities(qubit) do
     Qx.Math.probabilities(qubit)
   end
 
   @doc """
-  Returns a human-readable representation of the qubit state.
+  Returns a map containing formatted state information.
+
+  This function returns a map with human-readable representations of the qubit
+  state, including Dirac notation, complex amplitudes, and measurement probabilities.
+
+  ## Returns
+
+  A map with keys:
+  - `:state` - Dirac notation string (e.g., "0.707|0⟩ + 0.707|1⟩")
+  - `:amplitudes` - List of tuples with basis states and complex amplitudes
+  - `:probabilities` - List of tuples with basis states and measurement probabilities
+
+  ## Pipeline Usage
+
+  ⚠️ **Note**: This function returns display data (a map) and ends the pipeline.
+
+  To inspect state while continuing a pipeline, use `tap_state/2`:
+
+      qubit
+      |> h()
+      |> tap_state(label: "After H gate")  # Shows state, returns qubit
+      |> x()                                # Pipeline continues
+      |> tap_state(label: "After X gate")
+
+  To get the display map at the end of a pipeline:
+
+      state_info =
+        qubit
+        |> h()
+        |> x()
+        |> show_state()  # Terminal operation, returns the map
+
+      IO.puts(state_info.state)
 
   ## Examples
 
@@ -542,21 +627,62 @@ defmodule Qx.Qubit do
       iex> info = Qx.Qubit.show_state(q)
       iex> is_map(info)
       true
+
+      iex> q = Qx.Qubit.plus()
+      iex> info = Qx.Qubit.show_state(q)
+      iex> info.state =~ "|0⟩"
+      true
+
+  See also: `tap_state/2` for pipeline-friendly state inspection.
   """
   def show_state(qubit) do
     qubit |> wrap() |> Register.show_state()
   end
 
   @doc """
-  Inspects and prints the qubit state, then returns the qubit unchanged.
+  Inspects the qubit state and returns the original qubit (pipeline-friendly).
 
-  This is useful for debugging in pipelines without breaking the chain.
+  This function is designed for debugging within pipelines. It displays the state
+  as a side effect but returns the qubit unchanged, allowing the pipeline to continue.
 
   ## Options
+
   - `:label` - Custom label for the output (default: "Qubit State")
   - `:verbose` - Show detailed probabilities (default: false)
 
+  ## vs. `show_state/1`
+
+  - `tap_state/2` - Shows state, **returns qubit** (continues pipeline)
+  - `show_state/1` - Returns **display map** (ends pipeline)
+
   ## Examples
+
+  Basic debugging in a pipeline:
+
+      result =
+        Qx.Qubit.new()
+        |> Qx.Qubit.h()
+        |> Qx.Qubit.tap_state(label: "After Hadamard")
+        |> Qx.Qubit.x()
+        |> Qx.Qubit.tap_state(label: "After X gate")
+        |> Qx.Qubit.y()
+
+  Verbose mode to see detailed probabilities:
+
+      qubit
+      |> Qx.Qubit.rx(:math.pi() / 4)
+      |> Qx.Qubit.tap_state(label: "After rotation", verbose: true)
+
+  Multiple inspection points throughout a pipeline:
+
+      qubit
+      |> Qx.Qubit.tap_state(label: "Initial state")
+      |> Qx.Qubit.h()
+      |> Qx.Qubit.tap_state(label: "Superposition")
+      |> Qx.Qubit.rz(:math.pi() / 2)
+      |> Qx.Qubit.tap_state(label: "After phase rotation")
+
+  Doctest example:
 
       iex> q = Qx.Qubit.new()
       ...>   |> Qx.Qubit.h()
@@ -564,6 +690,8 @@ defmodule Qx.Qubit do
       ...>   |> Qx.Qubit.x()
       iex> Qx.Qubit.valid?(q)
       true
+
+  See also: `show_state/1` for getting the state as a map (terminal operation).
   """
   def tap_state(qubit, opts \\ []) do
     state_info = show_state(qubit)
@@ -594,6 +722,11 @@ defmodule Qx.Qubit do
       iex> invalid_qubit = Nx.tensor([Complex.new(1.0, 0.0), Complex.new(1.0, 0.0)], type: :c64)
       iex> Qx.Qubit.valid?(invalid_qubit)
       false
+
+  ## Pipeline Usage
+
+  ⚠️ This is a terminal operation that returns a `boolean`, not a qubit.
+  For pipeline-friendly state inspection, use `tap_state/2`.
   """
   @spec valid?(Nx.Tensor.t()) :: boolean()
   def valid?(state) do

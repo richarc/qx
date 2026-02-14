@@ -146,6 +146,13 @@ defmodule Qx.GateError do
   end
 end
 
+defmodule Qx.RemoteError do
+  @moduledoc """
+  Raised when a QxServer remote request fails.
+  """
+  defexception [:status, :message]
+end
+
 defmodule Qx.QubitCountError do
   @moduledoc """
   Raised when the number of qubits is invalid.
