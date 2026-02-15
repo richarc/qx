@@ -164,7 +164,7 @@ defmodule Qx.Draw.SVG.Charts do
         x = index * (bar_width + bar_spacing) + bar_spacing / 2
         y = height - 30 - bar_height
 
-        label = Enum.join(bit_string, "")
+        label = counts_key_to_label(bit_string)
 
         """
         <rect x="#{x}" y="#{y}" width="#{bar_width}" height="#{bar_height}"
@@ -185,4 +185,7 @@ defmodule Qx.Draw.SVG.Charts do
     </svg>
     """
   end
+
+  defp counts_key_to_label(key) when is_list(key), do: Enum.join(key, "")
+  defp counts_key_to_label(key) when is_binary(key), do: key
 end

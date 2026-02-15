@@ -71,7 +71,7 @@ defmodule Qx.Draw.VegaLite do
       data =
         result.counts
         |> Enum.map(fn {bit_string, count} ->
-          label = Enum.join(bit_string, "")
+          label = counts_key_to_label(bit_string)
           %{"measurement" => label, "count" => count}
         end)
 
@@ -83,6 +83,9 @@ defmodule Qx.Draw.VegaLite do
       |> VegaLite.encode(:color, value: "#ff7f0e")
     end
   end
+
+  defp counts_key_to_label(key) when is_list(key), do: Enum.join(key, "")
+  defp counts_key_to_label(key) when is_binary(key), do: key
 
   @doc """
   Creates a VegaLite histogram from raw probability data.
