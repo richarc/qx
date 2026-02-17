@@ -28,10 +28,20 @@ defmodule Qx.Remote.Config do
   @doc """
   Creates a new remote config.
 
+  ## Options
+
+    * `:url` - Base URL of the qx_server (required)
+    * `:api_key` - API key for authentication (optional)
+    * `:timeout` - HTTP request timeout in milliseconds (default: 300_000)
+
   ## Returns
 
     * `{:ok, %Config{}}` on success
     * `{:error, reason}` on validation failure
+
+  ## Examples
+
+      {:ok, config} = Qx.Remote.Config.new(url: "http://localhost:4040")
 
   """
   @spec new(keyword()) :: {:ok, t()} | {:error, String.t()}
@@ -59,6 +69,14 @@ defmodule Qx.Remote.Config do
 
   @doc """
   Creates a new remote config, raising on invalid input.
+
+  ## Examples
+
+      config = Qx.Remote.Config.new!(
+        url: "http://localhost:4040",
+        api_key: System.get_env("QX_SERVER_API_KEY")
+      )
+
   """
   @spec new!(keyword()) :: t()
   def new!(opts) do

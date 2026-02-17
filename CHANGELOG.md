@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Remote Execution via QxServer** - Run quantum circuits on real hardware through QxServer
+  - New `Qx.Remote` module for submitting circuits, polling job status, and retrieving results
+  - New `Qx.Remote.Config` for configuring QxServer connection (URL, API key, timeout)
+  - New `Qx.ResultBuilder` for constructing `Qx.SimulationResult` structs from hardware counts data
+  - New `Qx.RemoteError` exception type for remote execution errors
+  - Example script at `examples/remote/run_on_hardware.exs`
+
+### Fixed
+- `Qx.Qubit.draw_bloch/2` now correctly defaults to `:vega_lite` format (was ignoring the default and using `:svg`)
+- Draw functions (`Qx.Draw.plot_counts/2`, `Qx.Draw.plot/2`) now correctly handle `SimulationResult` structs from hardware backends where counts keys are binary strings
+- OpenQASM export formatting improvements
+
 ## [0.4.0] - 2025-12-23
 
 ### Added
@@ -223,9 +238,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Quantum Fourier Transform implementation
 - Noise models for realistic simulations
 - Density matrix simulation for mixed states
-- OpenQASM import/export
+- OpenQASM import (export is available since v0.4.0)
 - Performance optimizations for larger circuits
-- Integration with quantum hardware providers
 
 ---
 

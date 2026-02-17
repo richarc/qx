@@ -4,6 +4,14 @@ defmodule Qx.ResultBuilder do
 
   Used by `Qx.Remote` to reconstruct results from the qx_server JSON
   response, and by provider adapters when converting hardware results.
+
+  > #### Statevector placeholder {: .warning}
+  >
+  > Hardware backends do not return statevectors. The `state` field in
+  > the resulting `Qx.SimulationResult` is set to a zero-vector placeholder.
+  > Functions that depend on the statevector (e.g. state visualization) will
+  > not produce meaningful output for hardware results. Use `counts` and
+  > `probabilities` instead.
   """
 
   @doc """
@@ -16,10 +24,16 @@ defmodule Qx.ResultBuilder do
     * `shots` - Total number of shots executed
     * `num_bits` - Number of classical bits in the circuit
 
+  The `state` field will be a zero-vector placeholder since hardware backends
+  do not return statevectors.
+
   ## Examples
 
-      iex> Qx.ResultBuilder.from_counts(%{"00" => 500, "11" => 500}, 1000, 2)
-      %Qx.SimulationResult{shots: 1000, counts: %{"00" => 500, "11" => 500}, ...}
+      result = Qx.ResultBuilder.from_counts(%{"00" => 500, "11" => 500}, 1000, 2)
+      result.shots
+      #=> 1000
+      result.counts
+      #=> %{"00" => 500, "11" => 500}
 
   """
   @spec from_counts(map(), pos_integer(), pos_integer()) :: Qx.SimulationResult.t()

@@ -18,7 +18,7 @@ defmodule Qx.Draw do
   - `histogram/2` - Plot raw probability tensors
 
   ### Measurement Counts
-  - `plot_counts/2` - Visualize measurement outcome frequencies
+  - `plot_counts/2` - Visualize measurement outcome frequencies (works with both local simulation and `Qx.Remote` hardware results)
 
   ### Bloch Sphere
   - `bloch_sphere/2` - Visualize single-qubit states geometrically
@@ -101,6 +101,9 @@ defmodule Qx.Draw do
 
   @doc """
   Plots measurement counts as a bar chart.
+
+  Works with results from both local simulation (`Qx.run/2`) and remote
+  hardware execution (`Qx.Remote.run/3`).
 
   ## Parameters
     * `result` - Simulation result containing measurement counts

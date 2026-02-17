@@ -59,7 +59,16 @@ defmodule Qx.Remote do
   @doc """
   Submits a circuit to the server (non-blocking).
 
-  Returns the server's response including `"job_id"` and `"status"`.
+  Returns `{:ok, map}` where the map includes `"job_id"` and `"status"` fields.
+
+  ## Options
+
+    * `:backend` - Backend name (required), e.g. `"ibm_fez"`
+    * `:shots` - Number of shots (default: 4096)
+    * `:provider` - Provider name (default: "ibm")
+    * `:options` - Provider-specific options map
+    * `:req_options` - Additional Req options (for testing)
+
   """
   @spec submit(Qx.QuantumCircuit.t(), Config.t(), keyword()) ::
           {:ok, map()} | {:error, term()}
@@ -126,7 +135,15 @@ defmodule Qx.Remote do
   end
 
   @doc """
-  Cancels a job.
+  Cancels a running job.
+
+  Returns `{:ok, map}` with the cancellation response, or `{:error, :not_found}`
+  if the job does not exist.
+
+  ## Examples
+
+      {:ok, _} = Qx.Remote.cancel(job_id, config)
+
   """
   @spec cancel(String.t(), Config.t(), keyword()) :: {:ok, map()} | {:error, term()}
   def cancel(job_id, %Config{} = config, opts \\ []) do

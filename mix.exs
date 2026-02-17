@@ -24,7 +24,7 @@ defmodule Qx.MixProject do
       docs: docs(),
       package: package(),
       description:
-        "A quantum computing simulator for Elixir with support for up to 20 qubits, statevector simulation, and circuit visualization"
+        "A quantum computing library for Elixir with statevector simulation, circuit visualization, and remote execution on real quantum hardware via QxServer"
     ]
   end
 

@@ -87,7 +87,7 @@ defmodule Qx.Qubit do
 
       state_map = qubit |> Qx.Qubit.h() |> Qx.Qubit.show_state()         # Returns map
       prob_tensor = qubit |> Qx.Qubit.measure_probabilities()            # Returns Nx.Tensor
-      svg = qubit |> Qx.Qubit.draw_bloch()                               # Returns SVG string
+      bloch = qubit |> Qx.Qubit.draw_bloch()                              # Returns VegaLite struct (default) or SVG string
       is_valid = qubit |> Qx.Qubit.valid?()                              # Returns boolean
 
   Choose the right pattern for your use case!

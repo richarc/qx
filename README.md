@@ -749,7 +749,7 @@ IO.puts(state_info.state)  # "0.707|0⟩ - 0.707|1⟩"
 # Other terminal operations
 alpha = qubit |> Qx.Qubit.alpha()                    # Returns Complex number
 probs = qubit |> Qx.Qubit.measure_probabilities()    # Returns Nx.Tensor
-svg = qubit |> Qx.Qubit.draw_bloch()                 # Returns SVG string
+bloch = qubit |> Qx.Qubit.draw_bloch()                 # Returns VegaLite struct (default) or SVG string
 ```
 
 **Key difference:**
@@ -1227,6 +1227,9 @@ elixir examples/basic_usage.exs
 
 # Run conditional gates examples
 elixir examples/conditional_gates_example.exs
+
+# Run remote execution example (requires a running QxServer)
+mix run examples/remote/run_on_hardware.exs
 ```
 
 ### For Qx Users (Installed as Dependency)
@@ -1295,7 +1298,7 @@ This project is licensed under the Apache License 2.0.
 
 ## Version
 
-Current version: 0.3.0
+Current version: 0.4.0
 
 For detailed API documentation, run:
 
