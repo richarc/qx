@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-02-17
+
 ### Added
 - **Remote Execution via QxServer** - Run quantum circuits on real hardware through QxServer
   - New `Qx.Remote` module for submitting circuits, polling job status, and retrieving results
@@ -14,6 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New `Qx.ResultBuilder` for constructing `Qx.SimulationResult` structs from hardware counts data
   - New `Qx.RemoteError` exception type for remote execution errors
   - Example script at `examples/remote/run_on_hardware.exs`
+- **Quantum Operations Tutorial** - New comprehensive LiveBook tutorial covering quantum gates, Bloch sphere, and two-qubit operations at `examples/tutorials/quantum_operations_tutorial.livemd`
+
+### Changed
+- **README Restructure** - Major reorganization for better new-user experience
+  - Moved Performance & Acceleration section (~380 lines) from between Installation and Quick Start to the end
+  - Removed API Reference section (duplicated by hexdocs) and Module Structure section
+  - Added "Understanding the Two Modes" orientation section with comparison table
+  - Added consolidated Visualization section
+  - Added links to hexdocs and LiveBook guides
+  - Reduced README from 1,308 to ~750 lines
 
 ### Fixed
 - `Qx.Qubit.draw_bloch/2` now correctly defaults to `:vega_lite` format (was ignoring the default and using `:svg`)
@@ -243,6 +255,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.5.0]: https://github.com/richarc/qx/releases/tag/v0.5.0
 [0.4.0]: https://github.com/richarc/qx/releases/tag/v0.4.0
 [0.3.0]: https://github.com/richarc/qx/releases/tag/v0.3.0
 [0.2.5]: https://github.com/richarc/qx/releases/tag/v0.2.5

@@ -30,6 +30,7 @@ defmodule Qx.Remote do
 
   """
 
+  alias Qx.Export.OpenQASM
   alias Qx.Remote.Config
 
   @default_poll_interval 2_000
@@ -73,7 +74,7 @@ defmodule Qx.Remote do
   @spec submit(Qx.QuantumCircuit.t(), Config.t(), keyword()) ::
           {:ok, map()} | {:error, term()}
   def submit(%Qx.QuantumCircuit{} = circuit, %Config{} = config, opts \\ []) do
-    qasm = Qx.Export.OpenQASM.to_qasm(circuit, version: 3)
+    qasm = OpenQASM.to_qasm(circuit, version: 3)
     backend = Keyword.get(opts, :backend) || raise ArgumentError, "backend is required"
     shots = Keyword.get(opts, :shots, 4096)
     provider = Keyword.get(opts, :provider, "ibm")
