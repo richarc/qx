@@ -189,24 +189,56 @@ defmodule Qx.Remote do
     end
   end
 
-  defp handle_poll_result({:ok, %{"status" => "completed"} = status_map}, job_id, config, _deadline, _interval, on_status, opts) do
+  defp handle_poll_result(
+         {:ok, %{"status" => "completed"} = status_map},
+         job_id,
+         config,
+         _deadline,
+         _interval,
+         on_status,
+         opts
+       ) do
     if on_status, do: on_status.(status_map)
     fetch_results(job_id, config, opts)
   end
 
-  defp handle_poll_result({:ok, %{"status" => status} = status_map}, _job_id, _config, _deadline, _interval, on_status, _opts)
+  defp handle_poll_result(
+         {:ok, %{"status" => status} = status_map},
+         _job_id,
+         _config,
+         _deadline,
+         _interval,
+         on_status,
+         _opts
+       )
        when status in ["failed", "cancelled"] do
     if on_status, do: on_status.(status_map)
     {:error, %{status: status, error: status_map["error"]}}
   end
 
-  defp handle_poll_result({:ok, status_map}, job_id, config, deadline, poll_interval, on_status, opts) do
+  defp handle_poll_result(
+         {:ok, status_map},
+         job_id,
+         config,
+         deadline,
+         poll_interval,
+         on_status,
+         opts
+       ) do
     if on_status, do: on_status.(status_map)
     Process.sleep(poll_interval)
     do_poll(job_id, config, deadline, poll_interval, on_status, opts)
   end
 
-  defp handle_poll_result({:error, _} = error, _job_id, _config, _deadline, _interval, _on_status, _opts) do
+  defp handle_poll_result(
+         {:error, _} = error,
+         _job_id,
+         _config,
+         _deadline,
+         _interval,
+         _on_status,
+         _opts
+       ) do
     error
   end
 

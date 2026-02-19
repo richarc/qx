@@ -69,7 +69,8 @@ defmodule Qx.RemoteTest do
 
       send(self(), {:respond, 202, %{"job_id" => "abc123", "status" => "submitted"}})
 
-      {:ok, job} = Remote.submit(circuit(), @config, [backend: "ibm_fez"] ++ req_options(test_name))
+      {:ok, job} =
+        Remote.submit(circuit(), @config, [backend: "ibm_fez"] ++ req_options(test_name))
 
       assert job["job_id"] == "abc123"
       assert job["status"] == "submitted"
@@ -168,10 +169,16 @@ defmodule Qx.RemoteTest do
       # Second poll: completed
       send(self(), {:respond, 200, %{"job_id" => "abc", "status" => "completed"}})
       # Results fetch
-      send(self(), {:respond, 200, %{"counts" => %{"00" => 500, "11" => 500}, "shots" => 1000, "num_classical_bits" => 2}})
+      send(
+        self(),
+        {:respond, 200,
+         %{"counts" => %{"00" => 500, "11" => 500}, "shots" => 1000, "num_classical_bits" => 2}}
+      )
 
       {:ok, result} =
-        Remote.await("abc", @config,
+        Remote.await(
+          "abc",
+          @config,
           [poll_interval: 10, on_status: fn s -> send(self(), {:status_cb, s["status"]}) end] ++
             req_options(test_name)
         )
@@ -188,7 +195,10 @@ defmodule Qx.RemoteTest do
       test_name = :await_fail_test
       stub_plug(test_name)
 
-      send(self(), {:respond, 200, %{"job_id" => "abc", "status" => "failed", "error" => "Hardware error"}})
+      send(
+        self(),
+        {:respond, 200, %{"job_id" => "abc", "status" => "failed", "error" => "Hardware error"}}
+      )
 
       assert {:error, %{status: "failed"}} =
                Remote.await("abc", @config, [poll_interval: 10] ++ req_options(test_name))
@@ -206,7 +216,9 @@ defmodule Qx.RemoteTest do
       end)
 
       assert {:error, :timeout} =
-               Remote.await("abc", @config,
+               Remote.await(
+                 "abc",
+                 @config,
                  [timeout: 50, poll_interval: 10] ++ req_options(test_name)
                )
     end
@@ -231,7 +243,12 @@ defmodule Qx.RemoteTest do
               {200, %{"job_id" => "run123", "status" => "completed"}}
 
             {"GET", 3} ->
-              {200, %{"counts" => %{"00" => 600, "11" => 400}, "shots" => 1000, "num_classical_bits" => 2}}
+              {200,
+               %{
+                 "counts" => %{"00" => 600, "11" => 400},
+                 "shots" => 1000,
+                 "num_classical_bits" => 2
+               }}
           end
 
         conn
@@ -240,7 +257,9 @@ defmodule Qx.RemoteTest do
       end)
 
       {:ok, result} =
-        Remote.run(circuit(), @config,
+        Remote.run(
+          circuit(),
+          @config,
           [backend: "ibm_fez", shots: 1000, poll_interval: 10] ++ req_options(test_name)
         )
 

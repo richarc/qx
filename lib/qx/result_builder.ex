@@ -37,7 +37,8 @@ defmodule Qx.ResultBuilder do
 
   """
   @spec from_counts(map(), pos_integer(), pos_integer()) :: Qx.SimulationResult.t()
-  def from_counts(counts, shots, num_bits) when is_map(counts) and is_integer(shots) and is_integer(num_bits) do
+  def from_counts(counts, shots, num_bits)
+      when is_map(counts) and is_integer(shots) and is_integer(num_bits) do
     total_counts = Enum.reduce(counts, 0, fn {_k, v}, acc -> acc + v end)
 
     probabilities =
