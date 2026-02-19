@@ -166,7 +166,7 @@ jobs:
           echo "✅ HEX_API_KEY is configured"
 
       - name: Publish to Hex.pm
-        run: mix hex.publish --yes
+        run: mix hex.publish --replace --yes
         env:
           MIX_ENV: dev
           HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
