@@ -207,6 +207,9 @@ defmodule Qx.Export.OpenQASM do
       {:s, qubits, params} ->
         single_qubit_gate_to_qasm("s", qubits, params)
 
+      {:sdg, qubits, params} ->
+        single_qubit_gate_to_qasm("sdg", qubits, params)
+
       {:t, qubits, params} ->
         single_qubit_gate_to_qasm("t", qubits, params)
 

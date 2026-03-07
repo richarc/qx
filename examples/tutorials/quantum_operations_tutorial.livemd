@@ -1,8 +1,8 @@
-# Quantum Operations and Gates: A Tutorial with Qx Simulator
+# Quantum Operations and Gates
 
 ```elixir
 Mix.install([
-  {:qx, "~> 0.5.0", hex: :qx_sim},
+  {:qx, "~> 0.5.1", hex: :qx_sim},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
   {:kino_vega_lite, "~> 0.1.11"}
@@ -14,721 +14,833 @@ alias Qx.Register
 
 ## Introduction
 
-This tutorial provides a comprehensive introduction to quantum operations and gates, covering both the theoretical foundations and practical implementation using the Qx quantum simulator for Elixir. We'll explore how quantum gates manipulate qubit states and how they're represented mathematically.
+In the previous tutorial we explored quantum state and the qubit using Qx in **calculation mode**, where gates apply immediately and state can be inspected at every step. In this tutorial we introduce **circuit mode** — the standard workflow for building and executing quantum algorithms — and then explore the quantum gates that transform qubit states.
 
-**Table of Contents:**
+**What this tutorial covers:**
 
-1. Fundamental Theory of Quantum Operators
-2. Pauli Gates
-3. Pauli Gates and the Bloch Sphere
-4. Two-Qubit Gates
-5. Practical Examples with Qx
+1. Circuit mode and how it differs from calculation mode
+2. Quantum operators and unitarity
+3. The Hadamard gate
+4. The inner product
+5. Pauli gates and their action on the Bloch sphere
+6. Phase gates (S, S†, and T)
+7. Rotation gates (RX, RY, RZ)
+8. Multi-qubit gates (CX, CZ, CCX)
 
-## 1. Fundamental Theory of Quantum Operators
+## Quantum Circuits and Circuit Mode
 
-### 1.1 Quantum States
+### The Circuit Model
 
-A single qubit exists in a quantum state that can be represented as a linear combination of two basis states $|0\rangle$ and $|1\rangle$:
+In the circuit model of quantum computation, an algorithm is expressed as a sequence of **quantum gates** applied to a set of qubits, followed by **measurement**. This is analogous to how classical computation is built from logic gates, but with a crucial difference: quantum gates are reversible.
 
-$$|\psi\rangle = \alpha|0\rangle + \beta|1\rangle$$
+A quantum circuit is read left to right:
 
-where $\alpha$ and $\beta$ are complex numbers called probability amplitudes, and they must satisfy the normalization condition:
+1. **Initialise** qubits (usually in the $\ket{0}$ state)
+2. **Apply** a sequence of gates
+3. **Measure** the qubits to extract classical information
 
-$$|\alpha|^2 + |\beta|^2 = 1$$
+### Circuit Mode in Qx
 
-The computational basis states are represented as column vectors:
-
-$$|0\rangle = \begin{pmatrix} 1 \\ 0 \end{pmatrix}, \quad |1\rangle = \begin{pmatrix} 0 \\ 1 \end{pmatrix}$$
-
-### 1.2 Quantum Operators as Matrices
-
-Quantum gates are represented by unitary matrices that transform quantum states. A unitary matrix $U$ satisfies:
-
-$$U^\dagger U = U U^\dagger = I$$
-
-where $U^\dagger$ is the conjugate transpose of $U$ and $I$ is the identity matrix.
-
-For a single qubit, gates are $2 \times 2$ unitary matrices. When a gate $U$ is applied to a state $|\psi\rangle$, the resulting state is:
-
-$$|\psi'\rangle = U|\psi\rangle$$
-
-### 1.3 Properties of Quantum Gates
-
-**Reversibility**: Since quantum gates are unitary, they are always reversible. For any gate $U$, there exists an inverse gate $U^{-1} = U^\dagger$.
-
-**Preservation of Normalization**: Unitary operations preserve the normalization of quantum states. If $|\psi\rangle$ is normalized, then $U|\psi\rangle$ is also normalized.
-
-**Example - Creating and Inspecting States:**
+In circuit mode, you build a circuit description first, then execute it with `Qx.run/2`. This is the standard workflow for quantum algorithms.
 
 ```elixir
-# Create a qubit in |0⟩ state
-q0 = Qubit.new()
-Qubit.show_state(q0)
+# Build a circuit: 2 qubits, 2 classical bits for measurement results
+# This is called a Bell state and we will learn a lot more about them in future tutorials
+circuit = Qx.create_circuit(2, 2)
+  |> Qx.h(0)            # Apply Hadamard to qubit 0
+  |> Qx.cx(0, 1)        # Apply CNOT from qubit 0 to qubit 1
+  |> Qx.measure(0, 0)   # Measure qubit 0, store result in classical bit 0
+  |> Qx.measure(1, 1)   # Measure qubit 1, store result in classical bit 1
+
+# Execute the circuit for 1000 shots
+result = Qx.run(circuit, 1000)
+IO.inspect(result.counts, label: "Measurement counts")
 ```
 
+Each execution ("shot") collapses the quantum state and records a classical outcome. Running many shots builds up a statistical distribution of outcomes.
+
 ```elixir
-# Create a custom superposition state
-# |ψ⟩ = (1/√2)|0⟩ + (1/√2)|1⟩
-alpha = 1 / :math.sqrt(2)
-beta = 1 / :math.sqrt(2)
-q_super = Qubit.new(alpha, beta)
-Qubit.show_state(q_super)
+# Visualise the measurement distribution
+Qx.draw_counts(result)
 ```
 
+We can convieniently also draw a representation of a quntum circuit. This is often usefull in helping visualise the actions of our quntum circuits.
+
 ```elixir
-# Verify normalization - probabilities sum to 1.0
-Qubit.measure_probabilities(q_super)
+# Visualise the circuit
+# We currently don't have an alias for the circuit function so we need to specificy the full module and function name
+Qx.Draw.circuit(circuit)
 ```
 
-## 2. Pauli Gates
+### Circuit Mode vs Calculation Mode
 
-The Pauli gates are fundamental single-qubit gates named after physicist Wolfgang Pauli. They form the basis for many quantum operations.
+The two modes serve complementary purposes:
 
-### 2.1 Pauli-X Gate (Bit Flip)
+| Feature          | Calculation Mode          | Circuit Mode                   |
+| ---------------- | ------------------------- | ------------------------------ |
+| Gate application | Immediate                 | Deferred (on `run`)            |
+| State inspection | At any step               | Before measurement only        |
+| Measurement      | Probabilities only        | Full measurement with collapse |
+| Multiple shots   | No                        | Yes                            |
+| Module           | `Qx.Qubit`, `Qx.Register` | `Qx.create_circuit`, `Qx.run`  |
 
-The Pauli-X gate flips the computational basis states:
+**Calculation mode** is ideal for learning and interactive exploration. **Circuit mode** is the standard for algorithms, benchmarking, and hardware execution.
 
-$$X = \begin{pmatrix} 0 & 1 \\ 1 & 0 \end{pmatrix}$$
-
-**Action**:
-
-* $X|0\rangle = |1\rangle$
-* $X|1\rangle = |0\rangle$
-
-This is the quantum analogue of the classical NOT gate.
+In previous example we used a single qubit in calcualtion mode, when we need calculation mode for more than a single qubit we use the Qx.Register module as below.
 
 ```elixir
-# Circuit Mode
-qc = Qx.create_circuit(1)
-  |> Qx.x(0)
+# The same Bell state in calculation mode — for comparison
+reg = Register.new(2)
+  |> Register.h(0)
+  |> Register.cx(0, 1)
 
-state = Qx.get_state(qc)
-IO.inspect(state, label: "State vector (should be [0, 1] representing |1⟩)")
+Register.show_state(reg)
 ```
 
+In calculation mode, the state is available immediately after each gate. In circuit mode, the state evolves internally and is only accessible through measurement or explicit state inspection before measurement.
+
 ```elixir
-# Calculation Mode - Apply gate in real-time
-q = Qubit.new()  # Start with |0⟩
-  |> Qubit.x()   # Apply X gate
+# Inspecting the state vector before measurement in circuit mode
+circuit = Qx.create_circuit(2)
+  |> Qx.h(0)
+  |> Qx.cx(0, 1)
+
+state = Qx.get_state(circuit)
+IO.inspect(state, label: "State vector")
+
+probs = Qx.get_probabilities(circuit)
+IO.inspect(probs, label: "Probabilities")
+```
+
+Throughout this tutorial, we use both modes. Calculation mode lets us inspect state changes step by step, while circuit mode demonstrates the standard algorithm workflow.
+
+## Quantum Operators and Unitarity
+
+### Operators as Matrices
+
+A quantum gate is a mathematical operation that transforms one quantum state into another. For a single qubit, a gate is represented by a $2 \times 2$ matrix. When a gate $U$ acts on a state $\ket{\psi}$, the result is:
+
+$$
+\ket{\psi'} = U\ket{\psi}
+$$
+
+For example, applying a matrix $U$ to the state $\ket{\psi} = \begin{pmatrix} \alpha \\ \beta \end{pmatrix}$:
+
+$$
+U\ket{\psi} = \begin{pmatrix} u_{00} & u_{01} \\ u_{10} & u_{11} \end{pmatrix} \begin{pmatrix} \alpha \\ \beta \end{pmatrix} = \begin{pmatrix} u_{00}\alpha + u_{01}\beta \\ u_{10}\alpha + u_{11}\beta \end{pmatrix}
+$$
+
+### Unitarity
+
+Not every matrix is a valid quantum gate. Quantum mechanics requires that gates are **unitary**. A matrix $U$ is unitary if:
+
+$$
+U^\dagger U = U U^\dagger = I
+$$
+
+where $U^\dagger$ (read "U-dagger") is the **conjugate transpose** of $U$ — obtained by transposing the matrix and taking the complex conjugate of each entry — and $I$ is the identity matrix.
+
+Unitarity guarantees two essential properties:
+
+1. **Reversibility:** Every quantum gate has an inverse, $U^{-1} = U^\dagger$. Information is never lost.
+2. **Normalisation preservation:** If $\ket{\psi}$ is a valid quantum state (normalised), then $U\ket{\psi}$ is also normalised. Probabilities continue to sum to 1.
+
+**Why reversibility matters:** Unlike classical gates (e.g., AND, OR), which can lose information (you cannot determine both inputs from the output), quantum gates are always reversible. This is a fundamental constraint of quantum mechanics that shapes the design of quantum algorithms.
+
+```elixir
+# Demonstrate reversibility: applying a gate and then its inverse returns to the original state
+q = Qubit.new()
+  |> Qubit.h()   # Apply Hadamard
+  |> Qubit.h()   # Apply Hadamard again (H is its own inverse: H† = H)
 
 Qubit.show_state(q)
-# The state is now |1⟩
+# Back to |0⟩
 ```
 
-### 2.2 Pauli-Y Gate
+## The Hadamard Gate
+
+The Hadamard gate is one of the most important single-qubit gates. It creates an equal superposition from a basis state:
+
+$$
+H = \frac{1}{\sqrt{2}} \begin{pmatrix} 1 & 1 \\ 1 & -1 \end{pmatrix}
+$$
+
+**Action on basis states:**
+
+$$
+H\ket{0} = \frac{1}{\sqrt{2}}(\ket{0} + \ket{1}) = \ket{+}
+$$
+
+$$
+H\ket{1} = \frac{1}{\sqrt{2}}(\ket{0} - \ket{1}) = \ket{-}
+$$
+
+The Hadamard gate transforms between the Z-basis and the X-basis. It is its own inverse: $H^2 = I$.
+
+```elixir
+# Hadamard on |0⟩ creates |+⟩
+q = Qubit.new() |> Qubit.h()
+Qubit.show_state(q)
+```
+
+```elixir
+# Hadamard on |1⟩ creates |−⟩
+q = Qubit.one() |> Qubit.h()
+Qubit.show_state(q)
+```
+
+```elixir
+# Hadamard is self-inverse: H(H|0⟩) = |0⟩
+q = Qubit.new()
+  |> Qubit.h()
+  |> Qubit.h()
+
+Qubit.show_state(q)
+```
+
+In circuit mode, Hadamard is the standard way to initialise qubits into superposition at the start of an algorithm:
+
+```elixir
+# Put all 3 qubits into equal superposition
+circuit = Qx.create_circuit(3)
+  |> Qx.h(0)
+  |> Qx.h(1)
+  |> Qx.h(2)
+
+probs = Qx.get_probabilities(circuit)
+IO.inspect(probs, label: "All 8 basis states equally likely")
+```
+
+## The Inner Product
+
+Before continuing with more gates, we introduce the **inner product** — a mathematical tool that is essential for understanding unitarity, measurement, and orthogonality.
+
+### Bras and Kets
+
+In Dirac notation, a **ket** $\ket{\psi}$ represents a column vector (a quantum state). Its companion, a **bra** $\bra{\psi}$, is the conjugate transpose — a row vector:
+
+$$
+\ket{\psi} = \begin{pmatrix} \alpha \\ \beta \end{pmatrix} \quad \Longrightarrow \quad \bra{\psi} = \begin{pmatrix} \alpha^* & \beta^* \end{pmatrix}
+$$
+
+where $\alpha^*$ denotes the complex conjugate of $\alpha$.
+
+### Definition
+
+The **inner product** of two states $\ket{\phi}$ and $\ket{\psi}$ is written $\braket{\phi|\psi}$ (a "bra-ket" — the origin of the notation). It is computed as:
+
+$$
+\braket{\phi|\psi} = \begin{pmatrix} \phi_0^* & \phi_1^* \end{pmatrix} \begin{pmatrix} \psi_0 \\ \psi_1 \end{pmatrix} = \phi_0^*\psi_0 + \phi_1^*\psi_1
+$$
+
+The inner product returns a single complex number and captures the "overlap" between two quantum states.
+
+### Key Properties
+
+1. **Normalisation:** A state is normalised when $\braket{\psi|\psi} = 1$.
+
+2. **Orthogonality:** Two states are orthogonal when $\braket{\phi|\psi} = 0$. Orthogonal states are perfectly distinguishable.
+
+3. **Basis states are orthonormal:**
+   $$
+   \braket{0|0} = 1, \quad \braket{1|1} = 1, \quad \braket{0|1} = 0, \quad \braket{1|0} = 0
+   $$
+
+### Connection to Unitarity
+
+The unitarity condition $U^\dagger U = I$ can be restated using inner products: a gate $U$ is unitary if and only if it preserves inner products between all pairs of states:
+
+$$
+\braket{U\phi|U\psi} = \braket{\phi|\psi}
+$$
+
+This means unitary operations preserve both the length of state vectors (normalisation) and the angles between them (orthogonality). Two states that are distinguishable before a gate remain distinguishable after.
+
+## Pauli Gates
+
+The Pauli gates are fundamental single-qubit gates named after the physicist Wolfgang Pauli. Together with the identity, they form a basis for all single-qubit operations.
+
+### Pauli-X Gate (Bit Flip)
+
+The Pauli-X gate flips the computational basis states, making it the quantum analogue of the classical NOT gate:
+
+$$
+X = \begin{pmatrix} 0 & 1 \\ 1 & 0 \end{pmatrix}
+$$
+
+**Action:**
+
+$$
+X\ket{0} = \ket{1} \qquad X\ket{1} = \ket{0}
+$$
+
+```elixir
+# X gate flips |0⟩ to |1⟩
+q = Qubit.new() |> Qubit.x()
+Qubit.show_state(q)
+```
+
+```elixir
+# In circuit mode
+circuit = Qx.create_circuit(1)
+  |> Qx.x(0)
+
+Qx.get_state(circuit) |> IO.inspect(label: "State after X")
+```
+
+### Pauli-Y Gate
 
 The Pauli-Y gate combines a bit flip with a phase flip:
 
-$$Y = \begin{pmatrix} 0 & -i \\ i & 0 \end{pmatrix}$$
+$$
+Y = \begin{pmatrix} 0 & -i \\ i & 0 \end{pmatrix}
+$$
 
-**Action**:
+**Action:**
 
-* $Y|0\rangle = i|1\rangle$
-* $Y|1\rangle = -i|0\rangle$
+$$
+Y\ket{0} = i\ket{1} \qquad Y\ket{1} = -i\ket{0}
+$$
 
 ```elixir
-# Circuit Mode
-qc = Qx.create_circuit(1)
-  |> Qx.y(0)
-
-state = Qx.get_state(qc)
-IO.inspect(state, label: "State vector (contains complex numbers [0, i])")
+# Y gate on |0⟩ — note the imaginary amplitude
+q = Qubit.new() |> Qubit.y()
+Qubit.show_state(q)
 ```
 
+### Pauli-Z Gate (Phase Flip)
+
+The Pauli-Z gate leaves $\ket{0}$ unchanged and applies a phase of $-1$ to $\ket{1}$:
+
+$$
+Z = \begin{pmatrix} 1 & 0 \\ 0 & -1 \end{pmatrix}
+$$
+
+**Action:**
+
+$$
+Z\ket{0} = \ket{0} \qquad Z\ket{1} = -\ket{1}
+$$
+
+The Z gate has no effect on basis states in terms of measurement probabilities. Its effect is on the **phase**, which becomes visible when the qubit is in superposition.
+
 ```elixir
-# Calculation Mode - note the imaginary component
+# Z gate on a superposition state: |+⟩ becomes |−⟩
+q = Qubit.plus() |> Qubit.z()
+Qubit.show_state(q)
+```
+
+The measurement probabilities are unchanged (still 50/50), but the relative phase has flipped from positive to negative. As we discussed in the previous tutorial, this phase difference is physically real and detectable in the X-basis.
+
+### Properties of Pauli Gates
+
+**Self-inverse:** All Pauli gates are their own inverse:
+
+$$
+X^2 = Y^2 = Z^2 = I
+$$
+
+```elixir
+# Applying X twice returns to the original state
 q = Qubit.new()
-  |> Qubit.y()
+  |> Qubit.x()
+  |> Qubit.x()
 
 Qubit.show_state(q)
 ```
 
-### 2.3 Pauli-Z Gate (Phase Flip)
+**Anti-commutation:** Pauli gates anti-commute with each other:
 
-The Pauli-Z gate applies a phase flip to the $|1\rangle$ state:
+$$
+XY = -YX, \qquad YZ = -ZY, \qquad ZX = -XZ
+$$
 
-$$Z = \begin{pmatrix} 1 & 0 \\ 0 & -1 \end{pmatrix}$$
+**Eigenvalues:** Each Pauli gate has eigenvalues $+1$ and $-1$, with corresponding eigenstates:
 
-**Action**:
+| Gate | $+1$ eigenstate | $-1$ eigenstate |
+| ---- | --------------- | --------------- |
+| X    | $\ket{+}$       | $\ket{-}$       |
+| Y    | $\ket{i}$       | $\ket{-i}$      |
+| Z    | $\ket{0}$       | $\ket{1}$       |
 
-* $Z|0\rangle = |0\rangle$
-* $Z|1\rangle = -|1\rangle$
-
-The Z gate is crucial for quantum algorithms as it introduces relative phase between basis states.
+An **eigenstate** of a gate is a state that the gate leaves unchanged (up to a scalar factor). For example, $X\ket{+} = \ket{+}$ and $X\ket{-} = -\ket{-}$.
 
 ```elixir
-# Calculation Mode - Observe phase change
+# |+⟩ is an eigenstate of X: applying X leaves it unchanged
+q = Qubit.plus() |> Qubit.x()
+Qubit.show_state(q)
+```
+
+## Pauli Gates on the Bloch Sphere
+
+In the previous tutorial we introduced the Bloch sphere as a geometric representation of single-qubit states. The Pauli gates have an elegant geometric interpretation: each is a **rotation by $\pi$ radians** ($180°$) about its respective axis.
+
+```elixir
+# Helper for Bloch sphere rendering
+defmodule BlochHelper do
+  def render(qubit) do
+    svg = Qubit.draw_bloch(qubit, format: :svg)
+    Kino.Image.new(svg, :svg)
+  end
+end
+```
+
+### X Gate: $\pi$ Rotation About the X-Axis
+
+The X gate rotates the state vector by $180°$ around the X-axis of the Bloch sphere. This swaps the north and south poles ($\ket{0} \leftrightarrow \ket{1}$) while leaving points on the X-axis fixed.
+
+```elixir
+# |0⟩ (north pole) → |1⟩ (south pole)
+q = Qubit.new() |> Qubit.x()
+BlochHelper.render(q)
+```
+
+### Y Gate: $\pi$ Rotation About the Y-Axis
+
+The Y gate rotates by $180°$ around the Y-axis.
+
+```elixir
+# |0⟩ → i|1⟩ (south pole, with a global phase)
+q = Qubit.new() |> Qubit.y()
+BlochHelper.render(q)
+```
+
+### Z Gate: $\pi$ Rotation About the Z-Axis
+
+The Z gate rotates by $180°$ around the Z-axis. It leaves $\ket{0}$ and $\ket{1}$ fixed (they lie on the Z-axis) but flips points on the equator.
+
+```elixir
+# |+⟩ (positive X-axis) → |−⟩ (negative X-axis)
+q = Qubit.plus() |> Qubit.z()
+BlochHelper.render(q)
+```
+
+### Visualising Multiple Transformations
+
+```elixir
+# Start at |0⟩, apply H to reach |+⟩, then Z to reach |−⟩
 q = Qubit.new()
   |> Qubit.h()
+  |> Qubit.z()
 
-IO.puts("Before Z gate:")
-Qubit.show_state(q) |> IO.inspect()
-
-q = q |> Qubit.z()
-
-IO.puts("\nAfter Z gate:")
+IO.puts("H then Z on |0⟩ produces |−⟩:")
 Qubit.show_state(q)
 ```
 
 ```elixir
-# Circuit Mode - Z on superposition
-qc = Qx.create_circuit(1)
-  |> Qx.h(0)  # Create superposition: (|0⟩ + |1⟩)/√2
-  |> Qx.z(0)  # Apply phase flip
-
-Qx.get_state(qc)
-# State: (|0⟩ - |1⟩)/√2 - note the minus sign
+BlochHelper.render(q)
 ```
 
-### 2.4 Properties of Pauli Gates
+## Phase Gates: S, S†, and T
 
-**Self-Inverse**: All Pauli gates are their own inverse:
-$$X^2 = Y^2 = Z^2 = I$$
+Beyond the Pauli gates, two important phase gates provide finer control over the relative phase.
 
-**Anti-Commutation**: Pauli gates anti-commute:
-$$XY = -YX, \quad YZ = -ZY, \quad ZX = -XZ$$
+### The S Gate ($\pi/2$ Phase)
 
-**Eigenvalues**: Each Pauli gate has eigenvalues $+1$ and $-1$.
+The S gate applies a phase of $i$ ($90°$ rotation) to the $\ket{1}$ component:
 
-```elixir
-# Demonstrate self-inverse property: applying X twice returns to original state
-q = Qubit.new()
-  |> Qubit.x()
-  |> Qubit.x()
+$$
+S = \begin{pmatrix} 1 & 0 \\ 0 & i \end{pmatrix}
+$$
 
-Qubit.show_state(q)
-# Back to |0⟩!
-```
-
-## 3. Pauli Gates and the Bloch Sphere
-
-### 3.1 The Bloch Sphere Representation
-
-The Bloch sphere is a geometric representation of a single qubit's state. Any pure qubit state can be written as:
-
-$$|\psi\rangle = \cos\left(\frac{\theta}{2}\right)|0\rangle + e^{i\phi}\sin\left(\frac{\theta}{2}\right)|1\rangle$$
-
-where:
-
-* $\theta \in [0, \pi]$ is the polar angle
-* $\phi \in [0, 2\pi]$ is the azimuthal angle
-
-The qubit state maps to a point on a unit sphere in 3D space with coordinates:
-
-$$\vec{r} = (\sin\theta\cos\phi, \sin\theta\sin\phi, \cos\theta)$$
-
-### 3.2 Pauli Gates as Rotations
-
-The Pauli gates can be interpreted as $\pi$ rotations about different axes of the Bloch sphere:
-
-**Pauli-X**: Rotation by $\pi$ around the X-axis
-$$X = e^{-i\frac{\pi}{2}\sigma_x}$$
-
-**Pauli-Y**: Rotation by $\pi$ around the Y-axis
-$$Y = e^{-i\frac{\pi}{2}\sigma_y}$$
-
-**Pauli-Z**: Rotation by $\pi$ around the Z-axis
-$$Z = e^{-i\frac{\pi}{2}\sigma_z}$$
-
-### 3.3 Visualizing Pauli Gates on the Bloch Sphere
-
-**State Positions**:
-
-* $|0\rangle$: North pole $(0, 0, 1)$
-* $|1\rangle$: South pole $(0, 0, -1)$
-* $|+\rangle = \frac{1}{\sqrt{2}}(|0\rangle + |1\rangle)$: Positive X-axis $(1, 0, 0)$
-* $|-\rangle = \frac{1}{\sqrt{2}}(|0\rangle - |1\rangle)$: Negative X-axis $(-1, 0, 0)$
-* $|i\rangle = \frac{1}{\sqrt{2}}(|0\rangle + i|1\rangle)$: Positive Y-axis $(0, 1, 0)$
-* $|-i\rangle = \frac{1}{\sqrt{2}}(|0\rangle - i|1\rangle)$: Negative Y-axis $(0, -1, 0)$
+Note that $S^2 = Z$: applying S twice is equivalent to a Z gate.
 
 ```elixir
-# Create |+⟩ state (X-axis of Bloch sphere) and visualize
-q_plus = Qubit.plus()
-Qubit.draw_bloch(q_plus)
-```
+# S gate on |+⟩: rotates phase by π/2 on the equator
+q = Qubit.plus() |> Qubit.s()
 
-```elixir
-# Create |-⟩ state and visualize
-q_minus = Qubit.minus()
-Qubit.draw_bloch(q_minus)
-```
-
-```elixir
-# Create custom state from Bloch coordinates
-# θ = π/2, φ = 0 gives |+⟩
-theta = :math.pi() / 2
-phi = 0
-q_bloch = Qubit.from_bloch(theta, phi)
-Qubit.show_state(q_bloch)
-```
-
-```elixir
-# Apply X gate and visualize rotation: north pole → south pole
-q = Qubit.new()
-  |> Qubit.x()
-
-Qubit.draw_bloch(q)
-```
-
-### 3.4 Common State Transformations
-
-**X Gate Effect:**
-
-```elixir
-# |0⟩ → |1⟩ (North to South pole)
-q1 = Qubit.new() |> Qubit.x()
-IO.puts("|0⟩ after X:")
-Qubit.show_state(q1) |> IO.inspect()
-
-# |+⟩ → |+⟩ (No change, eigenstate)
-q2 = Qubit.plus() |> Qubit.x()
-IO.puts("\n|+⟩ after X:")
-Qubit.show_state(q2) |> IO.inspect()
-
-# |-⟩ → -|-⟩ (Phase flip, still on negative X-axis)
-q3 = Qubit.minus() |> Qubit.x()
-IO.puts("\n|-⟩ after X:")
-Qubit.show_state(q3)
-```
-
-**Z Gate Effect:**
-
-```elixir
-# |0⟩ → |0⟩ (No change, eigenstate)
-q1 = Qubit.new() |> Qubit.z()
-IO.puts("|0⟩ after Z:")
-Qubit.show_state(q1) |> IO.inspect()
-
-# |1⟩ → -|1⟩ (Phase flip, still at south pole)
-q2 = Qubit.one() |> Qubit.z()
-IO.puts("\n|1⟩ after Z:")
-Qubit.show_state(q2) |> IO.inspect()
-
-# |+⟩ → |-⟩ (Flip from positive to negative X-axis)
-q3 = Qubit.plus() |> Qubit.z()
-IO.puts("\n|+⟩ after Z (should be |-⟩):")
-Qubit.show_state(q3)
-```
-
-### 3.5 Rotation Gates (General Case)
-
-The general rotation gates are parametrized versions of Pauli rotations:
-
-**RX (Rotation around X-axis)**:
-$$R_X(\theta) = e^{-i\frac{\theta}{2}X} = \begin{pmatrix} \cos(\frac{\theta}{2}) & -i\sin(\frac{\theta}{2}) \\ -i\sin(\frac{\theta}{2}) & \cos(\frac{\theta}{2}) \end{pmatrix}$$
-
-**RY (Rotation around Y-axis)**:
-$$R_Y(\theta) = e^{-i\frac{\theta}{2}Y} = \begin{pmatrix} \cos(\frac{\theta}{2}) & -\sin(\frac{\theta}{2}) \\ \sin(\frac{\theta}{2}) & \cos(\frac{\theta}{2}) \end{pmatrix}$$
-
-**RZ (Rotation around Z-axis)**:
-$$R_Z(\theta) = e^{-i\frac{\theta}{2}Z} = \begin{pmatrix} e^{-i\frac{\theta}{2}} & 0 \\ 0 & e^{i\frac{\theta}{2}} \end{pmatrix}$$
-
-```elixir
-# Rotate by π/4 around X-axis
-q = Qubit.new()
-  |> Qubit.rx(:math.pi() / 4)
-
+IO.puts("|+⟩ after S gate:")
 Qubit.show_state(q)
 ```
 
 ```elixir
-# Visualize RX(π/4) on Bloch sphere
-Qubit.draw_bloch(q)
+BlochHelper.render(q)
 ```
 
-```elixir
-# Create superposition using RY(π/2)
-# This creates (|0⟩ + |1⟩)/√2, equivalent to H gate on |0⟩
-q = Qubit.new()
-  |> Qubit.ry(:math.pi() / 2)
+### The T Gate ($\pi/4$ Phase)
 
+The T gate applies a phase of $e^{i\pi/4}$ ($45°$ rotation) to $\ket{1}$:
+
+$$
+T = \begin{pmatrix} 1 & 0 \\ 0 & e^{i\pi/4} \end{pmatrix}
+$$
+
+Note that $T^2 = S$: applying T twice gives S.
+
+```elixir
+# T gate on |+⟩: rotates phase by π/4 on the equator
+q = Qubit.plus() |> Qubit.t()
+
+IO.puts("|+⟩ after T gate:")
 Qubit.show_state(q)
 ```
 
 ```elixir
-# Combine rotations to reach any point on Bloch sphere
+BlochHelper.render(q)
+```
+
+### The S† Gate (Inverse S)
+
+Every gate has an inverse (its conjugate transpose, written $S^\dagger$). For the S gate:
+
+$$
+S^\dagger = \begin{pmatrix} 1 & 0 \\ 0 & -i \end{pmatrix}
+$$
+
+$S^\dagger$ applies a $-90°$ phase, undoing what S does: $S^\dagger S = I$. This makes it useful wherever you need to rotate *back* from the Y-basis to the X-basis — for example, measuring in the Y-basis.
+
+```elixir
+# S† undoes S: applying both returns to the original state
+q = Qubit.plus() |> Qubit.s() |> Qubit.sdg()
+
+IO.puts("|+⟩ after S then S†:")
+Qubit.show_state(q)
+```
+
+```elixir
+BlochHelper.render(q)
+```
+
+### The Gate Hierarchy
+
+These phase gates form a natural hierarchy:
+
+$$
+T^2 = S, \qquad S^2 = Z, \qquad Z^2 = I
+$$
+
+Each gate in the sequence doubles the phase angle: $\pi/4 \to \pi/2 \to \pi \to 2\pi$ (identity).
+
+Their inverses reverse direction: $S^\dagger$ is the inverse of $S$, and $(S^\dagger)^2 = Z^\dagger = Z$ (Z is self-inverse).
+
+## Rotation Gates
+
+The **rotation gates** generalise the Pauli gates to arbitrary angles. While the Pauli gates are fixed $\pi$ rotations, the rotation gates take an angle parameter $\theta$ and rotate the Bloch vector by $\theta$ radians around the specified axis.
+
+### RX: Rotation Around the X-Axis
+
+$$
+R_X(\theta) = e^{-i\frac{\theta}{2}X} = \begin{pmatrix} \cos\frac{\theta}{2} & -i\sin\frac{\theta}{2} \\ -i\sin\frac{\theta}{2} & \cos\frac{\theta}{2} \end{pmatrix}
+$$
+
+When $\theta = \pi$, this reduces to the Pauli-X gate (up to a global phase).
+
+```elixir
+# RX(π/2) on |0⟩: rotates halfway from north pole toward equator along X
+q = Qubit.new() |> Qubit.rx(:math.pi() / 2)
+
+IO.puts("RX(π/2) on |0⟩:")
+Qubit.show_state(q)
+```
+
+```elixir
+BlochHelper.render(q)
+```
+
+### RY: Rotation Around the Y-Axis
+
+$$
+R_Y(\theta) = e^{-i\frac{\theta}{2}Y} = \begin{pmatrix} \cos\frac{\theta}{2} & -\sin\frac{\theta}{2} \\ \sin\frac{\theta}{2} & \cos\frac{\theta}{2} \end{pmatrix}
+$$
+
+RY is notable because it produces **real-valued** superpositions (no imaginary components). When $\theta = \pi/2$, it creates the same superposition as the Hadamard gate acting on $\ket{0}$:
+
+```elixir
+# RY(π/2) on |0⟩ creates a superposition similar to H|0⟩
+q = Qubit.new() |> Qubit.ry(:math.pi() / 2)
+
+IO.puts("RY(π/2) on |0⟩:")
+Qubit.show_state(q)
+```
+
+```elixir
+BlochHelper.render(q)
+```
+
+### RZ: Rotation Around the Z-Axis
+
+$$
+R_Z(\theta) = e^{-i\frac{\theta}{2}Z} = \begin{pmatrix} e^{-i\frac{\theta}{2}} & 0 \\ 0 & e^{i\frac{\theta}{2}} \end{pmatrix}
+$$
+
+RZ rotations change the **azimuthal angle** $\phi$ on the Bloch sphere without affecting the polar angle $\theta$. They modify the relative phase between $\ket{0}$ and $\ket{1}$.
+
+```elixir
+# RZ(π/4) on |+⟩: rotates around the equator
+q = Qubit.plus() |> Qubit.rz(:math.pi() / 4)
+
+IO.puts("RZ(π/4) on |+⟩:")
+Qubit.show_state(q)
+```
+
+```elixir
+BlochHelper.render(q)
+```
+
+### Reaching Any Point on the Bloch Sphere
+
+Any single-qubit state can be reached by combining rotations. In fact, any single-qubit unitary can be decomposed as a sequence of rotations:
+
+$$
+U = R_Z(\alpha) \cdot R_Y(\beta) \cdot R_Z(\gamma)
+$$
+
+for some angles $\alpha$, $\beta$, $\gamma$. This is the **ZYZ decomposition**.
+
+```elixir
+# Combine rotations to reach an arbitrary point on the Bloch sphere
 q = Qubit.new()
   |> Qubit.ry(:math.pi() / 3)
   |> Qubit.rz(:math.pi() / 4)
 
-Qubit.show_state(q) |> IO.inspect()
-Qubit.draw_bloch(q)
-```
-
-## 4. Two-Qubit Gates
-
-Two-qubit gates create entanglement and enable quantum computation beyond what's possible with single qubits alone.
-
-### 4.1 Controlled-NOT (CNOT/CX) Gate
-
-The CNOT gate is the most important two-qubit gate. It flips the target qubit if and only if the control qubit is $|1\rangle$.
-
-**Matrix Representation** (in computational basis $\{|00\rangle, |01\rangle, |10\rangle, |11\rangle\}$):
-
-$$\text{CNOT} = \begin{pmatrix}
-1 & 0 & 0 & 0 \\
-0 & 1 & 0 & 0 \\
-0 & 0 & 0 & 1 \\
-0 & 0 & 1 & 0
-\end{pmatrix}$$
-
-**Action**:
-
-* $\text{CNOT}|00\rangle = |00\rangle$
-* $\text{CNOT}|01\rangle = |01\rangle$
-* $\text{CNOT}|10\rangle = |11\rangle$
-* $\text{CNOT}|11\rangle = |10\rangle$
-
-In general: $\text{CNOT}|c,t\rangle = |c, t \oplus c\rangle$ where $\oplus$ is XOR.
-
-**Creating Bell States with CNOT:**
-
-The Bell states are maximally entangled two-qubit states. The most famous is:
-
-$$|\Phi^+\rangle = \frac{1}{\sqrt{2}}(|00\rangle + |11\rangle)$$
-
-Created by applying Hadamard to the first qubit, then CNOT:
-
-```elixir
-# Circuit Mode - Bell State
-bell_circuit = Qx.create_circuit(2)
-  |> Qx.h(0)     # Create superposition on control
-  |> Qx.cx(0, 1) # Entangle with target
-
-state = Qx.get_state(bell_circuit)
-IO.inspect(state, label: "Bell state vector")
-
-probs = Qx.get_probabilities(bell_circuit)
-IO.inspect(probs, label: "Probabilities")
-# 50% for |00⟩, 0% for |01⟩, 0% for |10⟩, 50% for |11⟩
+IO.puts("After RY(π/3) then RZ(π/4):")
+Qubit.show_state(q)
 ```
 
 ```elixir
-# Using the convenience function and visualizing
-bell_circuit = Qx.bell_state()
-result = Qx.run(bell_circuit, 1000)
+BlochHelper.render(q)
+```
+
+### Rotation Gates in Circuit Mode
+
+```elixir
+circuit = Qx.create_circuit(1, 1)
+  |> Qx.ry(0, :math.pi() / 3)
+  |> Qx.rz(0, :math.pi() / 4)
+  |> Qx.measure(0, 0)
+
+result = Qx.run(circuit, 1000)
+IO.inspect(result.counts, label: "Measurement counts")
 Qx.draw_counts(result)
 ```
 
-```elixir
-# Calculation Mode - Bell State with Register
-reg = Register.new(2)
-  |> Register.h(0)      # Hadamard on qubit 0
-  |> Register.cx(0, 1)  # CNOT from qubit 0 to 1
+## Multi-Qubit Gates
 
+Single-qubit gates alone cannot create **entanglement** — the distinctly quantum phenomenon where qubits become correlated in ways impossible in classical physics. Multi-qubit gates are essential for this.
+
+### The Controlled-NOT (CNOT / CX) Gate
+
+The CNOT gate is the most important two-qubit gate. It has a **control** qubit and a **target** qubit. It flips the target if and only if the control is $\ket{1}$:
+
+$$
+\text{CNOT}\ket{c, t} = \ket{c, \; t \oplus c}
+$$
+
+where $\oplus$ is addition modulo 2 (XOR).
+
+**Matrix representation** in the computational basis $\{\ket{00}, \ket{01}, \ket{10}, \ket{11}\}$:
+
+$$
+\text{CNOT} = \begin{pmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 1 \\ 0 & 0 & 1 & 0 \end{pmatrix}
+$$
+
+**Action on each basis state:**
+
+| Input      | Output     | Explanation                    |
+| ---------- | ---------- | ------------------------------ |
+| $\ket{00}$ | $\ket{00}$ | Control is 0, target unchanged |
+| $\ket{01}$ | $\ket{01}$ | Control is 0, target unchanged |
+| $\ket{10}$ | $\ket{11}$ | Control is 1, target flipped   |
+| $\ket{11}$ | $\ket{10}$ | Control is 1, target flipped   |
+
+```elixir
+# CNOT with control=0, target=1
+# When control qubit is |1⟩, the target flips
+reg = Register.new(2)
+  |> Register.x(0)          # Set qubit 0 to |1⟩
+  |> Register.cx(0, 1)      # CNOT: qubit 0 controls, qubit 1 is target
+
+IO.puts("|10⟩ after CNOT:")
 Register.show_state(reg)
-# Output shows: "0.707|00⟩ + 0.707|11⟩"
 ```
 
-### 4.2 Understanding Entanglement
+### Creating Entanglement with CNOT
 
-After applying CNOT to create a Bell state, the two qubits are entangled. This means:
+The most iconic use of CNOT is creating **Bell states** — maximally entangled two-qubit states. Apply Hadamard to the control qubit (creating a superposition), then CNOT:
 
-1. **Correlation**: Measuring one qubit immediately determines the other
-2. **No Individual State**: Neither qubit has a definite state on its own
-3. **Non-local**: The correlation exists regardless of spatial separation
+$$
+\text{CNOT} \cdot (H \otimes I)\ket{00} = \text{CNOT} \cdot \frac{1}{\sqrt{2}}(\ket{00} + \ket{10}) = \frac{1}{\sqrt{2}}(\ket{00} + \ket{11}) = \ket{\Phi^+}
+$$
+
+The result, $\ket{\Phi^+}$, is an entangled state: neither qubit has a definite individual state, but measuring one immediately determines the other.
 
 ```elixir
-# Create Bell state and measure - demonstrating entanglement
-qc = Qx.create_circuit(2, 2)
+# Create a Bell state in calculation mode
+reg = Register.new(2)
+  |> Register.h(0)
+  |> Register.cx(0, 1)
+
+Register.show_state(reg)
+```
+
+```elixir
+# Create and measure a Bell state in circuit mode
+circuit = Qx.create_circuit(2, 2)
   |> Qx.h(0)
   |> Qx.cx(0, 1)
   |> Qx.measure(0, 0)
   |> Qx.measure(1, 1)
 
-result = Qx.run(qc, 1000)
+result = Qx.run(circuit, 1000)
+IO.inspect(result.counts, label: "Bell state measurements")
+```
 
-IO.inspect(result.counts, label: "Measurement outcomes")
-# You'll see only "00" and "11" outcomes, never "01" or "10"
-# This demonstrates perfect correlation between the qubits
+Only the outcomes "00" and "11" appear — never "01" or "10". The two qubits are perfectly correlated despite each individual measurement being random.
 
+```elixir
 Qx.draw_counts(result)
 ```
 
-### 4.3 Controlled-Z (CZ) Gate
+### The Controlled-Z (CZ) Gate
 
-The CZ gate applies a phase flip to the target qubit if the control qubit is $|1\rangle$. Unlike CNOT, CZ is symmetric.
+The CZ gate applies a phase flip ($-1$) when **both** qubits are $\ket{1}$:
 
-**Matrix Representation**:
+$$
+\text{CZ} = \begin{pmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & -1 \end{pmatrix}
+$$
 
-$$\text{CZ} = \begin{pmatrix}
-1 & 0 & 0 & 0 \\
-0 & 1 & 0 & 0 \\
-0 & 0 & 1 & 0 \\
-0 & 0 & 0 & -1
-\end{pmatrix}$$
+**Action:**
 
-**Action**:
+| Input      | Output      |
+| ---------- | ----------- |
+| $\ket{00}$ | $\ket{00}$  |
+| $\ket{01}$ | $\ket{01}$  |
+| $\ket{10}$ | $\ket{10}$  |
+| $\ket{11}$ | $-\ket{11}$ |
 
-* $\text{CZ}|00\rangle = |00\rangle$
-* $\text{CZ}|01\rangle = |01\rangle$
-* $\text{CZ}|10\rangle = |10\rangle$
-* $\text{CZ}|11\rangle = -|11\rangle$
-
-**Key Property**: CZ is symmetric - it doesn't matter which qubit is the "control":
-$$\text{CZ}_{0,1} = \text{CZ}_{1,0}$$
+Unlike CNOT, the CZ gate is **symmetric**: it does not matter which qubit is called the control and which is the target. $\text{CZ}_{0,1} = \text{CZ}_{1,0}$.
 
 ```elixir
-# Circuit Mode - CZ gate
-qc = Qx.create_circuit(2)
-  |> Qx.h(0)     # Create superposition on qubit 0
-  |> Qx.h(1)     # Create superposition on qubit 1
-  |> Qx.cz(0, 1) # Apply CZ gate
-
-state = Qx.get_state(qc)
-IO.inspect(state, label: "State: 0.5(|00⟩ + |01⟩ + |10⟩ - |11⟩)")
-# Note the negative phase on |11⟩
-```
-
-```elixir
-# Calculation Mode - observe CZ effect step by step
+# CZ on a state where both qubits are in superposition
 reg = Register.new(2)
   |> Register.h(0)
   |> Register.h(1)
 
-IO.puts("Before CZ:")
+IO.puts("Before CZ (equal superposition of all basis states):")
 Register.show_state(reg) |> IO.inspect()
 
 reg = reg |> Register.cz(0, 1)
 
-IO.puts("\nAfter CZ:")
+IO.puts("\nAfter CZ (note the negative phase on |11⟩):")
 Register.show_state(reg)
-# Note the negative sign on |11⟩
 ```
 
-### 4.4 Relationship Between CZ and CNOT
+### Relationship Between CNOT and CZ
 
-The CZ and CNOT gates are related through Hadamard gates:
+CNOT and CZ are closely related through Hadamard gates applied to the target qubit:
 
-$$\text{CZ} = (I \otimes H) \cdot \text{CNOT} \cdot (I \otimes H)$$
+$$
+\text{CZ} = (I \otimes H) \cdot \text{CNOT} \cdot (I \otimes H)
+$$
 
-This means applying H to the target, then CNOT, then H again gives you CZ.
+This means: apply H to the target, then CNOT, then H again — the result is equivalent to CZ.
 
 ```elixir
-# Verify equivalence: these two circuits produce the same state
-
-# Circuit 1: Direct CZ
-qc1 = Qx.create_circuit(2)
+# Verify the equivalence: CZ = H-CNOT-H on target
+state_cz = Qx.create_circuit(2)
+  |> Qx.h(0) |> Qx.h(1)
   |> Qx.cz(0, 1)
+  |> Qx.get_state()
 
-# Circuit 2: CNOT with Hadamards
-qc2 = Qx.create_circuit(2)
-  |> Qx.h(1)      # H on target before CNOT
-  |> Qx.cx(0, 1)  # CNOT
-  |> Qx.h(1)      # H on target after CNOT
+state_hch = Qx.create_circuit(2)
+  |> Qx.h(0) |> Qx.h(1)
+  |> Qx.h(1) |> Qx.cx(0, 1) |> Qx.h(1)
+  |> Qx.get_state()
 
-state1 = Qx.get_state(qc1)
-state2 = Qx.get_state(qc2)
-
-IO.inspect(state1, label: "CZ state")
-IO.inspect(state2, label: "H-CNOT-H state")
-IO.puts("States are identical: #{Nx.equal(state1, state2) |> Nx.all() |> Nx.to_number() == 1}")
+IO.inspect(state_cz, label: "CZ result     ")
+IO.inspect(state_hch, label: "H-CNOT-H result")
 ```
 
-### 4.5 Three-Qubit Gate: Toffoli (CCX)
+### The Toffoli Gate (CCX)
 
-The Toffoli gate (also called CCNOT) is a three-qubit gate that flips the target qubit if and only if both control qubits are $|1\rangle$.
+The Toffoli gate (also called CCNOT or CCX) is a three-qubit gate with **two controls** and one target. It flips the target only when **both** controls are $\ket{1}$:
 
-**Action**:
-$$\text{CCX}|c_1, c_2, t\rangle = |c_1, c_2, t \oplus (c_1 \land c_2)\rangle$$
+$$
+\text{CCX}\ket{c_1, c_2, t} = \ket{c_1, c_2, \; t \oplus (c_1 \wedge c_2)}
+$$
 
-The Toffoli gate is universal for classical computation and plays a key role in quantum error correction.
-
-```elixir
-# Circuit Mode - Toffoli gate
-qc = Qx.create_circuit(3)
-  |> Qx.x(0)          # Set control 1 to |1⟩
-  |> Qx.x(1)          # Set control 2 to |1⟩
-  |> Qx.ccx(0, 1, 2)  # Toffoli gate
-
-state = Qx.get_state(qc)
-IO.inspect(state, label: "Target qubit is now |1⟩ because both controls are |1⟩")
-```
+The Toffoli gate is **universal for classical computation** — any classical Boolean function can be built from Toffoli gates. It also plays a key role in quantum error correction and reversible computing.
 
 ```elixir
-# Calculation Mode - observe Toffoli step by step
+# Toffoli: target flips only when both controls are |1⟩
 reg = Register.new(3)
-  |> Register.x(0)
-  |> Register.x(1)
+  |> Register.x(0)           # Set control 1 to |1⟩
+  |> Register.x(1)           # Set control 2 to |1⟩
 
 IO.puts("Before Toffoli (state is |110⟩):")
 Register.show_state(reg) |> IO.inspect()
 
 reg = reg |> Register.ccx(0, 1, 2)
 
-IO.puts("\nAfter Toffoli (state changed to |111⟩):")
+IO.puts("\nAfter Toffoli (target flipped to |1⟩, state is |111⟩):")
 Register.show_state(reg)
 ```
 
-## 5. Practical Examples with Qx
+```elixir
+# When only one control is |1⟩, the target is unchanged
+reg = Register.new(3)
+  |> Register.x(0)           # Only control 1 is |1⟩
+  |> Register.ccx(0, 1, 2)
 
-### 5.1 Quantum Teleportation
-
-Quantum teleportation uses entanglement and classical communication to transfer a quantum state from one location to another.
-
-**Protocol**:
-
-1. Create Bell pair between qubits 1 and 2
-2. Apply Bell measurement to qubits 0 (state to teleport) and 1
-3. Apply conditional corrections to qubit 2 based on measurement results
+IO.puts("Only one control set — target unchanged:")
+Register.show_state(reg)
+```
 
 ```elixir
-# Teleport |1⟩ state from qubit 0 to qubit 2
-qc = Qx.create_circuit(3, 3)
-  # Prepare state to teleport
+# Toffoli in circuit mode with measurement
+circuit = Qx.create_circuit(3, 3)
   |> Qx.x(0)
-
-  # Create Bell pair between qubits 1 and 2
-  |> Qx.h(1)
-  |> Qx.cx(1, 2)
-
-  # Bell measurement on qubits 0 and 1
-  |> Qx.cx(0, 1)
-  |> Qx.h(0)
+  |> Qx.x(1)
+  |> Qx.ccx(0, 1, 2)
   |> Qx.measure(0, 0)
   |> Qx.measure(1, 1)
-
-  # Conditional corrections on qubit 2
-  |> Qx.c_if(1, 1, fn c -> Qx.x(c, 2) end)
-  |> Qx.c_if(0, 1, fn c -> Qx.z(c, 2) end)
   |> Qx.measure(2, 2)
 
-result = Qx.run(qc, 1000)
-
-IO.inspect(result.counts, label: "Teleportation results")
-IO.puts("All outcomes should have rightmost bit = 1 (successful teleportation)")
-
-Qx.draw_counts(result)
+result = Qx.run(circuit, 100)
+IO.inspect(result.counts, label: "Toffoli result — should be all |111⟩")
 ```
 
-### 5.2 Grover's Search Algorithm (2-Qubit Example)
+## Putting It Together: A Complete Circuit
 
-Grover's algorithm provides quadratic speedup for unstructured search.
+Let us build a complete circuit that demonstrates several gates working together. We will create a 3-qubit GHZ state — a maximally entangled state of three qubits:
+
+$$
+\ket{\text{GHZ}} = \frac{1}{\sqrt{2}}(\ket{000} + \ket{111})
+$$
 
 ```elixir
-# Search for state |11⟩ in 2-qubit space
-grover = Qx.create_circuit(2, 2)
-  # Initialize superposition
-  |> Qx.h(0)
-  |> Qx.h(1)
-
-  # Oracle: flip phase of |11⟩
-  |> Qx.cz(0, 1)
-
-  # Diffusion operator
-  |> Qx.h(0)
-  |> Qx.h(1)
-  |> Qx.x(0)
-  |> Qx.x(1)
-  |> Qx.cz(0, 1)
-  |> Qx.x(0)
-  |> Qx.x(1)
-  |> Qx.h(0)
-  |> Qx.h(1)
-
-  # Measure
+# Build the GHZ circuit
+ghz_circuit = Qx.create_circuit(3, 3)
+  |> Qx.h(0)            # Superposition on qubit 0
+  |> Qx.cx(0, 1)        # Entangle qubit 0 and 1
+  |> Qx.cx(0, 2)        # Entangle qubit 0 and 2
   |> Qx.measure(0, 0)
   |> Qx.measure(1, 1)
+  |> Qx.measure(2, 2)
 
-result = Qx.run(grover, 1000)
+result = Qx.run(ghz_circuit, 1000)
+IO.inspect(result.counts, label: "GHZ state — only |000⟩ and |111⟩")
+```
 
-IO.inspect(result.counts, label: "Grover's search results")
-IO.puts("Should measure |11⟩ with high probability")
-
+```elixir
 Qx.draw_counts(result)
 ```
 
-### 5.3 Interactive State Exploration
+All three qubits are perfectly correlated: they are always all 0 or all 1, never a mixture. We will explore entanglement in much greater depth in a later tutorial.
 
-Use Calculation Mode to explore quantum mechanics interactively:
+## Summary
 
-```elixir
-# Single qubit exploration with Bloch sphere visualization
-q = Qubit.new()
-  |> Qubit.h()
-  |> Qubit.tap_state(label: "After H")
-  |> Qubit.rz(:math.pi() / 4)
-  |> Qubit.tap_state(label: "After RZ(π/4)")
+In this tutorial, we covered quantum operations and gates:
 
-Qubit.draw_bloch(q)
-```
+* **Circuit Mode:** Build a circuit description with gates and measurements, then execute with `Qx.run/2` for multi-shot simulation.
+* **Operators and Unitarity:** Quantum gates are unitary matrices ($U^\dagger U = I$), guaranteeing reversibility and normalisation preservation.
+* **The Hadamard Gate:** Creates equal superposition, transforms between Z-basis and X-basis, and is self-inverse.
+* **The Inner Product:** The overlap $\braket{\phi|\psi}$ quantifies the relationship between states. Unitarity preserves inner products.
+* **Pauli Gates:** X (bit flip), Y (bit + phase flip), Z (phase flip) — each is a $\pi$ rotation on the Bloch sphere and self-inverse.
+* **Phase Gates:** S ($\pi/2$ phase), S† (inverse of S, $-\pi/2$ phase), and T ($\pi/4$ phase) provide finer phase control, with $T^2 = S$, $S^2 = Z$, and $S^\dagger S = I$.
+* **Rotation Gates:** $R_X(\theta)$, $R_Y(\theta)$, $R_Z(\theta)$ generalise Pauli gates to arbitrary rotation angles. Any single-qubit unitary decomposes into rotations.
+* **Multi-Qubit Gates:** CNOT (controlled bit flip), CZ (controlled phase flip), and Toffoli (doubly-controlled flip) enable entanglement and universal computation.
 
-```elixir
-# Multi-qubit exploration
-reg = Register.new(3)
-  |> Register.h(0)
-  |> Register.h(1)
-  |> Register.h(2)
+### What's Next
 
-IO.puts("All qubits in superposition:")
-Register.show_state(reg) |> IO.inspect()
-
-reg = reg
-  |> Register.cx(0, 1)
-  |> Register.cx(1, 2)
-
-IO.puts("\nAfter creating entangled state:")
-Register.show_state(reg)
-```
-
-### 5.4 Comparing Circuit and Calculation Modes
-
-**Circuit Mode** (build then execute):
-
-```elixir
-# Good for: algorithms, measurements, multiple shots
-qc = Qx.create_circuit(2, 2)
-  |> Qx.h(0)
-  |> Qx.cx(0, 1)
-  |> Qx.measure(0, 0)
-  |> Qx.measure(1, 1)
-
-result = Qx.run(qc, 1000)  # Run 1000 shots
-Qx.draw_counts(result)
-```
-
-**Calculation Mode** (immediate application):
-
-```elixir
-# Good for: learning, debugging, state inspection
-reg = Register.new(2)
-  |> Register.h(0)
-  |> Register.cx(0, 1)
-
-# State is immediately available
-Register.show_state(reg) |> IO.inspect()
-Register.get_probabilities(reg)
-```
-
-## Conclusion
-
-This tutorial has covered the fundamental concepts of quantum operations:
-
-1. **Quantum Operators**: Unitary matrices that preserve quantum state normalization
-2. **Pauli Gates**: Fundamental single-qubit gates (X, Y, Z) with distinct actions
-3. **Bloch Sphere**: Geometric visualization showing Pauli gates as π rotations
-4. **Two-Qubit Gates**: CNOT and CZ gates that create entanglement
-5. **Practical Implementation**: Using Qx simulator for both circuit construction and real-time exploration
-
-### Key Takeaways
-
-* Quantum gates are reversible unitary transformations
-* Pauli gates form the foundation for quantum computation
-* The Bloch sphere provides intuition for single-qubit operations
-* Two-qubit gates enable entanglement, the resource that powers quantum computation
-* The Qx simulator offers both circuit mode (for algorithms) and calculation mode (for learning)
-
-### Further Exploration
-
-Continue your quantum computing journey by exploring:
-
-* Quantum error correction codes
-* Variational quantum algorithms (VQE, QAOA)
-* Quantum Fourier Transform
-* Shor's factoring algorithm
-
-### References
-
-1. Nielsen, M. A., & Chuang, I. L. (2010). *Quantum Computation and Quantum Information*. Cambridge University Press.
-2. [Qx Simulator Documentation](https://hexdocs.pm/qx_sim/)
-3. [Qx GitHub Repository](https://github.com/richarc/qx)
+In the next tutorial, **Quantum Measurement**, we explore the measurement postulate, the Born rule, the probabilistic nature of quantum outcomes, and wavefunction collapse.

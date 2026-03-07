@@ -332,6 +332,29 @@ defmodule Qx.Register do
   end
 
   @doc """
+  Applies an S† (S-dagger) gate to a specific qubit in the register.
+
+  ## Examples
+
+      iex> reg = Qx.Register.new(2) |> Qx.Register.sdg(0)
+      iex> Qx.Register.valid?(reg)
+      true
+  """
+  def sdg(%__MODULE__{} = register, qubit_index) do
+    validate_qubit_index!(register, qubit_index)
+
+    new_state =
+      Qx.Calc.apply_single_qubit_gate(
+        register.state,
+        Qx.Gates.s_dagger(),
+        qubit_index,
+        register.num_qubits
+      )
+
+    %{register | state: new_state}
+  end
+
+  @doc """
   Applies a T gate to a specific qubit in the register.
 
   ## Examples

@@ -176,6 +176,33 @@ defmodule ComplexSupportTest do
     assert abs(abs(Complex.imag(Nx.to_number(final_state[1]))) - 1.0) < 1.0e-6
   end
 
+  test "S† gate on |1⟩ produces -i|1⟩" do
+    qc = Qx.create_circuit(1) |> Qx.x(0) |> Qx.sdg(0)
+    final_state = Qx.get_state(qc)
+
+    # After X|0⟩ = |1⟩, then S†|1⟩ = -i|1⟩
+    assert Nx.shape(final_state) == {2}
+
+    # |0⟩ amplitude should be 0+0i
+    assert abs(Complex.real(Nx.to_number(final_state[0]))) < 1.0e-6
+    assert abs(Complex.imag(Nx.to_number(final_state[0]))) < 1.0e-6
+
+    # |1⟩ amplitude should be 0-1i
+    assert abs(Complex.real(Nx.to_number(final_state[1]))) < 1.0e-6
+    assert abs(Complex.imag(Nx.to_number(final_state[1])) - -1.0) < 1.0e-6
+  end
+
+  test "S then S† returns to original state" do
+    qc = Qx.create_circuit(1) |> Qx.x(0) |> Qx.s(0) |> Qx.sdg(0)
+    final_state = Qx.get_state(qc)
+
+    # S†S|1⟩ = |1⟩
+    assert abs(Complex.real(Nx.to_number(final_state[0]))) < 1.0e-6
+    assert abs(Complex.imag(Nx.to_number(final_state[0]))) < 1.0e-6
+    assert abs(Complex.real(Nx.to_number(final_state[1])) - 1.0) < 1.0e-6
+    assert abs(Complex.imag(Nx.to_number(final_state[1]))) < 1.0e-6
+  end
+
   test "T gate application" do
     qc = Qx.create_circuit(1) |> Qx.x(0) |> Qx.t(0)
     final_state = Qx.get_state(qc)

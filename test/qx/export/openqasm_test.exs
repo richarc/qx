@@ -95,6 +95,13 @@ defmodule Qx.Export.OpenQASMTest do
       assert qasm =~ "s q[0];"
     end
 
+    test "exports S† gate" do
+      circuit = Qx.create_circuit(1) |> Qx.sdg(0)
+      qasm = OpenQASM.to_qasm(circuit)
+
+      assert qasm =~ "sdg q[0];"
+    end
+
     test "exports T gate" do
       circuit = Qx.create_circuit(1) |> Qx.t(0)
       qasm = OpenQASM.to_qasm(circuit)

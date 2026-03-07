@@ -93,7 +93,7 @@ File.write!("my_circuit.qasm", qasm)
 
 ## Supported Gates
 
-- **Single-qubit**: H, X, Y, Z, S, T, RX, RY, RZ, Phase
+- **Single-qubit**: H, X, Y, Z, S, S† (Sdg), T, RX, RY, RZ, Phase
 - **Two-qubit**: CNOT (CX), CZ
 - **Three-qubit**: Toffoli (CCX)
 - **Special**: Measurements, Barriers, Conditional operations (v3.0)

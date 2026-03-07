@@ -18,7 +18,7 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 - **Statevector Simulation**: Uses statevector method for accurate quantum state representation
 - **Optional Acceleration**: Add EXLA or EMLX backends for speedup (CPU/GPU)
 - **Visualization**: Built-in plotting capabilities with SVG and VegaLite support, plus circuit diagram generation
-- **Growing Range of Gates**: Supports H, X, Y, Z, S, T, RX, RY, RZ, CNOT, CZ, and Toffoli gates
+- **Growing Range of Gates**: Supports H, X, Y, Z, S, S†, T, RX, RY, RZ, CNOT, CZ, and Toffoli gates
 - **Measurements**: Quantum measurements with classical bit storage
 - **Conditional Operations**: Mid-circuit measurement with classical feedback for quantum processes like teleportation and error correction
 - **Remote Execution**: Run circuits on real quantum hardware via QxServer, a standalone backend service supporting IBM Quantum and other providers
@@ -29,7 +29,7 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.5.0"}
+    {:qx_sim, "~> 0.5.1"}
   ]
 end
 ```
@@ -79,7 +79,7 @@ For the complete API, see the [hexdocs](https://hexdocs.pm/qx_sim/Qx.html).
 
 ```elixir
 Mix.install([
-  {:qx, "~> 0.5.0", hex: :qx_sim},
+  {:qx, "~> 0.5.1", hex: :qx_sim},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
   {:kino_vega_lite, "~> 0.1.11"}
@@ -520,7 +520,7 @@ EXLA provides significant speedup through XLA's LLVM optimizations.
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.5.0"},
+    {:qx_sim, "~> 0.5.1"},
     {:exla, "~> 0.10"}  # Add this line
   ]
 end
@@ -614,7 +614,7 @@ config :nx, :default_backend, {EXLA.Backend, client: :rocm}
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.5.0"},
+    {:qx_sim, "~> 0.5.1"},
     {:emlx, github: "elixir-nx/emlx", branch: "main"}  # Add this line
   ]
 end
@@ -668,7 +668,7 @@ For LiveBook, add the acceleration backend to your `Mix.install` call:
 **EXLA CPU (all platforms):**
 ```elixir
 Mix.install([
-  {:qx, "~> 0.5.0", hex: :qx_sim},
+  {:qx, "~> 0.5.1", hex: :qx_sim},
   {:exla, "~> 0.10"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -681,7 +681,7 @@ Application.put_env(:nx, :default_backend, EXLA.Backend)
 **EMLX GPU (Apple Silicon):**
 ```elixir
 Mix.install([
-  {:qx, "~> 0.5.0", hex: :qx_sim},
+  {:qx, "~> 0.5.1", hex: :qx_sim},
   {:emlx, github: "elixir-nx/emlx", branch: "main"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -694,7 +694,7 @@ Application.put_env(:nx, :default_backend, {EMLX.Backend, device: :gpu})
 **EXLA CUDA (NVIDIA GPU):** Requires `XLA_TARGET` env var set (see [CUDA setup](#exla--nvidia-gpu-cuda)).
 ```elixir
 Mix.install([
-  {:qx, "~> 0.5.0", hex: :qx_sim},
+  {:qx, "~> 0.5.1", hex: :qx_sim},
   {:exla, "~> 0.10"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -748,6 +748,6 @@ This project is licensed under the Apache License 2.0.
 
 ## Version
 
-Current version: 0.5.0
+Current version: 0.5.1
 
 For detailed API documentation, see the [hexdocs](https://hexdocs.pm/qx_sim/Qx.html).

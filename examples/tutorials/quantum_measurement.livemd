@@ -1,0 +1,608 @@
+# Quantum Measurement
+
+```elixir
+Mix.install([
+  {:qx, "~> 0.5.1", hex: :qx_sim},
+  {:kino, "~> 0.12"},
+  {:vega_lite, "~> 0.1.11"},
+  {:kino_vega_lite, "~> 0.1.11"}
+])
+
+alias Qx.Qubit
+alias Qx.Register
+```
+
+## Introduction
+
+In the previous tutorials we learned how to create quantum states and transform them with gates. But quantum computing is only useful if we can extract information from the quantum system. This is the role of **measurement** — the bridge between the quantum world and classical information.
+
+Measurement in quantum mechanics is profoundly different from measurement in classical physics. In classical physics, measurement is passive: you observe a system without changing it. In quantum mechanics, measurement is an **active process** that fundamentally and irreversibly alters the quantum state.
+
+**What this tutorial covers:**
+
+1. The measurement postulate
+2. The Born rule
+3. The outer product and projection operators
+4. Wavefunction collapse
+5. The probabilistic nature of outcomes
+6. Measurement in different bases
+7. Partial measurement of multi-qubit systems
+
+## The Measurement Postulate
+
+The measurement postulate is one of the foundational axioms of quantum mechanics. It describes what happens when we observe a quantum system.
+
+**The postulate states:** When a quantum system in state $\ket{\psi}$ is measured in the computational basis, the outcome is one of the basis states $\ket{0}$ or $\ket{1}$ (for a single qubit), chosen **probabilistically**. After the measurement, the system is left in the state corresponding to the observed outcome.
+
+For a qubit in state $\ket{\psi} = \alpha\ket{0} + \beta\ket{1}$:
+
+* The probability of obtaining outcome 0 is $|\alpha|^2$
+* The probability of obtaining outcome 1 is $|\beta|^2$
+* After obtaining outcome 0, the state becomes $\ket{0}$
+* After obtaining outcome 1, the state becomes $\ket{1}$
+
+This is fundamentally different from classical physics in three ways:
+
+1. **Probabilistic:** The outcome is not deterministic (unless the qubit is already in a basis state).
+2. **Destructive:** The act of measurement changes the state — the superposition is destroyed.
+3. **Irreversible:** The information about the original amplitudes $\alpha$ and $\beta$ is lost after measurement.
+
+```elixir
+# A qubit in superposition: before measurement, both outcomes are possible
+q = Qubit.plus()
+
+IO.puts("State before measurement:")
+Qubit.show_state(q)
+```
+
+```elixir
+# Measurement probabilities show a 50/50 chance
+Qubit.measure_probabilities(q) |> IO.inspect(label: "Probabilities [|0⟩, |1⟩]")
+```
+
+```elixir
+# In circuit mode, each shot collapses to a definite outcome
+circuit = Qx.create_circuit(1, 1)
+  |> Qx.h(0)
+  |> Qx.measure(0, 0)
+
+result = Qx.run(circuit, 1000)
+IO.inspect(result.counts, label: "1000 measurements of |+⟩")
+Qx.draw_counts(result)
+```
+
+Each individual shot produces either "0" or "1" — never a fractional or intermediate result. Over many shots, the statistical distribution converges to the probabilities predicted by quantum mechanics.
+
+## The Born Rule
+
+The Born rule provides the precise mathematical formula for measurement probabilities. Named after physicist Max Born, it is the link between the abstract state vector and observable experimental outcomes.
+
+**The Born rule:** For a system in state $\ket{\psi}$, the probability of measuring outcome $\ket{k}$ (a basis state) is:
+
+$$
+P(k) = |\braket{k|\psi}|^2
+$$
+
+This is the squared magnitude of the inner product between the measurement basis state and the quantum state.
+
+### Deriving Probabilities from the Born Rule
+
+For a single qubit $\ket{\psi} = \alpha\ket{0} + \beta\ket{1}$:
+
+**Probability of measuring $\ket{0}$:**
+
+$$
+P(0) = |\braket{0|\psi}|^2 = |\alpha\braket{0|0} + \beta\braket{0|1}|^2 = |\alpha \cdot 1 + \beta \cdot 0|^2 = |\alpha|^2
+$$
+
+**Probability of measuring $\ket{1}$:**
+
+$$
+P(1) = |\braket{1|\psi}|^2 = |\alpha\braket{1|0} + \beta\braket{1|1}|^2 = |\alpha \cdot 0 + \beta \cdot 1|^2 = |\beta|^2
+$$
+
+We used the orthonormality of the basis states ($\braket{0|0} = \braket{1|1} = 1$, $\braket{0|1} = \braket{1|0} = 0$) from the previous tutorial.
+
+### The Born Rule for Multi-Qubit Systems
+
+For a system of $n$ qubits, the state is a superposition of $2^n$ computational basis states:
+
+$$
+\ket{\psi} = \sum_{x=0}^{2^n-1} c_x \ket{x}
+$$
+
+The probability of measuring the basis state $\ket{x}$ is:
+
+$$
+P(x) = |c_x|^2
+$$
+
+And the normalisation condition ensures all probabilities sum to 1:
+
+$$
+\sum_{x=0}^{2^n-1} |c_x|^2 = 1
+$$
+
+```elixir
+# A 2-qubit system: probabilities follow the Born rule
+reg = Register.new(2)
+  |> Register.h(0)        # Qubit 0 in superposition
+  |> Register.h(1)        # Qubit 1 in superposition
+
+IO.puts("State: equal superposition of |00⟩, |01⟩, |10⟩, |11⟩")
+Register.show_state(reg)
+```
+
+```elixir
+# Each of the 4 basis states has probability |1/2|² = 1/4 = 0.25
+Register.get_probabilities(reg) |> IO.inspect(label: "Probabilities")
+```
+
+```elixir
+# Verify with circuit mode measurements
+circuit = Qx.create_circuit(2, 2)
+  |> Qx.h(0)
+  |> Qx.h(1)
+  |> Qx.measure(0, 0)
+  |> Qx.measure(1, 1)
+
+result = Qx.run(circuit, 2000)
+IO.inspect(result.counts, label: "~500 each for 00, 01, 10, 11")
+Qx.draw_counts(result)
+```
+
+### Non-Uniform Probabilities
+
+When amplitudes are not equal, the Born rule produces non-uniform probability distributions:
+
+```elixir
+# Create a state with unequal amplitudes
+# |ψ⟩ = (√3/2)|0⟩ + (1/2)|1⟩
+q = Qubit.new(:math.sqrt(3) / 2, 0.5)
+
+IO.puts("State with unequal amplitudes:")
+Qubit.show_state(q)
+```
+
+```elixir
+# P(0) = |√3/2|² = 3/4 = 0.75, P(1) = |1/2|² = 1/4 = 0.25
+Qubit.measure_probabilities(q) |> IO.inspect(label: "Probabilities")
+```
+
+```elixir
+# Circuit mode: the distribution is clearly skewed
+circuit = Qx.create_circuit(1, 1)
+  |> Qx.ry(0, :math.pi() / 3)   # RY(π/3) creates this amplitude ratio
+  |> Qx.measure(0, 0)
+
+result = Qx.run(circuit, 2000)
+IO.inspect(result.counts, label: "~1500 zeros, ~500 ones")
+Qx.draw_counts(result)
+```
+
+## The Outer Product and Projection Operators
+
+To describe measurement mathematically in its full generality, we need the **outer product** — the companion to the inner product introduced in the previous tutorial.
+
+### The Outer Product
+
+While the inner product $\braket{\phi|\psi}$ takes two states and returns a **scalar** (a number), the outer product $\ket{\phi}\bra{\psi}$ takes two states and returns an **operator** (a matrix).
+
+For a single qubit, if $\ket{\phi} = \begin{pmatrix} a \\ b \end{pmatrix}$ and $\ket{\psi} = \begin{pmatrix} c \\ d \end{pmatrix}$, then:
+
+$$
+\ket{\phi}\bra{\psi} = \begin{pmatrix} a \\ b \end{pmatrix} \begin{pmatrix} c^* & d^* \end{pmatrix} = \begin{pmatrix} ac^* & ad^* \\ bc^* & bd^* \end{pmatrix}
+$$
+
+### Projection Operators
+
+The most important application of the outer product in measurement is the **projection operator**. The projector onto state $\ket{k}$ is:
+
+$$
+P_k = \ket{k}\bra{k}
+$$
+
+For the computational basis:
+
+$$
+P_0 = \ket{0}\bra{0} = \begin{pmatrix} 1 \\ 0 \end{pmatrix} \begin{pmatrix} 1 & 0 \end{pmatrix} = \begin{pmatrix} 1 & 0 \\ 0 & 0 \end{pmatrix}
+$$
+
+$$
+P_1 = \ket{1}\bra{1} = \begin{pmatrix} 0 \\ 1 \end{pmatrix} \begin{pmatrix} 0 & 1 \end{pmatrix} = \begin{pmatrix} 0 & 0 \\ 0 & 1 \end{pmatrix}
+$$
+
+### Properties of Projectors
+
+Projectors have two defining properties:
+
+1. **Idempotent:** $P_k^2 = P_k$ (projecting twice is the same as projecting once)
+2. **Hermitian:** $P_k^\dagger = P_k$ (projectors are their own conjugate transpose)
+
+The projectors for the computational basis are also **complete** — they sum to the identity:
+
+$$
+P_0 + P_1 = \ket{0}\bra{0} + \ket{1}\bra{1} = I
+$$
+
+This completeness relation expresses the fact that measurement must produce *some* outcome.
+
+### The Measurement Postulate (Formal Statement)
+
+Using projectors, the measurement postulate can be stated precisely:
+
+When measuring state $\ket{\psi}$ in the basis $\{\ket{k}\}$:
+
+1. **Probability** of outcome $k$: $P(k) = \bra{\psi}P_k\ket{\psi} = |\braket{k|\psi}|^2$
+2. **Post-measurement state**: $\frac{P_k\ket{\psi}}{\sqrt{P(k)}} = \ket{k}$
+
+The projector $P_k$ "projects" the state onto the subspace corresponding to outcome $k$, and the denominator renormalises the result.
+
+## Wavefunction Collapse
+
+When a measurement is performed and a specific outcome is observed, the quantum state **collapses** — it instantaneously changes from a superposition to the basis state corresponding to the observed outcome.
+
+### What Collapse Means
+
+Consider a qubit in state $\ket{\psi} = \alpha\ket{0} + \beta\ket{1}$. Before measurement, the qubit "contains" information about both $\alpha$ and $\beta$. After measurement:
+
+* If we observe 0: the state becomes $\ket{0}$. The amplitude $\beta$ is **lost forever**.
+* If we observe 1: the state becomes $\ket{1}$. The amplitude $\alpha$ is **lost forever**.
+
+This is not merely a change in our knowledge — the physical state of the system changes. Any subsequent measurement will yield the same result with certainty.
+
+```elixir
+# Demonstrate collapse: after measurement, the state is definite
+# In circuit mode, we can see this through repeated measurement
+
+# First, create |+⟩ and measure — results are random
+circuit_random = Qx.create_circuit(1, 1)
+  |> Qx.h(0)
+  |> Qx.measure(0, 0)
+
+result_random = Qx.run(circuit_random, 1000)
+IO.inspect(result_random.counts, label: "Random: ~50/50 split")
+```
+
+```elixir
+# Now measure a basis state — the result is always the same
+circuit_definite = Qx.create_circuit(1, 1)
+  |> Qx.measure(0, 0)   # Measure |0⟩ directly
+
+result_definite = Qx.run(circuit_definite, 1000)
+IO.inspect(result_definite.counts, label: "Definite: all zeros")
+```
+
+### Collapse Destroys Superposition
+
+A key consequence of collapse is that measurement is **not a unitary operation**. It cannot be represented by a reversible gate. Once a superposition collapses, the original amplitudes cannot be recovered.
+
+This has profound implications for quantum algorithms: you must carefully design your circuit so that the information you need is encoded in the **measurement probabilities**, because you only get to measure once per run.
+
+```elixir
+# The same state measured in 10 individual shots — each is random
+circuit = Qx.create_circuit(1, 1)
+  |> Qx.h(0)
+  |> Qx.measure(0, 0)
+
+result = Qx.run(circuit, 10)
+IO.inspect(result.counts, label: "10 shots (each is an independent collapse)")
+```
+
+### No-Cloning and Measurement
+
+The **no-cloning theorem** states that it is impossible to create an exact copy of an unknown quantum state. Combined with collapse, this means:
+
+* You cannot copy a state before measuring it to "try again"
+* You cannot determine the exact state $\alpha$ and $\beta$ from a single measurement
+* To estimate the probabilities, you must prepare the **same state many times** and measure each copy
+
+This is why quantum circuits are typically run for many "shots" — each shot prepares the state from scratch and measures it, building up the probability distribution.
+
+```elixir
+# Convergence: more shots → better estimate of true probabilities
+# True state: P(0) = cos²(π/8) ≈ 0.854, P(1) = sin²(π/8) ≈ 0.146
+circuit = Qx.create_circuit(1, 1)
+  |> Qx.ry(0, :math.pi() / 4)
+  |> Qx.measure(0, 0)
+
+for shots <- [10, 100, 1000, 10000] do
+  result = Qx.run(circuit, shots)
+  zeros = Map.get(result.counts, "0", 0)
+  IO.puts("#{shots} shots: P(0) ≈ #{Float.round(zeros / shots, 3)}")
+end
+```
+
+## The Probabilistic Nature of Outcomes
+
+### Individual Outcomes Are Truly Random
+
+A common misconception is that quantum randomness is like classical randomness — that there is some hidden variable we simply do not know about. This is **not the case**. Quantum randomness is **fundamental**: there is no deeper level of description that would allow us to predict individual outcomes.
+
+Bell's theorem (which we touch on in the entanglement tutorial) proves that no local hidden variable theory can reproduce all the predictions of quantum mechanics.
+
+### Statistical Patterns Are Predictable
+
+While individual outcomes are random, the **statistical distribution** over many measurements is perfectly predictable. The Born rule gives exact probabilities, and with enough shots, the measured frequencies converge to these probabilities.
+
+```elixir
+# Create a state with specific probabilities and verify experimentally
+# |ψ⟩ with P(0) = 0.75, P(1) = 0.25
+circuit = Qx.create_circuit(1, 1)
+  |> Qx.ry(0, :math.pi() / 3)   # cos²(π/6) = 3/4, sin²(π/6) = 1/4
+  |> Qx.measure(0, 0)
+
+result = Qx.run(circuit, 4000)
+
+IO.puts("Theoretical: P(0) = 0.750, P(1) = 0.250")
+Qx.draw_counts(result)
+```
+
+How do the results look to you? do they match the Theoretical: P(0) = 0.750, P(1) = 0.250
+
+<!-- livebook:{"break_markdown":true} -->
+
+### Quantum vs Classical Probability
+
+It is important to distinguish quantum probability from classical probability:
+
+| Aspect           | Classical probability | Quantum probability         |
+| ---------------- | --------------------- | --------------------------- |
+| Source           | Incomplete knowledge  | Fundamental nature          |
+| Amplitudes       | Not applicable        | Complex numbers             |
+| Interference     | No                    | Yes                         |
+| Hidden variables | Could exist           | Ruled out by Bell's theorem |
+
+The existence of **interference** is the critical difference. Classical probabilities always add: $P(A \text{ or } B) = P(A) + P(B)$ for mutually exclusive events. Quantum amplitudes can interfere constructively or destructively before being squared into probabilities, leading to effects that have no classical explanation.
+
+```elixir
+# Demonstration of interference:
+# Path 1: |0⟩ → H → |+⟩ → H → |0⟩   (constructive interference on |0⟩)
+q = Qubit.new()
+  |> Qubit.h()
+  |> Qubit.h()
+
+IO.puts("H applied twice (interference restores |0⟩):")
+Qubit.show_state(q)
+```
+
+After the first H gate, both $\ket{0}$ and $\ket{1}$ components have equal amplitude. The second H gate causes the $\ket{1}$ components to interfere **destructively** (they cancel) while the $\ket{0}$ components interfere **constructively** (they add). The result is a deterministic $\ket{0}$, not a random outcome — a direct consequence of quantum interference.
+
+## Measurement in Different Bases
+
+So far, we have discussed measurement in the **computational basis** ($\ket{0}$, $\ket{1}$). But measurement can be performed in any orthonormal basis.
+
+### The X-Basis Measurement
+
+To measure in the X-basis ($\ket{+}$, $\ket{-}$), we apply a Hadamard gate before measuring in the computational basis. This works because H transforms the X-basis into the Z-basis:
+
+$$
+H\ket{+} = \ket{0} \qquad H\ket{-} = \ket{1}
+$$
+
+So measuring "0" after H means the state was $\ket{+}$, and measuring "1" means it was $\ket{-}$.
+
+```elixir
+# Measure |+⟩ in the X-basis: always gives outcome 0 (meaning |+⟩)
+circuit_x = Qx.create_circuit(1, 1)
+  |> Qx.h(0)        # Prepare |+⟩
+  |> Qx.h(0)        # Rotate to computational basis
+  |> Qx.measure(0, 0)
+
+result = Qx.run(circuit_x, 1000)
+IO.inspect(result.counts, label: "|+⟩ measured in X-basis: always 0")
+```
+
+```elixir
+# Measure |−⟩ in the X-basis: always gives outcome 1 (meaning |−⟩)
+circuit_x = Qx.create_circuit(1, 1)
+  |> Qx.x(0)        # |1⟩
+  |> Qx.h(0)        # Prepare |−⟩
+  |> Qx.h(0)        # Rotate to computational basis
+  |> Qx.measure(0, 0)
+
+result = Qx.run(circuit_x, 1000)
+IO.inspect(result.counts, label: "|−⟩ measured in X-basis: always 1")
+```
+
+```elixir
+# Measure |0⟩ in the X-basis: 50/50 (|0⟩ is a superposition of |+⟩ and |−⟩)
+circuit_x = Qx.create_circuit(1, 1)
+  |> Qx.h(0)        # Rotate |0⟩ to X-basis
+  |> Qx.measure(0, 0)
+
+result = Qx.run(circuit_x, 1000)
+IO.inspect(result.counts, label: "|0⟩ measured in X-basis: ~50/50")
+```
+
+This last result illustrates a crucial point: $\ket{0}$ is a **definite state** in the Z-basis but an **equal superposition** in the X-basis. The same quantum state can appear certain or random depending on the choice of measurement basis.
+
+### The Y-Basis Measurement
+
+To measure in the Y-basis ($\ket{i}$, $\ket{-i}$), we apply $S^\dagger$ (the inverse of S) followed by H before measuring:
+
+```elixir
+# Prepare |i⟩ = (|0⟩ + i|1⟩)/√2 and measure in Y-basis
+circuit_y = Qx.create_circuit(1, 1)
+  |> Qx.h(0)             # |+⟩
+  |> Qx.s(0)             # S|+⟩ = |i⟩
+  |> Qx.sdg(0)           # S†: rotate Y-basis to X-basis
+  |> Qx.h(0)             # H: rotate X-basis to Z-basis
+  |> Qx.measure(0, 0)
+
+result = Qx.run(circuit_y, 1000)
+IO.inspect(result.counts, label: "|i⟩ measured in Y-basis: always 0")
+```
+
+### Complementarity
+
+The relationship between measurement bases illustrates Heisenberg's **uncertainty principle** in a discrete setting:
+
+* A state that is **certain** in one basis is **maximally uncertain** in a complementary basis.
+* $\ket{0}$ has definite Z but random X and Y.
+* $\ket{+}$ has definite X but random Z and Y.
+* $\ket{i}$ has definite Y but random Z and X.
+
+You cannot simultaneously know the outcome of measurements in complementary bases. This is not a limitation of our measurement apparatus — it is a fundamental property of quantum mechanics.
+
+```elixir
+# |0⟩ is certain in Z, random in X
+IO.puts("--- Measuring |0⟩ ---")
+
+z_result = Qx.create_circuit(1, 1)
+  |> Qx.measure(0, 0)
+  |> Qx.run(1000)
+
+x_result = Qx.create_circuit(1, 1)
+  |> Qx.h(0)
+  |> Qx.measure(0, 0)
+  |> Qx.run(1000)
+
+IO.inspect(z_result.counts, label: "Z-basis (certain)")
+IO.inspect(x_result.counts, label: "X-basis (random) ")
+```
+
+```elixir
+# |+⟩ is certain in X, random in Z
+IO.puts("--- Measuring |+⟩ ---")
+
+z_result = Qx.create_circuit(1, 1)
+  |> Qx.h(0)
+  |> Qx.measure(0, 0)
+  |> Qx.run(1000)
+
+x_result = Qx.create_circuit(1, 1)
+  |> Qx.h(0)
+  |> Qx.h(0)
+  |> Qx.measure(0, 0)
+  |> Qx.run(1000)
+
+IO.inspect(z_result.counts, label: "Z-basis (random) ")
+IO.inspect(x_result.counts, label: "X-basis (certain)")
+```
+
+## Partial Measurement
+
+In a multi-qubit system, we can choose to measure only **some** of the qubits. This is called **partial measurement** and it has important consequences for the unmeasured qubits.
+
+### Measuring One Qubit of an Entangled Pair
+
+Consider the Bell state $\ket{\Phi^+} = \frac{1}{\sqrt{2}}(\ket{00} + \ket{11})$. If we measure only the first qubit:
+
+* **Outcome 0** (probability $\frac{1}{2}$): the system collapses to $\ket{00}$. The second qubit is now definitely $\ket{0}$.
+* **Outcome 1** (probability $\frac{1}{2}$): the system collapses to $\ket{11}$. The second qubit is now definitely $\ket{1}$.
+
+The measurement of the first qubit **instantaneously determines** the state of the second qubit, regardless of the physical distance between them.
+
+```elixir
+# Create Bell state and measure only the first qubit
+# The second qubit's outcome is always correlated
+circuit = Qx.create_circuit(2, 2)
+  |> Qx.h(0)
+  |> Qx.cx(0, 1)
+  |> Qx.measure(0, 0)
+  |> Qx.measure(1, 1)
+
+result = Qx.run(circuit, 1000)
+IO.inspect(result.counts, label: "Bell state: qubits always agree")
+Qx.draw_counts(result)
+```
+
+### Mid-Circuit Measurement
+
+In Qx circuit mode, measurement can occur in the **middle** of a circuit, not just at the end. The result of a mid-circuit measurement can be used to conditionally apply gates to other qubits using `Qx.c_if/4`.
+
+This is essential for:
+
+* **Quantum error correction** — detect and correct errors during computation
+* **Quantum teleportation** — classical communication of measurement results
+* **Adaptive algorithms** — future operations depend on earlier measurements
+
+```elixir
+# Mid-circuit measurement: measure qubit 0, conditionally apply X to qubit 1
+circuit = Qx.create_circuit(2, 2)
+  |> Qx.h(0)                                    # Qubit 0 in superposition
+  |> Qx.measure(0, 0)                           # Measure qubit 0
+  |> Qx.c_if(0, 1, fn c -> Qx.x(c, 1) end)     # If result is 1, flip qubit 1
+  |> Qx.measure(1, 1)                           # Measure qubit 1
+
+result = Qx.run(circuit, 1000)
+IO.inspect(result.counts, label: "Conditional: qubits always match")
+```
+
+In this circuit, qubit 1 is flipped only when qubit 0 measures as 1. The result is that both qubits always agree — we have created a classical correlation using mid-circuit measurement and conditional operations.
+
+### Partial Measurement of Product States
+
+When qubits are **not entangled** (they are in a product state), measuring one qubit has no effect on the others:
+
+```elixir
+# Two independent qubits in superposition (product state)
+circuit = Qx.create_circuit(2, 2)
+  |> Qx.h(0)     # Qubit 0 in |+⟩
+  |> Qx.h(1)     # Qubit 1 in |+⟩ (independent)
+  |> Qx.measure(0, 0)
+  |> Qx.measure(1, 1)
+
+result = Qx.run(circuit, 1000)
+IO.inspect(result.counts, label: "Product state: all four outcomes appear")
+Qx.draw_counts(result)
+```
+
+All four outcomes (00, 01, 10, 11) appear with roughly equal frequency. Measuring qubit 0 tells us nothing about qubit 1 — they are independent. Contrast this with the Bell state above, where the qubits are entangled and measuring one fully determines the other.
+
+## Practical Example: Quantum State Discrimination
+
+Let us apply what we have learned to a practical task: distinguishing between two known quantum states using measurement.
+
+**Problem:** You are given a qubit that is either in state $\ket{0}$ or state $\ket{+}$. Can you determine which one it is?
+
+**Analysis:** In the computational (Z) basis:
+
+* $\ket{0}$ always gives outcome 0
+* $\ket{+}$ gives outcome 0 or 1 with equal probability
+
+So if you measure 1, you know the state was $\ket{+}$. But if you measure 0, you cannot be certain — it could be either state.
+
+```elixir
+# Strategy: measure in Z-basis
+# If we get 1, it was definitely |+⟩
+# If we get 0, we cannot distinguish
+
+# Test with |0⟩
+circuit_zero = Qx.create_circuit(1, 1)
+  |> Qx.measure(0, 0)
+
+result_zero = Qx.run(circuit_zero, 1000)
+IO.inspect(result_zero.counts, label: "|0⟩ in Z-basis: always 0")
+```
+
+```elixir
+# Test with |+⟩
+circuit_plus = Qx.create_circuit(1, 1)
+  |> Qx.h(0)
+  |> Qx.measure(0, 0)
+
+result_plus = Qx.run(circuit_plus, 1000)
+IO.inspect(result_plus.counts, label: "|+⟩ in Z-basis: ~50/50")
+```
+
+This illustrates a fundamental limitation: **non-orthogonal quantum states cannot be perfectly distinguished by any measurement**. Since $\braket{0|+} = \frac{1}{\sqrt{2}} \neq 0$, the states $\ket{0}$ and $\ket{+}$ are not orthogonal, and no measurement strategy can distinguish them with 100% accuracy in a single shot.
+
+Only **orthogonal** states (like $\ket{0}$ and $\ket{1}$, or $\ket{+}$ and $\ket{-}$) can be perfectly distinguished.
+
+## Summary
+
+In this tutorial, we covered the theory and practice of quantum measurement:
+
+* **The Measurement Postulate:** Measurement produces a basis state probabilistically and changes the quantum state to match the outcome.
+* **The Born Rule:** The probability of outcome $\ket{k}$ is $P(k) = |\braket{k|\psi}|^2$ — the squared magnitude of the inner product.
+* **The Outer Product:** $\ket{\phi}\bra{\psi}$ produces an operator (matrix). Projection operators $P_k = \ket{k}\bra{k}$ describe measurement mathematically.
+* **Wavefunction Collapse:** After measurement, the superposition is destroyed and the state becomes the measured basis state. This is irreversible.
+* **Probabilistic Outcomes:** Individual results are fundamentally random, but statistical distributions are perfectly predictable via the Born rule.
+* **Measurement Bases:** Any orthonormal basis can be used for measurement. A state that is certain in one basis is random in a complementary basis (complementarity).
+* **Partial Measurement:** Measuring part of an entangled system collapses the entire state. Mid-circuit measurement enables adaptive algorithms.
+
+### What's Next
+
+In the next tutorial, **Systems of Qubits and Entanglement**, we explore how multi-qubit systems are constructed through tensor products, dive deep into the phenomenon of entanglement, and study Bell states and GHZ states in detail.

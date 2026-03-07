@@ -431,6 +431,19 @@ defmodule Qx.Qubit do
   end
 
   @doc """
+  Applies an S† (S-dagger) gate (-π/2 phase) to a qubit.
+
+  ## Examples
+
+      iex> q = Qx.Qubit.new() |> Qx.Qubit.sdg()
+      iex> Qx.Qubit.valid?(q)
+      true
+  """
+  def sdg(qubit) do
+    qubit |> wrap() |> Register.sdg(0) |> extract_state()
+  end
+
+  @doc """
   Applies a T gate (π/4 phase) to a qubit.
 
   ## Examples

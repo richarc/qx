@@ -87,6 +87,28 @@ defmodule Qx.GatesTest do
       assert complex_approx_equal?(matrix_elem(t, 1, 0), C.new(0.0, 0.0))
       assert complex_approx_equal?(matrix_elem(t, 1, 1), e_i_pi_4)
     end
+
+    test "s_dagger has correct matrix elements" do
+      sdg = Gates.s_dagger()
+      assert Nx.shape(sdg) == {2, 2}
+
+      # S† = [[1, 0], [0, -i]]
+      assert complex_approx_equal?(matrix_elem(sdg, 0, 0), C.new(1.0, 0.0))
+      assert complex_approx_equal?(matrix_elem(sdg, 0, 1), C.new(0.0, 0.0))
+      assert complex_approx_equal?(matrix_elem(sdg, 1, 0), C.new(0.0, 0.0))
+      assert complex_approx_equal?(matrix_elem(sdg, 1, 1), C.new(0.0, -1.0))
+    end
+
+    test "S†S = I (S† is the inverse of S)" do
+      s = Gates.s_gate()
+      sdg = Gates.s_dagger()
+      product = Nx.dot(sdg, s)
+      id = Gates.identity()
+
+      for i <- 0..1, j <- 0..1 do
+        assert complex_approx_equal?(matrix_elem(product, i, j), matrix_elem(id, i, j))
+      end
+    end
   end
 
   describe "Rotation gates" do

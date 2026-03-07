@@ -1,0 +1,683 @@
+# Systems of Qubits and Entanglement
+
+```elixir
+Mix.install([
+  {:qx, "~> 0.5.1", hex: :qx_sim},
+  {:kino, "~> 0.12"},
+  {:vega_lite, "~> 0.1.11"},
+  {:kino_vega_lite, "~> 0.1.11"}
+])
+
+alias Qx.Qubit
+alias Qx.Register
+```
+
+## Introduction
+
+So far in this series we have primarily worked with single qubits, with occasional glimpses of multi-qubit systems when demonstrating gates like CNOT. In this tutorial we examine multi-qubit systems rigorously — how they are constructed mathematically, why their state space grows exponentially, and how the phenomenon of **entanglement** emerges as a uniquely quantum resource.
+
+Entanglement is often described as the most striking feature of quantum mechanics. Einstein famously called it "spooky action at a distance." It is the engine that powers quantum teleportation, superdense coding, quantum error correction, and the exponential speedups of quantum algorithms.
+
+**What this tutorial covers:**
+
+1. The tensor product — combining quantum systems
+2. Multi-qubit state spaces and notation
+3. Product states vs entangled states
+4. The four Bell states
+5. Quantifying entanglement
+6. GHZ and W states
+7. Applications of entanglement
+
+## The Tensor Product
+
+### Combining Two Systems
+
+When we have two independent quantum systems, each described by its own state vector, the combined system is described by the **tensor product** (also called Kronecker product) of their individual states.
+
+If qubit A is in state $\ket{\psi_A}$ and qubit B is in state $\ket{\psi_B}$, the state of the combined system is:
+
+$$
+\ket{\psi_{AB}} = \ket{\psi_A} \otimes \ket{\psi_B}
+$$
+
+The symbol $\otimes$ denotes the tensor product. For brevity, this is often written as $\ket{\psi_A}\ket{\psi_B}$ or $\ket{\psi_A \psi_B}$.
+
+### Computing the Tensor Product
+
+For two single-qubit states $\ket{\psi_A} = \begin{pmatrix} a_0 \\ a_1 \end{pmatrix}$ and $\ket{\psi_B} = \begin{pmatrix} b_0 \\ b_1 \end{pmatrix}$, the tensor product is:
+
+$$
+\ket{\psi_A} \otimes \ket{\psi_B} = \begin{pmatrix} a_0 \\ a_1 \end{pmatrix} \otimes \begin{pmatrix} b_0 \\ b_1 \end{pmatrix} = \begin{pmatrix} a_0 b_0 \\ a_0 b_1 \\ a_1 b_0 \\ a_1 b_1 \end{pmatrix}
+$$
+
+Each element of the first vector is multiplied by the entire second vector. This produces a vector of dimension $2 \times 2 = 4$.
+
+### Example: Two Qubits in $\ket{0}$
+
+$$
+\ket{0} \otimes \ket{0} = \begin{pmatrix} 1 \\ 0 \end{pmatrix} \otimes \begin{pmatrix} 1 \\ 0 \end{pmatrix} = \begin{pmatrix} 1 \cdot 1 \\ 1 \cdot 0 \\ 0 \cdot 1 \\ 0 \cdot 0 \end{pmatrix} = \begin{pmatrix} 1 \\ 0 \\ 0 \\ 0 \end{pmatrix} = \ket{00}
+$$
+
+```elixir
+# Create a 2-qubit register — both qubits start in |0⟩
+reg = Register.new(2)
+
+IO.puts("Two qubits in |00⟩:")
+Register.show_state(reg)
+```
+
+```elixir
+# Inspect the raw state vector — a 4-element tensor
+Register.state_vector(reg) |> IO.inspect(label: "State vector")
+```
+
+### The Computational Basis for Two Qubits
+
+The tensor product of the single-qubit basis states produces the **computational basis** for the two-qubit system:
+
+$$
+\ket{00} = \begin{pmatrix} 1 \\ 0 \\ 0 \\ 0 \end{pmatrix}, \quad
+\ket{01} = \begin{pmatrix} 0 \\ 1 \\ 0 \\ 0 \end{pmatrix}, \quad
+\ket{10} = \begin{pmatrix} 0 \\ 0 \\ 1 \\ 0 \end{pmatrix}, \quad
+\ket{11} = \begin{pmatrix} 0 \\ 0 \\ 0 \\ 1 \end{pmatrix}
+$$
+
+Any two-qubit state can be written as a superposition of these four basis states:
+
+$$
+\ket{\psi} = c_{00}\ket{00} + c_{01}\ket{01} + c_{10}\ket{10} + c_{11}\ket{11}
+$$
+
+```elixir
+# Create each computational basis state
+for {label, bits} <- [{"00", [0, 0]}, {"01", [0, 1]}, {"10", [1, 0]}, {"11", [1, 1]}] do
+  reg = Register.from_basis_states(bits)
+  sv = Register.state_vector(reg)
+  IO.puts("|#{label}⟩ = #{inspect(Nx.to_flat_list(sv))}")
+end
+```
+
+### Scaling to $n$ Qubits
+
+For $n$ qubits, the state space has dimension $2^n$:
+
+| Qubits | Basis states | State vector size |
+| ------ | ------------ | ----------------- |
+| 1      | 2            | 2                 |
+| 2      | 4            | 4                 |
+| 3      | 8            | 8                 |
+| 10     | 1,024        | 1,024             |
+| 20     | 1,048,576    | ~1 million        |
+| 50     | ~$10^{15}$   | ~1 quadrillion    |
+
+This exponential growth is both the source of quantum computing's power and the reason classical simulation of quantum systems becomes intractable for large numbers of qubits.
+
+```elixir
+# A 3-qubit register has 2³ = 8 basis states
+reg = Register.new(3)
+  |> Register.h(0)
+  |> Register.h(1)
+  |> Register.h(2)
+
+IO.puts("3-qubit equal superposition (8 basis states):")
+Register.show_state(reg)
+```
+
+```elixir
+Register.get_probabilities(reg) |> IO.inspect(label: "Each has probability 1/8")
+```
+
+### Tensor Products of Operators
+
+When we apply a gate to one qubit in a multi-qubit system, the operation on the full system is described by the tensor product of the gate with identity matrices for the other qubits.
+
+For example, applying the X gate to qubit 0 of a 2-qubit system:
+
+$$
+X \otimes I = \begin{pmatrix} 0 & 1 \\ 1 & 0 \end{pmatrix} \otimes \begin{pmatrix} 1 & 0 \\ 0 & 1 \end{pmatrix} = \begin{pmatrix} 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \\ 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \end{pmatrix}
+$$
+
+Qx handles this automatically — you simply specify which qubit the gate acts on:
+
+```elixir
+# X on qubit 0 of a 2-qubit system: |00⟩ → |10⟩
+reg = Register.new(2)
+  |> Register.x(0)
+
+Register.show_state(reg)
+```
+
+```elixir
+# X on qubit 1 of a 2-qubit system: |00⟩ → |01⟩
+reg = Register.new(2)
+  |> Register.x(1)
+
+Register.show_state(reg)
+```
+
+## Product States vs Entangled States
+
+### Product States
+
+A multi-qubit state is called a **product state** if it can be written as a tensor product of individual qubit states:
+
+$$
+\ket{\psi_{AB}} = \ket{\psi_A} \otimes \ket{\psi_B}
+$$
+
+In a product state, each qubit has a well-defined individual state. Measuring one qubit provides no information about the other — they are independent.
+
+```elixir
+# A product state: each qubit independently in |+⟩
+reg = Register.new(2)
+  |> Register.h(0)
+  |> Register.h(1)
+
+IO.puts("Product state |+⟩|+⟩ = (|00⟩ + |01⟩ + |10⟩ + |11⟩)/2:")
+Register.show_state(reg)
+```
+
+```elixir
+# All four outcomes are equally likely — qubits are independent
+circuit = Qx.create_circuit(2, 2)
+  |> Qx.h(0)
+  |> Qx.h(1)
+  |> Qx.measure(0, 0)
+  |> Qx.measure(1, 1)
+
+result = Qx.run(circuit, 2000)
+IO.inspect(result.counts, label: "Product state: all outcomes ~500")
+Qx.draw_counts(result)
+```
+
+### Entangled States
+
+A state is **entangled** if it **cannot** be written as a tensor product of individual qubit states. In an entangled state, the qubits do not have independent individual states — they can only be described as a whole.
+
+The simplest example is the Bell state:
+
+$$
+\ket{\Phi^+} = \frac{1}{\sqrt{2}}(\ket{00} + \ket{11})
+$$
+
+**Why can't this be factored?** Suppose we try to write it as a product: $\ket{\Phi^+} = (a\ket{0} + b\ket{1}) \otimes (c\ket{0} + d\ket{1})$. Expanding:
+
+$$
+ac\ket{00} + ad\ket{01} + bc\ket{10} + bd\ket{11}
+$$
+
+For this to equal $\frac{1}{\sqrt{2}}\ket{00} + \frac{1}{\sqrt{2}}\ket{11}$, we need:
+
+* $ac = \frac{1}{\sqrt{2}}$ and $bd = \frac{1}{\sqrt{2}}$ (both nonzero)
+* $ad = 0$ and $bc = 0$
+
+But if $a \neq 0$ and $d \neq 0$ (from the first condition), then $ad \neq 0$ — a contradiction. The state cannot be factored, so it is entangled.
+
+```elixir
+# Create the Bell state and verify it cannot be a product state
+reg = Register.new(2)
+  |> Register.h(0)
+  |> Register.cx(0, 1)
+
+IO.puts("Bell state |Φ⁺⟩:")
+Register.show_state(reg)
+```
+
+```elixir
+# Only correlated outcomes — never 01 or 10
+circuit = Qx.create_circuit(2, 2)
+  |> Qx.h(0)
+  |> Qx.cx(0, 1)
+  |> Qx.measure(0, 0)
+  |> Qx.measure(1, 1)
+
+result = Qx.run(circuit, 2000)
+IO.inspect(result.counts, label: "Bell state: only 00 and 11")
+Qx.draw_counts(result)
+```
+
+### The Key Difference
+
+| Property                | Product state     | Entangled state                           |
+| ----------------------- | ----------------- | ----------------------------------------- |
+| Factorable              | Yes               | No                                        |
+| Individual qubit states | Well-defined      | Undefined                                 |
+| Correlations            | None or classical | Quantum (stronger than classical)         |
+| Measurement effect      | Local only        | Non-local                                 |
+| Example                 | $\ket{+}\ket{+}$  | $\frac{1}{\sqrt{2}}(\ket{00} + \ket{11})$ |
+
+## The Four Bell States
+
+The Bell states form a complete orthonormal basis for the two-qubit Hilbert space. They are the four **maximally entangled** two-qubit states:
+
+$$
+\ket{\Phi^+} = \frac{1}{\sqrt{2}}(\ket{00} + \ket{11})
+$$
+
+$$
+\ket{\Phi^-} = \frac{1}{\sqrt{2}}(\ket{00} - \ket{11})
+$$
+
+$$
+\ket{\Psi^+} = \frac{1}{\sqrt{2}}(\ket{01} + \ket{10})
+$$
+
+$$
+\ket{\Psi^-} = \frac{1}{\sqrt{2}}(\ket{01} - \ket{10})
+$$
+
+### Constructing All Four Bell States
+
+Each Bell state can be created from a different initial computational basis state using the same circuit (H on qubit 0, then CNOT):
+
+| Initial state | Circuit output                            | Bell state     |
+| ------------- | ----------------------------------------- | -------------- |
+| $\ket{00}$    | $\frac{1}{\sqrt{2}}(\ket{00} + \ket{11})$ | $\ket{\Phi^+}$ |
+| $\ket{10}$    | $\frac{1}{\sqrt{2}}(\ket{00} - \ket{11})$ | $\ket{\Phi^-}$ |
+| $\ket{01}$    | $\frac{1}{\sqrt{2}}(\ket{01} + \ket{10})$ | $\ket{\Psi^+}$ |
+| $\ket{11}$    | $\frac{1}{\sqrt{2}}(\ket{01} - \ket{10})$ | $\ket{\Psi^-}$ |
+
+```elixir
+# |Φ⁺⟩ from |00⟩
+reg_phi_plus = Register.new(2)
+  |> Register.h(0)
+  |> Register.cx(0, 1)
+
+IO.puts("|Φ⁺⟩ from |00⟩:")
+Register.show_state(reg_phi_plus)
+```
+
+```elixir
+# |Φ⁻⟩ from |10⟩
+reg_phi_minus = Register.new(2)
+  |> Register.x(0)
+  |> Register.h(0)
+  |> Register.cx(0, 1)
+
+IO.puts("|Φ⁻⟩ from |10⟩:")
+Register.show_state(reg_phi_minus)
+```
+
+```elixir
+# |Ψ⁺⟩ from |01⟩
+reg_psi_plus = Register.new(2)
+  |> Register.x(1)
+  |> Register.h(0)
+  |> Register.cx(0, 1)
+
+IO.puts("|Ψ⁺⟩ from |01⟩:")
+Register.show_state(reg_psi_plus)
+```
+
+```elixir
+# |Ψ⁻⟩ from |11⟩
+reg_psi_minus = Register.new(2)
+  |> Register.x(0)
+  |> Register.x(1)
+  |> Register.h(0)
+  |> Register.cx(0, 1)
+
+IO.puts("|Ψ⁻⟩ from |11⟩:")
+Register.show_state(reg_psi_minus)
+```
+
+### Properties of Bell States
+
+**Orthonormality:** The four Bell states are mutually orthogonal and normalised. They form a basis (the "Bell basis") for the 4-dimensional two-qubit space.
+
+**Maximal entanglement:** In each Bell state, measuring one qubit gives a completely random outcome (50/50), but the outcome of the second qubit is perfectly determined by the first.
+
+**Local indistinguishability:** If you have access to only one qubit of a Bell pair, that qubit appears to be in a completely random state — the same for all four Bell states. The difference between the Bell states is encoded entirely in the **correlations** between the two qubits.
+
+```elixir
+# All four Bell states produce the same local statistics on qubit 0
+for {name, init_gates} <- [
+  {"Φ⁺", fn c -> c end},
+  {"Φ⁻", fn c -> Qx.x(c, 0) end},
+  {"Ψ⁺", fn c -> Qx.x(c, 1) end},
+  {"Ψ⁻", fn c -> c |> Qx.x(0) |> Qx.x(1) end}
+] do
+  circuit = Qx.create_circuit(2, 2)
+    |> init_gates.()
+    |> Qx.h(0)
+    |> Qx.cx(0, 1)
+    |> Qx.measure(0, 0)
+
+  result = Qx.run(circuit, 1000)
+  zeros = Map.get(result.counts, "0", 0) + Map.get(result.counts, "00", 0)
+  ones = Map.get(result.counts, "1", 0) + Map.get(result.counts, "01", 0) +
+         Map.get(result.counts, "10", 0) + Map.get(result.counts, "11", 0)
+  IO.puts("|#{name}⟩ qubit 0: ~50/50 → #{inspect(result.counts)}")
+end
+```
+
+### The Qx Bell State Shortcut
+
+Qx provides a convenience function for creating the standard Bell state:
+
+```elixir
+# Using the built-in Bell state function
+bell = Qx.bell_state()
+state = Qx.get_state(bell)
+IO.inspect(state, label: "Bell state via Qx.bell_state()")
+```
+
+## Quantifying Entanglement
+
+How do we measure "how entangled" a state is? For pure two-qubit states, the standard measure is the **reduced density matrix** and its **von Neumann entropy**.
+
+### The Reduced State
+
+When a two-qubit system is in an entangled state, individual qubits do not have pure states. Instead, they are described by a **mixed state** — a statistical mixture of pure states. This is captured by the **reduced density matrix**, obtained by "tracing out" the other qubit.
+
+For a product state like $\ket{0}\ket{0}$, each qubit's reduced state is a pure state ($\ket{0}$). For a maximally entangled Bell state, each qubit's reduced state is a maximally mixed state — equivalent to a completely random coin flip.
+
+### A Practical Test
+
+A practical way to check if a two-qubit state is entangled is to examine whether measuring one qubit affects the distribution of outcomes for the other:
+
+```elixir
+# Product state: measuring qubit 0 does not affect qubit 1
+IO.puts("=== Product State |+⟩|+⟩ ===")
+
+circuit = Qx.create_circuit(2, 2)
+  |> Qx.h(0)
+  |> Qx.h(1)
+  |> Qx.measure(0, 0)
+  |> Qx.measure(1, 1)
+
+result = Qx.run(circuit, 2000)
+
+# Check: P(qubit1=0 | qubit0=0) should equal P(qubit1=0 | qubit0=1)
+c00 = Map.get(result.counts, "00", 0)
+c01 = Map.get(result.counts, "01", 0)
+c10 = Map.get(result.counts, "10", 0)
+c11 = Map.get(result.counts, "11", 0)
+
+p_q1_0_given_q0_0 = if c00 + c01 > 0, do: c00 / (c00 + c01), else: 0
+p_q1_0_given_q0_1 = if c10 + c11 > 0, do: c10 / (c10 + c11), else: 0
+
+IO.puts("P(q1=0 | q0=0) = #{Float.round(p_q1_0_given_q0_0, 3)}")
+IO.puts("P(q1=0 | q0=1) = #{Float.round(p_q1_0_given_q0_1, 3)}")
+IO.puts("These are approximately equal → qubits are independent")
+```
+
+```elixir
+# Entangled state: measuring qubit 0 completely determines qubit 1
+IO.puts("=== Bell State |Φ⁺⟩ ===")
+
+circuit = Qx.create_circuit(2, 2)
+  |> Qx.h(0)
+  |> Qx.cx(0, 1)
+  |> Qx.measure(0, 0)
+  |> Qx.measure(1, 1)
+
+result = Qx.run(circuit, 2000)
+
+c00 = Map.get(result.counts, "00", 0)
+c01 = Map.get(result.counts, "01", 0)
+c10 = Map.get(result.counts, "10", 0)
+c11 = Map.get(result.counts, "11", 0)
+
+p_q1_0_given_q0_0 = if c00 + c01 > 0, do: c00 / (c00 + c01), else: 0
+p_q1_0_given_q0_1 = if c10 + c11 > 0, do: c10 / (c10 + c11), else: 0
+
+IO.puts("P(q1=0 | q0=0) = #{Float.round(p_q1_0_given_q0_0, 3)}")
+IO.puts("P(q1=0 | q0=1) = #{Float.round(p_q1_0_given_q0_1, 3)}")
+IO.puts("These are maximally different → qubits are entangled")
+```
+
+## The GHZ State
+
+The **Greenberger–Horne–Zeilinger (GHZ) state** is the natural extension of the Bell state to three or more qubits:
+
+$$
+\ket{\text{GHZ}} = \frac{1}{\sqrt{2}}(\ket{000} + \ket{111})
+$$
+
+Like the Bell state, the GHZ state is maximally entangled — measuring any one qubit immediately determines the state of all the others.
+
+### Constructing the GHZ State
+
+The construction follows the same pattern as the Bell state: Hadamard on the first qubit, then a chain of CNOTs:
+
+```elixir
+# GHZ state in calculation mode
+reg = Register.new(3)
+  |> Register.h(0)
+  |> Register.cx(0, 1)
+  |> Register.cx(0, 2)
+
+IO.puts("GHZ state:")
+Register.show_state(reg)
+```
+
+```elixir
+# GHZ state in circuit mode with measurement
+circuit = Qx.create_circuit(3, 3)
+  |> Qx.h(0)
+  |> Qx.cx(0, 1)
+  |> Qx.cx(0, 2)
+  |> Qx.measure(0, 0)
+  |> Qx.measure(1, 1)
+  |> Qx.measure(2, 2)
+
+result = Qx.run(circuit, 2000)
+IO.inspect(result.counts, label: "GHZ: only 000 and 111")
+Qx.draw_counts(result)
+```
+
+### Properties of the GHZ State
+
+**All-or-nothing correlations:** All qubits are either all 0 or all 1. There are no partial correlations.
+
+**Fragile entanglement:** If you trace out (lose access to) any single qubit, the remaining two qubits are in a **classical mixture** of $\ket{00}$ and $\ket{11}$ — they are no longer entangled. The GHZ state's entanglement is "all or nothing."
+
+**Multi-party entanglement:** The GHZ state cannot be decomposed into entanglement between pairs of qubits. It represents genuinely three-party entanglement.
+
+```elixir
+# GHZ using the Qx convenience function
+ghz = Qx.ghz_state()
+state = Qx.get_state(ghz)
+IO.inspect(state, label: "GHZ via Qx.ghz_state()")
+```
+
+### Scaling to More Qubits
+
+The GHZ construction generalises to any number of qubits:
+
+$$
+\ket{\text{GHZ}_n} = \frac{1}{\sqrt{2}}(\ket{0}^{\otimes n} + \ket{1}^{\otimes n})
+$$
+
+```elixir
+# 5-qubit GHZ state
+n = 5
+
+circuit = Qx.create_circuit(n, n)
+  |> Qx.h(0)
+
+circuit = Enum.reduce(1..(n - 1), circuit, fn i, c -> Qx.cx(c, 0, i) end)
+
+circuit = Enum.reduce(0..(n - 1), circuit, fn i, c -> Qx.measure(c, i, i) end)
+
+result = Qx.run(circuit, 2000)
+IO.inspect(result.counts, label: "5-qubit GHZ: only 00000 and 11111")
+```
+
+## The W State
+
+The **W state** is another important class of multi-qubit entangled states. For three qubits:
+
+$$
+\ket{W} = \frac{1}{\sqrt{3}}(\ket{001} + \ket{010} + \ket{100})
+$$
+
+The W state is an equal superposition of all states with exactly one qubit in $\ket{1}$.
+
+### GHZ vs W: Different Kinds of Entanglement
+
+The GHZ and W states represent fundamentally different types of entanglement:
+
+| Property         | GHZ state                                   | W state                                                 |
+| ---------------- | ------------------------------------------- | ------------------------------------------------------- |
+| Form             | $\frac{1}{\sqrt{2}}(\ket{000} + \ket{111})$ | $\frac{1}{\sqrt{3}}(\ket{001} + \ket{010} + \ket{100})$ |
+| Correlations     | All-or-nothing                              | Pairwise                                                |
+| Losing one qubit | Entanglement destroyed                      | Remaining qubits still entangled                        |
+| Robustness       | Fragile                                     | Robust                                                  |
+
+The key difference is **robustness**: if one qubit of a W state is lost or measured, the remaining two qubits are still entangled. This makes the W state more robust against particle loss.
+
+```elixir
+# W state using the Qx state initialisation
+reg = Register.from_state(Qx.StateInit.w_state(3))
+
+IO.puts("W state:")
+Register.show_state(reg)
+```
+
+```elixir
+# Measure the W state — each single-1 pattern has probability 1/3
+circuit = Qx.create_circuit(3, 3)
+
+# Build W state: start from |001⟩, distribute the single |1⟩
+# RY rotation to split probability, then CNOTs to distribute
+circuit = circuit
+  |> Qx.x(2)                                        # |001⟩
+  |> Qx.ry(1, 2 * :math.acos(1 / :math.sqrt(3)))   # Split amplitude
+  |> Qx.cx(1, 2)                                    # Conditional transfer
+  |> Qx.ry(0, :math.pi() / 2)                       # Split again
+  |> Qx.cx(0, 1)                                    # Conditional transfer
+  |> Qx.measure(0, 0)
+  |> Qx.measure(1, 1)
+  |> Qx.measure(2, 2)
+
+result = Qx.run(circuit, 3000)
+IO.inspect(result.counts, label: "W state: 001, 010, 100 each ~1/3")
+Qx.draw_counts(result)
+```
+
+## Applications of Entanglement
+
+### Quantum Teleportation
+
+Quantum teleportation uses a shared Bell pair and classical communication to transfer a quantum state from one party to another without physically sending the qubit.
+
+**Protocol:**
+
+1. Alice and Bob share a Bell pair $\ket{\Phi^+}$
+2. Alice has a qubit $\ket{\psi}$ she wants to send
+3. Alice performs a Bell measurement on her two qubits
+4. Alice sends her two classical measurement bits to Bob
+5. Bob applies corrections based on the bits to recover $\ket{\psi}$
+
+```elixir
+# Teleport the state |1⟩ from qubit 0 to qubit 2
+teleport = Qx.create_circuit(3, 3)
+  # Prepare state to teleport
+  |> Qx.x(0)
+
+  # Create Bell pair between qubits 1 and 2
+  |> Qx.h(1)
+  |> Qx.cx(1, 2)
+
+  # Alice's Bell measurement on qubits 0 and 1
+  |> Qx.cx(0, 1)
+  |> Qx.h(0)
+  |> Qx.measure(0, 0)
+  |> Qx.measure(1, 1)
+
+  # Bob's corrections on qubit 2
+  |> Qx.c_if(1, 1, fn c -> Qx.x(c, 2) end)
+  |> Qx.c_if(0, 1, fn c -> Qx.z(c, 2) end)
+  |> Qx.measure(2, 2)
+
+result = Qx.run(teleport, 1000)
+IO.inspect(result.counts, label: "Teleportation: qubit 2 always measures 1")
+```
+
+The rightmost bit (qubit 2) is always 1, confirming that the state $\ket{1}$ was successfully teleported from qubit 0 to qubit 2, regardless of Alice's random measurement outcomes.
+
+### Superdense Coding
+
+Superdense coding is the reverse of teleportation: using a shared Bell pair, Alice can send **two** classical bits of information by transmitting only **one** qubit.
+
+**Protocol:**
+
+1. Alice and Bob share a Bell pair
+2. Alice encodes two classical bits by applying gates to her qubit:
+   * 00: Apply nothing ($I$) → $\ket{\Phi^+}$
+   * 01: Apply $X$ → $\ket{\Psi^+}$
+   * 10: Apply $Z$ → $\ket{\Phi^-}$
+   * 11: Apply $XZ$ → $\ket{\Psi^-}$
+3. Alice sends her qubit to Bob
+4. Bob performs a Bell measurement (reverse Bell circuit) to decode
+
+```elixir
+# Superdense coding: Alice sends the message "10" (encoding with Z gate)
+superdense = Qx.create_circuit(2, 2)
+  # Create shared Bell pair
+  |> Qx.h(0)
+  |> Qx.cx(0, 1)
+
+  # Alice encodes "10" by applying Z to her qubit (qubit 0)
+  |> Qx.z(0)
+
+  # Bob decodes: reverse Bell circuit
+  |> Qx.cx(0, 1)
+  |> Qx.h(0)
+  |> Qx.measure(0, 0)
+  |> Qx.measure(1, 1)
+
+result = Qx.run(superdense, 1000)
+IO.inspect(result.counts, label: "Superdense coding: Bob always reads '10'")
+```
+
+```elixir
+# Verify all four messages
+for {msg, gate_fn} <- [
+  {"00", fn c -> c end},
+  {"01", fn c -> Qx.x(c, 0) end},
+  {"10", fn c -> Qx.z(c, 0) end},
+  {"11", fn c -> c |> Qx.x(0) |> Qx.z(0) end}
+] do
+  circuit = Qx.create_circuit(2, 2)
+    |> Qx.h(0)
+    |> Qx.cx(0, 1)
+    |> gate_fn.()
+    |> Qx.cx(0, 1)
+    |> Qx.h(0)
+    |> Qx.measure(0, 0)
+    |> Qx.measure(1, 1)
+
+  result = Qx.run(circuit, 100)
+  IO.puts("Sent '#{msg}' → Bob reads: #{inspect(result.counts)}")
+end
+```
+
+### Entanglement as a Resource
+
+Entanglement is not just a curiosity — it is a **computational resource** that enables:
+
+* **Quantum teleportation** — transferring quantum states
+* **Superdense coding** — doubling classical communication capacity
+* **Quantum key distribution** — provably secure communication
+* **Quantum error correction** — protecting quantum information from noise
+* **Quantum algorithms** — exponential speedups (Shor's, Grover's, etc.)
+
+Without entanglement, quantum computers would offer no advantage over classical computers. It is the essential ingredient that makes quantum computation powerful.
+
+## Summary
+
+In this tutorial, we explored multi-qubit systems and entanglement:
+
+* **The Tensor Product:** Multi-qubit states are constructed via $\ket{\psi_A} \otimes \ket{\psi_B}$, producing a state space of dimension $2^n$ for $n$ qubits.
+* **Product vs Entangled States:** Product states can be factored into individual qubit states; entangled states cannot. Entangled qubits have no independent individual states.
+* **The Four Bell States:** $\ket{\Phi^\pm}$ and $\ket{\Psi^\pm}$ are the four maximally entangled two-qubit states, forming a complete basis. All are locally indistinguishable.
+* **GHZ States:** Multi-qubit "all-or-nothing" entanglement ($\frac{1}{\sqrt{2}}(\ket{00\ldots0} + \ket{11\ldots1})$). Fragile — losing one qubit destroys entanglement.
+* **W States:** Multi-qubit "distributed" entanglement ($\frac{1}{\sqrt{n}}\sum_k \ket{0\ldots1_k\ldots0}$). Robust — losing one qubit preserves pairwise entanglement.
+* **Applications:** Entanglement enables teleportation, superdense coding, quantum key distribution, error correction, and algorithmic speedups.
+
+### What's Next
+
+In the final tutorial, **Quantum Algorithms**, we build and explain key algorithms — including Bernstein-Vazirani and Grover's search — that harness superposition and entanglement to solve problems faster than any classical approach.

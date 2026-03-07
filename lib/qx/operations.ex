@@ -239,6 +239,25 @@ defmodule Qx.Operations do
   end
 
   @doc """
+  Applies an S† (S-dagger) gate (-π/2 phase on |1⟩).
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `qubit` - Target qubit index
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(1, 0)
+      iex> qc = Qx.Operations.sdg(qc, 0)
+      iex> [{gate, qubits, _params}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> {gate, qubits}
+      {:sdg, [0]}
+  """
+  def sdg(%QuantumCircuit{} = circuit, qubit) do
+    QuantumCircuit.add_gate(circuit, :sdg, qubit)
+  end
+
+  @doc """
   Applies a T gate (phase gate with π/4 phase).
 
   ## Parameters

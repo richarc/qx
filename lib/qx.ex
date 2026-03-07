@@ -265,6 +265,24 @@ defmodule Qx do
   defdelegate s(circuit, qubit), to: Operations
 
   @doc """
+  Applies an S† (S-dagger) gate (-π/2 phase on |1⟩).
+
+  Rotates the Y-basis back to the X-basis. The inverse of `s/2`.
+
+  ## Parameters
+    * `circuit` - Quantum circuit
+    * `qubit` - Target qubit index
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(1) |> Qx.sdg(0)
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      1
+  """
+  @spec sdg(circuit(), non_neg_integer()) :: circuit()
+  defdelegate sdg(circuit, qubit), to: Operations
+
+  @doc """
   Applies a T gate (phase gate with π/4 phase).
 
   ## Parameters

@@ -1,0 +1,525 @@
+# Quantum Algorithms
+
+```elixir
+Mix.install([
+  {:qx, "~> 0.5.1", hex: :qx_sim},
+  {:kino, "~> 0.12"},
+  {:vega_lite, "~> 0.1.11"},
+  {:kino_vega_lite, "~> 0.1.11"}
+])
+
+alias Qx.Register
+```
+
+## Introduction
+
+In the previous tutorials we built up the foundations of quantum computing: state vectors, gates, measurement, and entanglement. In this final tutorial we put it all together by constructing and analysing quantum algorithms that demonstrate genuine advantages over classical computation.
+
+A quantum algorithm is a carefully designed sequence of gates that exploits superposition and interference to amplify the probability of correct answers while suppressing incorrect ones. The two algorithms we study here illustrate two fundamental paradigms:
+
+* **Bernstein-Vazirani:** Exploits quantum parallelism to extract a hidden bit string in a single query, where a classical algorithm needs $n$ queries.
+* **Grover's Search:** Uses amplitude amplification to find a marked item in an unstructured database with $O(\sqrt{N})$ queries instead of the classical $O(N)$.
+
+**What this tutorial covers:**
+
+1. The oracle model — how quantum algorithms interact with problems
+2. Quantum parallelism and the Hadamard transform
+3. The Bernstein-Vazirani algorithm
+4. Grover's search algorithm
+5. The diffusion operator and amplitude amplification
+
+## The Oracle Model
+
+Many quantum algorithms are framed in terms of an **oracle** (also called a "black box") — a function $f$ that we can query but whose internal workings are hidden. The goal is to determine some property of $f$ using as few queries as possible.
+
+### Classical vs Quantum Oracles
+
+A **classical oracle** takes an input $x$ and returns $f(x)$. Each query reveals one input-output pair.
+
+A **quantum oracle** $U_f$ acts on quantum states. It takes a superposition of inputs and produces a superposition of outputs — effectively evaluating $f$ on all inputs simultaneously. The standard form is:
+
+$$
+U_f\ket{x}\ket{y} = \ket{x}\ket{y \oplus f(x)}
+$$
+
+where $\oplus$ is addition modulo 2 (XOR). The input $\ket{x}$ is unchanged, and $f(x)$ is XORed into the ancilla register $\ket{y}$.
+
+### The Phase Kickback Trick
+
+A powerful technique is to set the ancilla qubit to $\ket{-} = \frac{1}{\sqrt{2}}(\ket{0} - \ket{1})$. When $U_f$ acts on $\ket{x}\ket{-}$:
+
+$$
+U_f\ket{x}\ket{-} = (-1)^{f(x)}\ket{x}\ket{-}
+$$
+
+The value of $f(x)$ has been "kicked back" into the **phase** of the input register, leaving the ancilla unchanged. This converts the oracle from writing $f(x)$ into an output register to encoding it as a phase — which is exactly what interference-based algorithms need.
+
+**Derivation:** When the ancilla is $\ket{-}$:
+
+$$
+U_f\ket{x}\ket{-} = U_f\ket{x}\frac{(\ket{0} - \ket{1})}{\sqrt{2}} = \frac{\ket{x}\ket{0 \oplus f(x)} - \ket{x}\ket{1 \oplus f(x)}}{\sqrt{2}}
+$$
+
+If $f(x) = 0$: this gives $\ket{x}\frac{(\ket{0} - \ket{1})}{\sqrt{2}} = \ket{x}\ket{-}$
+
+If $f(x) = 1$: this gives $\ket{x}\frac{(\ket{1} - \ket{0})}{\sqrt{2}} = -\ket{x}\ket{-}$
+
+Combining: $U_f\ket{x}\ket{-} = (-1)^{f(x)}\ket{x}\ket{-}$
+
+## Quantum Parallelism and the Hadamard Transform
+
+### The $n$-Qubit Hadamard Transform
+
+When we apply the Hadamard gate to each of $n$ qubits initialised in $\ket{0}$, we create an equal superposition of all $2^n$ computational basis states:
+
+$$
+H^{\otimes n}\ket{0}^{\otimes n} = \frac{1}{\sqrt{2^n}} \sum_{x=0}^{2^n - 1} \ket{x}
+$$
+
+This is the starting point for most quantum algorithms. With a single layer of gates, we prepare a state that "encodes" all possible inputs simultaneously.
+
+```elixir
+# 4-qubit Hadamard transform: equal superposition of 16 states
+n = 4
+reg = Register.new(n)
+
+reg = Enum.reduce(0..(n - 1), reg, fn i, r -> Register.h(r, i) end)
+
+IO.puts("#{n}-qubit Hadamard transform (#{Integer.pow(2, n)} basis states):")
+Register.show_state(reg)
+```
+
+### Quantum Parallelism
+
+After the Hadamard transform, applying the oracle $U_f$ to the superposition effectively evaluates $f$ on all inputs at once:
+
+$$
+U_f \left( \frac{1}{\sqrt{2^n}} \sum_x \ket{x} \right) \ket{-} = \frac{1}{\sqrt{2^n}} \sum_x (-1)^{f(x)} \ket{x} \ket{-}
+$$
+
+This "quantum parallelism" does not mean we can read out all $f(x)$ values — measurement would collapse the superposition to a single state. Instead, the information is encoded in the **pattern of phases**, and we must use interference to extract useful global properties of $f$.
+
+## The Bernstein-Vazirani Algorithm
+
+### The Problem
+
+Given a function $f: \{0,1\}^n \to \{0,1\}$ that computes the bitwise dot product with a hidden bit string $s$:
+
+$$
+f(x) = s \cdot x = s_0 x_0 \oplus s_1 x_1 \oplus \cdots \oplus s_{n-1} x_{n-1} \pmod{2}
+$$
+
+**Goal:** Determine the hidden string $s$.
+
+**Classical complexity:** A classical algorithm must query $f$ at least $n$ times (once for each bit of $s$, using inputs like $\ket{100\ldots0}$, $\ket{010\ldots0}$, etc.).
+
+**Quantum complexity:** The Bernstein-Vazirani algorithm finds $s$ in a **single query**.
+
+### The Algorithm
+
+1. Initialise $n$ qubits in $\ket{0}$ and one ancilla in $\ket{1}$
+2. Apply $H$ to all qubits (including the ancilla)
+3. Apply the oracle $U_f$
+4. Apply $H$ to the $n$ input qubits
+5. Measure the input qubits — the result is $s$
+
+### Why It Works
+
+**Step 1-2:** After Hadamard on all qubits:
+
+$$
+\frac{1}{\sqrt{2^n}} \sum_{x=0}^{2^n-1} \ket{x} \otimes \ket{-}
+$$
+
+**Step 3:** After the oracle (using phase kickback):
+
+$$
+\frac{1}{\sqrt{2^n}} \sum_{x=0}^{2^n-1} (-1)^{s \cdot x} \ket{x} \otimes \ket{-}
+$$
+
+**Step 4:** After the final Hadamard on the input qubits, the state becomes $\ket{s}\ket{-}$. This works because the Hadamard transform maps the pattern of phases $(-1)^{s \cdot x}$ directly to the basis state $\ket{s}$ — a consequence of the identity:
+
+$$
+H^{\otimes n} \left( \frac{1}{\sqrt{2^n}} \sum_x (-1)^{s \cdot x} \ket{x} \right) = \ket{s}
+$$
+
+**Step 5:** Measuring gives $s$ with certainty.
+
+### Implementation
+
+The oracle for $f(x) = s \cdot x$ is built using CNOT gates: for each bit $s_i = 1$, apply CNOT from input qubit $i$ to the ancilla.
+
+```elixir
+defmodule BernsteinVazirani do
+  @doc """
+  Build and run the Bernstein-Vazirani algorithm for a given secret string.
+  The secret is a list of bits, e.g., [1, 0, 1, 1].
+  """
+  def run(secret) do
+    n = length(secret)
+    # n input qubits + 1 ancilla, n+1 classical bits
+    circuit = Qx.create_circuit(n + 1, n + 1)
+
+    # Step 1: Prepare ancilla in |1⟩
+    circuit = Qx.x(circuit, n)
+
+    # Step 2: Apply H to all qubits
+    circuit = Enum.reduce(0..n, circuit, fn i, c -> Qx.h(c, i) end)
+
+    # Step 3: Oracle — CNOT from qubit i to ancilla for each s_i = 1
+    circuit = secret
+      |> Enum.with_index()
+      |> Enum.reduce(circuit, fn {bit, i}, c ->
+        if bit == 1, do: Qx.cx(c, i, n), else: c
+      end)
+
+    # Step 4: Apply H to input qubits
+    circuit = Enum.reduce(0..(n - 1), circuit, fn i, c -> Qx.h(c, i) end)
+
+    # Step 5: Measure input qubits
+    circuit = Enum.reduce(0..(n - 1), circuit, fn i, c -> Qx.measure(c, i, i) end)
+
+    Qx.run(circuit, 100)
+  end
+end
+```
+
+```elixir
+# Secret string: 1011
+secret = [1, 0, 1, 1]
+result = BernsteinVazirani.run(secret)
+
+IO.puts("Secret string: #{Enum.join(secret)}")
+IO.inspect(result.counts, label: "Measurement (should be '1011' every time)")
+```
+
+```elixir
+# Try a different secret: 110010
+secret = [1, 1, 0, 0, 1, 0]
+result = BernsteinVazirani.run(secret)
+
+IO.puts("Secret string: #{Enum.join(secret)}")
+IO.inspect(result.counts, label: "Measurement (should be '110010' every time)")
+```
+
+```elixir
+# Try the trivial case: all zeros
+secret = [0, 0, 0, 0]
+result = BernsteinVazirani.run(secret)
+
+IO.puts("Secret string: #{Enum.join(secret)}")
+IO.inspect(result.counts, label: "Measurement (should be '0000' every time)")
+```
+
+Every single shot returns the correct secret string — a single query suffices, compared to $n$ queries classically. This is an **exponential separation** in query complexity.
+
+## Grover's Search Algorithm
+
+### The Problem
+
+Given an unstructured database of $N = 2^n$ items, one of which is "marked," find the marked item.
+
+**Classical complexity:** On average, $N/2$ queries are needed — you must check items one by one.
+
+**Quantum complexity:** Grover's algorithm finds the marked item in approximately $\frac{\pi}{4}\sqrt{N}$ queries — a **quadratic speedup**.
+
+### The Algorithm at a High Level
+
+Grover's algorithm works by repeatedly amplifying the probability amplitude of the marked item while suppressing the amplitudes of all other items:
+
+1. Initialise all qubits in equal superposition
+2. Repeat approximately $\frac{\pi}{4}\sqrt{N}$ times:
+   a. **Oracle:** Flip the phase of the marked item
+   b. **Diffusion:** Reflect all amplitudes about the mean
+3. Measure — the marked item appears with high probability
+
+### The Oracle
+
+The oracle $U_f$ marks the target state $\ket{w}$ by flipping its phase:
+
+$$
+U_f\ket{x} = \begin{cases} -\ket{x} & \text{if } x = w \\ \ket{x} & \text{otherwise} \end{cases}
+$$
+
+In matrix form, this is $U_f = I - 2\ket{w}\bra{w}$ — the identity minus twice the projector onto the marked state. This uses the outer product from the measurement tutorial.
+
+### The Diffusion Operator
+
+The diffusion operator (also called the Grover diffuser) reflects all amplitudes about their mean value. It is:
+
+$$
+D = 2\ket{s}\bra{s} - I
+$$
+
+where $\ket{s} = \frac{1}{\sqrt{N}}\sum_x \ket{x}$ is the equal superposition state.
+
+**Implementation:** The diffusion operator is built from a sequence of standard gates:
+
+1. Apply $H$ to all qubits
+2. Apply $X$ to all qubits
+3. Apply a multi-controlled Z gate (phase flip on $\ket{11\ldots1}$)
+4. Apply $X$ to all qubits
+5. Apply $H$ to all qubits
+
+### Geometric Interpretation
+
+Grover's algorithm has an elegant geometric picture. The state vector lives in a 2D plane spanned by $\ket{w}$ (the target) and $\ket{w^\perp}$ (the superposition of all non-target states).
+
+The initial state $\ket{s}$ makes a small angle $\theta$ with $\ket{w^\perp}$, where $\sin\theta = \frac{1}{\sqrt{N}}$.
+
+Each Grover iteration rotates the state by $2\theta$ toward $\ket{w}$. After approximately $\frac{\pi}{4\theta} \approx \frac{\pi}{4}\sqrt{N}$ iterations, the state is nearly aligned with $\ket{w}$, and measurement yields the target with high probability.
+
+### 2-Qubit Grover's (N=4)
+
+For $N = 4$, a single iteration suffices (the rotation lands exactly on the target):
+
+```elixir
+defmodule Grover do
+  @doc """
+  Run Grover's algorithm on n qubits to find the target state.
+  The target is given as a list of bits, e.g., [1, 1] for |11⟩.
+  """
+  def run(target, opts \\ []) do
+    n = length(target)
+    big_n = Integer.pow(2, n)
+    shots = Keyword.get(opts, :shots, 1000)
+
+    # Optimal number of iterations
+    iterations = max(1, round(:math.pi() / 4 * :math.sqrt(big_n)))
+
+    circuit = Qx.create_circuit(n, n)
+
+    # Step 1: Equal superposition
+    circuit = apply_h_all(circuit, n)
+
+    # Step 2: Grover iterations
+    circuit = Enum.reduce(1..iterations, circuit, fn _, c ->
+      c
+      |> oracle(target, n)
+      |> diffusion(n)
+    end)
+
+    # Step 3: Measure
+    circuit = Enum.reduce(0..(n - 1), circuit, fn i, c -> Qx.measure(c, i, i) end)
+
+    result = Qx.run(circuit, shots)
+    {result, iterations}
+  end
+
+  # Oracle: flip the phase of the target state
+  # Apply X to qubits where target bit is 0, then multi-controlled Z, then undo X
+  defp oracle(circuit, target, n) do
+    # Flip qubits where target has 0 (so target maps to |11...1⟩)
+    circuit = target
+      |> Enum.with_index()
+      |> Enum.reduce(circuit, fn {bit, i}, c ->
+        if bit == 0, do: Qx.x(c, i), else: c
+      end)
+
+    # Multi-controlled Z: H on last qubit, multi-controlled X, H on last qubit
+    circuit = circuit
+      |> Qx.h(n - 1)
+      |> multi_cx(Enum.to_list(0..(n - 2)), n - 1)
+      |> Qx.h(n - 1)
+
+    # Undo the X flips
+    target
+    |> Enum.with_index()
+    |> Enum.reduce(circuit, fn {bit, i}, c ->
+      if bit == 0, do: Qx.x(c, i), else: c
+    end)
+  end
+
+  # Diffusion operator: 2|s⟩⟨s| - I
+  defp diffusion(circuit, n) do
+    circuit = apply_h_all(circuit, n)
+    circuit = apply_x_all(circuit, n)
+
+    # Multi-controlled Z
+    circuit = circuit
+      |> Qx.h(n - 1)
+      |> multi_cx(Enum.to_list(0..(n - 2)), n - 1)
+      |> Qx.h(n - 1)
+
+    circuit = apply_x_all(circuit, n)
+    apply_h_all(circuit, n)
+  end
+
+  defp apply_h_all(circuit, n) do
+    Enum.reduce(0..(n - 1), circuit, fn i, c -> Qx.h(c, i) end)
+  end
+
+  defp apply_x_all(circuit, n) do
+    Enum.reduce(0..(n - 1), circuit, fn i, c -> Qx.x(c, i) end)
+  end
+
+  # Multi-controlled X gate (generalised Toffoli)
+  defp multi_cx(circuit, [control], target) do
+    Qx.cx(circuit, control, target)
+  end
+
+  defp multi_cx(circuit, [c1, c2], target) do
+    Qx.ccx(circuit, c1, c2, target)
+  end
+
+  defp multi_cx(circuit, controls, target) do
+    # For more than 2 controls, decompose using an ancilla-free approach
+    # For small circuits, we can use a cascade of Toffoli gates
+    [c1, c2 | rest] = controls
+    circuit
+    |> Qx.ccx(c1, c2, target)
+    |> multi_cx(rest ++ [c2], target)
+  end
+end
+```
+
+```elixir
+# 2-qubit Grover's: search for |11⟩ in 4 items
+{result, iters} = Grover.run([1, 1])
+
+IO.puts("Searching for |11⟩ in N=4 items (#{iters} iteration)")
+IO.inspect(result.counts, label: "Results")
+Qx.draw_counts(result)
+```
+
+With $N = 4$, one iteration rotates the state exactly onto the target — we get the correct answer with certainty.
+
+```elixir
+# Search for |01⟩
+{result, iters} = Grover.run([0, 1])
+
+IO.puts("Searching for |01⟩ in N=4 items (#{iters} iteration)")
+IO.inspect(result.counts, label: "Results")
+Qx.draw_counts(result)
+```
+
+```elixir
+# Search for |00⟩
+{result, iters} = Grover.run([0, 0])
+
+IO.puts("Searching for |00⟩ in N=4 items (#{iters} iteration)")
+IO.inspect(result.counts, label: "Results")
+Qx.draw_counts(result)
+```
+
+### 3-Qubit Grover's (N=8)
+
+With $N = 8$, approximately $\frac{\pi}{4}\sqrt{8} \approx 2.2$ iterations are needed. We use 2 iterations:
+
+```elixir
+# 3-qubit Grover's: search for |101⟩ in 8 items
+{result, iters} = Grover.run([1, 0, 1])
+
+IO.puts("Searching for |101⟩ in N=8 items (#{iters} iterations)")
+IO.inspect(result.counts, label: "Results")
+Qx.draw_counts(result)
+```
+
+The target state dominates but is no longer 100% — with $N > 4$, the rotation does not land exactly on the target. The probability of the correct answer is approximately $\sin^2\left((2k+1)\theta\right)$ after $k$ iterations, where $\sin\theta = 1/\sqrt{N}$.
+
+### Visualising Amplitude Amplification
+
+Let us trace how the amplitudes evolve through each Grover iteration:
+
+```elixir
+# Step-by-step amplitude evolution for 3-qubit Grover searching for |101⟩
+target = [1, 0, 1]
+n = 3
+target_index = 5  # |101⟩ = index 5
+
+IO.puts("Amplitude evolution for 3-qubit Grover's (target: |101⟩)")
+IO.puts(String.duplicate("-", 55))
+
+# Initial superposition
+circuit = Qx.create_circuit(n)
+circuit = Enum.reduce(0..(n - 1), circuit, fn i, c -> Qx.h(c, i) end)
+
+state = Qx.get_state(circuit)
+target_amp = Nx.to_flat_list(state) |> Enum.at(target_index)
+other_amp = Nx.to_flat_list(state) |> Enum.at(0)
+IO.puts("After H:       target amp = #{Float.round(target_amp, 4)}, others = #{Float.round(other_amp, 4)}")
+
+# Iteration 1
+circuit = circuit
+  # Oracle
+  |> Qx.x(1)              # Flip qubit 1 (target bit is 0)
+  |> Qx.h(2) |> Qx.ccx(0, 1, 2) |> Qx.h(2)
+  |> Qx.x(1)
+  # Diffusion
+  |> Qx.h(0) |> Qx.h(1) |> Qx.h(2)
+  |> Qx.x(0) |> Qx.x(1) |> Qx.x(2)
+  |> Qx.h(2) |> Qx.ccx(0, 1, 2) |> Qx.h(2)
+  |> Qx.x(0) |> Qx.x(1) |> Qx.x(2)
+  |> Qx.h(0) |> Qx.h(1) |> Qx.h(2)
+
+state = Qx.get_state(circuit)
+amps = Nx.to_flat_list(state)
+IO.puts("After iter 1:  target amp = #{Float.round(Enum.at(amps, target_index), 4)}, others ≈ #{Float.round(Enum.at(amps, 0), 4)}")
+
+# Iteration 2
+circuit = circuit
+  |> Qx.x(1)
+  |> Qx.h(2) |> Qx.ccx(0, 1, 2) |> Qx.h(2)
+  |> Qx.x(1)
+  |> Qx.h(0) |> Qx.h(1) |> Qx.h(2)
+  |> Qx.x(0) |> Qx.x(1) |> Qx.x(2)
+  |> Qx.h(2) |> Qx.ccx(0, 1, 2) |> Qx.h(2)
+  |> Qx.x(0) |> Qx.x(1) |> Qx.x(2)
+  |> Qx.h(0) |> Qx.h(1) |> Qx.h(2)
+
+state = Qx.get_state(circuit)
+amps = Nx.to_flat_list(state)
+IO.puts("After iter 2:  target amp = #{Float.round(Enum.at(amps, target_index), 4)}, others ≈ #{Float.round(Enum.at(amps, 0), 4)}")
+
+target_prob = Float.round(Enum.at(amps, target_index) ** 2, 4)
+IO.puts("\nTarget probability after 2 iterations: #{target_prob}")
+```
+
+Each iteration amplifies the target amplitude while suppressing the others — this is **amplitude amplification** in action.
+
+### The Quadratic Speedup
+
+| Items ($N$) | Classical queries | Grover queries          | Speedup       |
+| ----------- | ----------------- | ----------------------- | ------------- |
+| 4           | 2                 | 1                       | 2x            |
+| 16          | 8                 | 3                       | 2.7x          |
+| 256         | 128               | 12                      | 10.7x         |
+| 1,000,000   | 500,000           | 785                     | 637x          |
+| $N$         | $N/2$             | $\frac{\pi}{4}\sqrt{N}$ | $O(\sqrt{N})$ |
+
+The speedup grows with problem size. For a million items, Grover's algorithm is over 600 times faster.
+
+## Comparing the Two Algorithms
+
+| Property             | Bernstein-Vazirani             | Grover's Search             |
+| -------------------- | ------------------------------ | --------------------------- |
+| Problem type         | Hidden structure (dot product) | Unstructured search         |
+| Classical complexity | $O(n)$ queries                 | $O(N)$ queries              |
+| Quantum complexity   | $O(1)$ — single query        | $O(\sqrt{N})$ queries       |
+| Speedup              | Exponential                    | Quadratic                   |
+| Key technique        | Phase kickback + Hadamard      | Amplitude amplification     |
+| Iterations           | 1                              | $\sim\frac{\pi}{4}\sqrt{N}$ |
+
+Bernstein-Vazirani achieves an **exponential** speedup because the problem has structure (linearity) that quantum parallelism can fully exploit. Grover's achieves a **quadratic** speedup on a harder problem (unstructured search) — and this is provably optimal: no quantum algorithm can do better than $O(\sqrt{N})$ for unstructured search.
+
+## Summary
+
+In this tutorial, we built and analysed two fundamental quantum algorithms:
+
+* **The Oracle Model:** Quantum algorithms query a black-box function $U_f$ using superposition. Phase kickback encodes $f(x)$ as a phase factor $(-1)^{f(x)}$.
+* **Quantum Parallelism:** The Hadamard transform creates a superposition of all inputs, allowing the oracle to be evaluated on all inputs simultaneously.
+* **Bernstein-Vazirani:** Finds a hidden $n$-bit string in a single query by exploiting the linearity of the dot product. The final Hadamard transform decodes the phase pattern directly into the answer.
+* **Grover's Search:** Finds a marked item among $N$ items in $O(\sqrt{N})$ queries using amplitude amplification — repeated application of the oracle and diffusion operator to rotate the state toward the target.
+* **Amplitude Amplification:** The oracle marks the target (phase flip) and the diffusion operator reflects about the mean, geometrically rotating the state toward the target by $2\theta$ per iteration.
+
+### The Series in Review
+
+Across these five tutorials, we have covered the foundations of quantum computing:
+
+1. **Quantum State and The Qubit** — State vectors, superposition, basis states, normalisation, the Bloch sphere
+2. **Quantum Operations and Gates** — Unitarity, Hadamard, Pauli gates, rotation gates, multi-qubit gates, circuit mode
+3. **Quantum Measurement** — The Born rule, projection operators, wavefunction collapse, measurement bases, complementarity
+4. **Systems of Qubits and Entanglement** — Tensor products, entanglement, Bell states, GHZ and W states, teleportation
+5. **Quantum Algorithms** — Oracles, quantum parallelism, Bernstein-Vazirani, Grover's search
+
+These concepts form the foundation for more advanced topics including quantum error correction, variational algorithms (VQE, QAOA), the quantum Fourier transform, and Shor's factoring algorithm.

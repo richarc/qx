@@ -254,6 +254,7 @@ defmodule Qx.Validation do
       :y,
       :z,
       :s,
+      :sdg,
       :t,
       :rx,
       :ry,

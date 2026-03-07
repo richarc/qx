@@ -267,6 +267,7 @@ defmodule Qx.Simulation do
       :y -> Calc.apply_single_qubit_gate(state, Gates.pauli_y(), qubit, num_qubits)
       :z -> Calc.apply_single_qubit_gate(state, Gates.pauli_z(), qubit, num_qubits)
       :s -> Calc.apply_single_qubit_gate(state, Gates.s_gate(), qubit, num_qubits)
+      :sdg -> Calc.apply_single_qubit_gate(state, Gates.s_dagger(), qubit, num_qubits)
       :t -> Calc.apply_single_qubit_gate(state, Gates.t_gate(), qubit, num_qubits)
       _ -> apply_parameterized_single_qubit_op(gate_name, qubit, params, state, num_qubits)
     end

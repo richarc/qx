@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-03-07
+
+### Added
+- **S-dagger (Sdg) Gate** - New `sdg` gate implementing the S† operation (-π/2 phase rotation on |1⟩)
+  - `Qx.sdg/2` for Circuit Mode: adds an sdg gate to a quantum circuit
+  - `Qx.Operations.sdg/2` for direct operations API
+  - `Qx.Qubit.sdg/1` for Calculation Mode on single qubits
+  - `Qx.Register.sdg/2` for Calculation Mode on multi-qubit registers
+  - Full simulation support in `Qx.Simulation` (mapped to `Qx.Gates.s_dagger/0`)
+  - OpenQASM 3.0 export support (`sdg q[0];`)
+  - Validation support for the `:sdg` gate atom
+  - Full test coverage including matrix correctness, S·S† = I identity verification, and circuit export
+- **New LiveBook Tutorials** - Expanded tutorial collection at `examples/tutorials/`
+  - `quantum_state_and_qubit.livemd` - Introduction to quantum states and single-qubit operations
+  - `quantum_measurement.livemd` - Quantum measurement concepts and examples
+  - `systems_of_qubits_and_entanglement.livemd` - Multi-qubit systems and entanglement
+  - `quantum_algorithms.livemd` - Common quantum algorithms with Qx
+
 ## [0.5.0] - 2026-02-17
 
 ### Added
@@ -255,6 +273,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.5.1]: https://github.com/richarc/qx/releases/tag/v0.5.1
 [0.5.0]: https://github.com/richarc/qx/releases/tag/v0.5.0
 [0.4.0]: https://github.com/richarc/qx/releases/tag/v0.4.0
 [0.3.0]: https://github.com/richarc/qx/releases/tag/v0.3.0
