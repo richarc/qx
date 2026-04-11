@@ -347,19 +347,20 @@ for {name, init_gates} <- [
   zeros = Map.get(result.counts, "0", 0) + Map.get(result.counts, "00", 0)
   ones = Map.get(result.counts, "1", 0) + Map.get(result.counts, "01", 0) +
          Map.get(result.counts, "10", 0) + Map.get(result.counts, "11", 0)
-  IO.puts("|#{name}⟩ qubit 0: ~50/50 → #{inspect(result.counts)}")
+  IO.puts("|#{name}⟩ qubit 0: 0 → #{zeros}, 1 → #{ones} (~50/50)")
 end
 ```
 
 ### The Qx Bell State Shortcut
 
-Qx provides a convenience function for creating the standard Bell state:
+Qx provides a convenience function for creating any of the four Bell states. Pass an atom to select which state to prepare — the default is `:phi_plus`:
 
 ```elixir
-# Using the built-in Bell state function
-bell = Qx.bell_state()
-state = Qx.get_state(bell)
-IO.inspect(state, label: "Bell state via Qx.bell_state()")
+# All four Bell states via the convenience function
+for which <- [:phi_plus, :phi_minus, :psi_plus, :psi_minus] do
+  state = Qx.bell_state(which) |> Qx.get_state()
+  IO.inspect(state, label: "#{which}")
+end
 ```
 
 ## Quantifying Entanglement
@@ -530,7 +531,8 @@ The key difference is **robustness**: if one qubit of a W state is lost or measu
 
 ```elixir
 # W state using the Qx state initialisation
-reg = Register.from_state(Qx.StateInit.w_state(3))
+state = Qx.StateInit.w_state(3)
+reg = %Register{num_qubits: 3, state: state}
 
 IO.puts("W state:")
 Register.show_state(reg)
@@ -538,16 +540,28 @@ Register.show_state(reg)
 
 ```elixir
 # Measure the W state — each single-1 pattern has probability 1/3
-circuit = Qx.create_circuit(3, 3)
+#
+# Circuit construction (starting from |000⟩):
+#   1. RY(α) on q0 — creates (1/√3)|000⟩ + √(2/3)|100⟩
+#   2. CRY(π/2) on q1, controlled by q0 — distributes amplitude to |110⟩
+#      (implemented as RY(π/4), CX(0,1), RY(-π/4), CX(0,1))
+#   3. CX(q1, q0) — rearranges to (|000⟩ + |010⟩ + |100⟩)/√3
+#   4. Zero-controlled CCX — flips q2 only when q0=0 AND q1=0,
+#      converting |000⟩ → |001⟩ to give the final W state
+alpha = 2 * :math.acos(1 / :math.sqrt(3))
 
-# Build W state: start from |001⟩, distribute the single |1⟩
-# RY rotation to split probability, then CNOTs to distribute
-circuit = circuit
-  |> Qx.x(2)                                        # |001⟩
-  |> Qx.ry(1, 2 * :math.acos(1 / :math.sqrt(3)))   # Split amplitude
-  |> Qx.cx(1, 2)                                    # Conditional transfer
-  |> Qx.ry(0, :math.pi() / 2)                       # Split again
-  |> Qx.cx(0, 1)                                    # Conditional transfer
+circuit = Qx.create_circuit(3, 3)
+  |> Qx.ry(0, alpha)
+  |> Qx.ry(1, :math.pi() / 4)
+  |> Qx.cx(0, 1)
+  |> Qx.ry(1, -:math.pi() / 4)
+  |> Qx.cx(0, 1)
+  |> Qx.cx(1, 0)
+  |> Qx.x(0)
+  |> Qx.x(1)
+  |> Qx.ccx(0, 1, 2)
+  |> Qx.x(0)
+  |> Qx.x(1)
   |> Qx.measure(0, 0)
   |> Qx.measure(1, 1)
   |> Qx.measure(2, 2)

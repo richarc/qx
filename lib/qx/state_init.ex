@@ -227,9 +227,17 @@ defmodule Qx.StateInit do
   end
 
   @doc """
-  Creates a Bell state |Φ+⟩ = (|00⟩ + |11⟩)/√2
+  Creates one of the four Bell states as a state vector.
 
-  This is one of the four Bell states (maximally entangled states).
+  Accepts an optional atom to select which Bell state to prepare, and an
+  optional tensor type (`:c64` or `:c32`):
+
+  | Atom          | State                            |
+  | ------------- | -------------------------------- |
+  | `:phi_plus`   | `\|Φ+⟩ = (\|00⟩ + \|11⟩)/√2` (default) |
+  | `:phi_minus`  | `\|Φ-⟩ = (\|00⟩ - \|11⟩)/√2`   |
+  | `:psi_plus`   | `\|Ψ+⟩ = (\|01⟩ + \|10⟩)/√2`   |
+  | `:psi_minus`  | `\|Ψ-⟩ = (\|01⟩ - \|10⟩)/√2`   |
 
   ## Examples
 
@@ -238,21 +246,55 @@ defmodule Qx.StateInit do
       iex> abs(Enum.at(probs, 0) - 0.5) < 0.01 and abs(Enum.at(probs, 3) - 0.5) < 0.01
       true
 
-      iex> state = Qx.StateInit.bell_state()
+      iex> state = Qx.StateInit.bell_state(:phi_minus)
       iex> probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
-      iex> Enum.at(probs, 1) + Enum.at(probs, 2)
-      0.0
+      iex> abs(Enum.at(probs, 0) - 0.5) < 0.01 and abs(Enum.at(probs, 3) - 0.5) < 0.01
+      true
+
+      iex> state = Qx.StateInit.bell_state(:psi_plus)
+      iex> probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
+      iex> abs(Enum.at(probs, 1) - 0.5) < 0.01 and abs(Enum.at(probs, 2) - 0.5) < 0.01
+      true
+
+      iex> state = Qx.StateInit.bell_state(:psi_minus)
+      iex> probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
+      iex> abs(Enum.at(probs, 1) - 0.5) < 0.01 and abs(Enum.at(probs, 2) - 0.5) < 0.01
+      true
   """
-  def bell_state(type \\ :c64) do
+  def bell_state(which \\ :phi_plus, type \\ :c64)
+
+  def bell_state(:phi_plus, type) do
     inv_sqrt2 = 1.0 / :math.sqrt(2)
 
     Nx.tensor(
-      [
-        C.new(inv_sqrt2, 0.0),
-        C.new(0.0, 0.0),
-        C.new(0.0, 0.0),
-        C.new(inv_sqrt2, 0.0)
-      ],
+      [C.new(inv_sqrt2, 0.0), C.new(0.0, 0.0), C.new(0.0, 0.0), C.new(inv_sqrt2, 0.0)],
+      type: type
+    )
+  end
+
+  def bell_state(:phi_minus, type) do
+    inv_sqrt2 = 1.0 / :math.sqrt(2)
+
+    Nx.tensor(
+      [C.new(inv_sqrt2, 0.0), C.new(0.0, 0.0), C.new(0.0, 0.0), C.new(-inv_sqrt2, 0.0)],
+      type: type
+    )
+  end
+
+  def bell_state(:psi_plus, type) do
+    inv_sqrt2 = 1.0 / :math.sqrt(2)
+
+    Nx.tensor(
+      [C.new(0.0, 0.0), C.new(inv_sqrt2, 0.0), C.new(inv_sqrt2, 0.0), C.new(0.0, 0.0)],
+      type: type
+    )
+  end
+
+  def bell_state(:psi_minus, type) do
+    inv_sqrt2 = 1.0 / :math.sqrt(2)
+
+    Nx.tensor(
+      [C.new(0.0, 0.0), C.new(inv_sqrt2, 0.0), C.new(-inv_sqrt2, 0.0), C.new(0.0, 0.0)],
       type: type
     )
   end
