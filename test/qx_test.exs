@@ -75,18 +75,21 @@ defmodule QxTest do
 
   test "bell state :phi_minus" do
     circuit = Qx.bell_state(:phi_minus)
+
     assert [{:x, [0], []}, {:h, [0], []}, {:cx, [0, 1], []}] =
              Qx.QuantumCircuit.get_instructions(circuit)
   end
 
   test "bell state :psi_plus" do
     circuit = Qx.bell_state(:psi_plus)
+
     assert [{:x, [1], []}, {:h, [0], []}, {:cx, [0, 1], []}] =
              Qx.QuantumCircuit.get_instructions(circuit)
   end
 
   test "bell state :psi_minus" do
     circuit = Qx.bell_state(:psi_minus)
+
     assert [{:x, [0], []}, {:x, [1], []}, {:h, [0], []}, {:cx, [0, 1], []}] =
              Qx.QuantumCircuit.get_instructions(circuit)
   end

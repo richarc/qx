@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Circuit diagram: measurement arrowhead now terminates at the classical register double line instead of extending 8 px past it
+
 ## [0.5.1] - 2026-03-07
 
 ### Added

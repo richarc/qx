@@ -441,11 +441,11 @@ defmodule Qx.Draw.SVG.Circuit do
     arrow_x = gate_x + @measure_radius * 0.5
     arrow_y = qubit_y - @measure_radius * 0.5
 
-    arrow_tip_y = classical_y + 8
+    arrow_tip_y = classical_y
     arrow_left_x = gate_x - 6
-    arrow_left_y = classical_y - 1
+    arrow_left_y = classical_y - 8
     arrow_right_x = gate_x + 6
-    arrow_right_y = classical_y - 1
+    arrow_right_y = classical_y - 8
 
     """
       <rect x="#{box_x}" y="#{box_y}" width="#{@gate_width}" height="#{@gate_height}" fill="#{@color_measurement}" stroke="#{@color_measurement}" stroke-width="#{@gate_border_thickness}"/>
