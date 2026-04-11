@@ -207,36 +207,75 @@ defmodule Qx.StateInitTest do
     end
   end
 
-  describe "bell_state/1" do
-    test "creates |Φ+⟩ Bell state" do
+  describe "bell_state/2" do
+    test "defaults to |Φ+⟩" do
       state = StateInit.bell_state()
       probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
 
       # |Φ+⟩ = (|00⟩ + |11⟩)/√2
-      # |00⟩
       assert approx_equal?(Enum.at(probs, 0), 0.5)
-      # |01⟩
       assert approx_equal?(Enum.at(probs, 1), 0.0)
-      # |10⟩
       assert approx_equal?(Enum.at(probs, 2), 0.0)
-      # |11⟩
       assert approx_equal?(Enum.at(probs, 3), 0.5)
     end
 
-    test "is normalized" do
-      state = StateInit.bell_state()
-      probs = Qx.Math.probabilities(state)
-      total = Nx.sum(probs) |> Nx.to_number()
-
-      assert approx_equal?(total, 1.0, 1.0e-6)
+    test ":phi_plus has amplitude in |00⟩ and |11⟩" do
+      probs = StateInit.bell_state(:phi_plus) |> Qx.Math.probabilities() |> Nx.to_flat_list()
+      assert approx_equal?(Enum.at(probs, 0), 0.5)
+      assert approx_equal?(Enum.at(probs, 1), 0.0)
+      assert approx_equal?(Enum.at(probs, 2), 0.0)
+      assert approx_equal?(Enum.at(probs, 3), 0.5)
     end
 
-    test "is maximally entangled" do
-      state = StateInit.bell_state()
-      probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
+    test ":phi_minus has amplitude in |00⟩ and |11⟩" do
+      probs = StateInit.bell_state(:phi_minus) |> Qx.Math.probabilities() |> Nx.to_flat_list()
+      assert approx_equal?(Enum.at(probs, 0), 0.5)
+      assert approx_equal?(Enum.at(probs, 1), 0.0)
+      assert approx_equal?(Enum.at(probs, 2), 0.0)
+      assert approx_equal?(Enum.at(probs, 3), 0.5)
+    end
 
-      # Only |00⟩ and |11⟩ have non-zero probability
-      assert Enum.at(probs, 1) + Enum.at(probs, 2) == 0.0
+    test ":psi_plus has amplitude in |01⟩ and |10⟩" do
+      probs = StateInit.bell_state(:psi_plus) |> Qx.Math.probabilities() |> Nx.to_flat_list()
+      assert approx_equal?(Enum.at(probs, 0), 0.0)
+      assert approx_equal?(Enum.at(probs, 1), 0.5)
+      assert approx_equal?(Enum.at(probs, 2), 0.5)
+      assert approx_equal?(Enum.at(probs, 3), 0.0)
+    end
+
+    test ":psi_minus has amplitude in |01⟩ and |10⟩" do
+      probs = StateInit.bell_state(:psi_minus) |> Qx.Math.probabilities() |> Nx.to_flat_list()
+      assert approx_equal?(Enum.at(probs, 0), 0.0)
+      assert approx_equal?(Enum.at(probs, 1), 0.5)
+      assert approx_equal?(Enum.at(probs, 2), 0.5)
+      assert approx_equal?(Enum.at(probs, 3), 0.0)
+    end
+
+    test "all variants are normalized" do
+      for which <- [:phi_plus, :phi_minus, :psi_plus, :psi_minus] do
+        total =
+          StateInit.bell_state(which) |> Qx.Math.probabilities() |> Nx.sum() |> Nx.to_number()
+
+        assert approx_equal?(total, 1.0, 1.0e-6), "#{which} is not normalized"
+      end
+    end
+
+    test "phi_plus and phi_minus differ in sign on |11⟩ amplitude" do
+      # |11⟩ is index 3; real parts should be +1/√2 and -1/√2 respectively
+      r3_plus = StateInit.bell_state(:phi_plus) |> Nx.real() |> Nx.to_flat_list() |> Enum.at(3)
+      r3_minus = StateInit.bell_state(:phi_minus) |> Nx.real() |> Nx.to_flat_list() |> Enum.at(3)
+
+      assert r3_plus > 0
+      assert r3_minus < 0
+    end
+
+    test "psi_plus and psi_minus differ in sign on |10⟩ amplitude" do
+      # |10⟩ is index 2; real parts should be +1/√2 and -1/√2 respectively
+      r2_plus = StateInit.bell_state(:psi_plus) |> Nx.real() |> Nx.to_flat_list() |> Enum.at(2)
+      r2_minus = StateInit.bell_state(:psi_minus) |> Nx.real() |> Nx.to_flat_list() |> Enum.at(2)
+
+      assert r2_plus > 0
+      assert r2_minus < 0
     end
   end
 

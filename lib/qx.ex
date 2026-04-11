@@ -688,19 +688,63 @@ defmodule Qx do
   # Convenience functions for creating common quantum states and circuits
 
   @doc """
-  Creates a Bell state circuit (maximally entangled two-qubit state).
+  Creates one of the four Bell state circuits (maximally entangled two-qubit states).
 
-  Returns a circuit that prepares the |Φ+⟩ = (|00⟩ + |11⟩)/√2 Bell state.
+  Accepts an optional atom to select which Bell state to prepare:
+
+  | Atom          | State                                     |
+  | ------------- | ----------------------------------------- |
+  | `:phi_plus`   | `\|Φ+⟩ = (\|00⟩ + \|11⟩)/√2` (default)  |
+  | `:phi_minus`  | `\|Φ-⟩ = (\|00⟩ - \|11⟩)/√2`            |
+  | `:psi_plus`   | `\|Ψ+⟩ = (\|01⟩ + \|10⟩)/√2`            |
+  | `:psi_minus`  | `\|Ψ-⟩ = (\|01⟩ - \|10⟩)/√2`            |
 
   ## Examples
 
       iex> bell_circuit = Qx.bell_state()
       iex> bell_circuit.num_qubits
       2
+
+      iex> bell_circuit = Qx.bell_state(:phi_minus)
+      iex> bell_circuit.num_qubits
+      2
+
+      iex> bell_circuit = Qx.bell_state(:psi_plus)
+      iex> bell_circuit.num_qubits
+      2
+
+      iex> bell_circuit = Qx.bell_state(:psi_minus)
+      iex> bell_circuit.num_qubits
+      2
   """
-  @spec bell_state() :: circuit()
-  def bell_state do
+  @type bell_state_type :: :phi_plus | :phi_minus | :psi_plus | :psi_minus
+  @spec bell_state(bell_state_type()) :: circuit()
+  def bell_state(which \\ :phi_plus)
+
+  def bell_state(:phi_plus) do
     create_circuit(2)
+    |> h(0)
+    |> cx(0, 1)
+  end
+
+  def bell_state(:phi_minus) do
+    create_circuit(2)
+    |> x(0)
+    |> h(0)
+    |> cx(0, 1)
+  end
+
+  def bell_state(:psi_plus) do
+    create_circuit(2)
+    |> x(1)
+    |> h(0)
+    |> cx(0, 1)
+  end
+
+  def bell_state(:psi_minus) do
+    create_circuit(2)
+    |> x(0)
+    |> x(1)
     |> h(0)
     |> cx(0, 1)
   end

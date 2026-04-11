@@ -726,6 +726,10 @@ Exception types include `QubitIndexError`, `StateNormalizationError`, `Measureme
 - Maximum 20 qubits
 - Statevector simulation only (no density matrix or noise modeling)
 
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for planned features and the strategic direction of Qx.
+
 ## Contributing
 
 1. Fork the repository

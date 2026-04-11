@@ -61,12 +61,37 @@ defmodule QxTest do
     assert abs(Enum.at(probs, 1) - 0.5) < 0.01
   end
 
-  test "bell state creation" do
+  test "bell state creation defaults to phi_plus" do
     bell_circuit = Qx.bell_state()
     assert bell_circuit.num_qubits == 2
     instructions = Qx.QuantumCircuit.get_instructions(bell_circuit)
-    assert length(instructions) == 2
     assert [{:h, [0], []}, {:cx, [0, 1], []}] = instructions
+  end
+
+  test "bell state :phi_plus" do
+    circuit = Qx.bell_state(:phi_plus)
+    assert [{:h, [0], []}, {:cx, [0, 1], []}] = Qx.QuantumCircuit.get_instructions(circuit)
+  end
+
+  test "bell state :phi_minus" do
+    circuit = Qx.bell_state(:phi_minus)
+
+    assert [{:x, [0], []}, {:h, [0], []}, {:cx, [0, 1], []}] =
+             Qx.QuantumCircuit.get_instructions(circuit)
+  end
+
+  test "bell state :psi_plus" do
+    circuit = Qx.bell_state(:psi_plus)
+
+    assert [{:x, [1], []}, {:h, [0], []}, {:cx, [0, 1], []}] =
+             Qx.QuantumCircuit.get_instructions(circuit)
+  end
+
+  test "bell state :psi_minus" do
+    circuit = Qx.bell_state(:psi_minus)
+
+    assert [{:x, [0], []}, {:x, [1], []}, {:h, [0], []}, {:cx, [0, 1], []}] =
+             Qx.QuantumCircuit.get_instructions(circuit)
   end
 
   test "ghz state creation" do
