@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-04-11
+
+### Added
+- **Bell State Extensions** - `Qx.bell_state/2` now supports all four Bell states: `phi_plus` (default), `phi_minus`, `psi_plus`, and `psi_minus`
+
 ### Fixed
 - Circuit diagram: measurement arrowhead now terminates at the classical register double line instead of extending 8 px past it
+- Bloch sphere rendering: improved wireframe contrast, white halos on axis and state labels, and equatorial projection indicator for clearer visualization
 
 ## [0.5.1] - 2026-03-07
 
@@ -276,6 +282,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.5.2]: https://github.com/richarc/qx/releases/tag/v0.5.2
 [0.5.1]: https://github.com/richarc/qx/releases/tag/v0.5.1
 [0.5.0]: https://github.com/richarc/qx/releases/tag/v0.5.0
 [0.4.0]: https://github.com/richarc/qx/releases/tag/v0.4.0

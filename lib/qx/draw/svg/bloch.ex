@@ -181,7 +181,7 @@ defmodule Qx.Draw.SVG.Bloch do
         {avg_z, projected}
       end)
       |> Enum.filter(fn {z, _} -> z < 0 end)
-      |> Enum.map(fn {_, points} -> points_to_svg_path(points, "#e0e0e0", 1, "2,2") end)
+      |> Enum.map(fn {_, points} -> points_to_svg_path(points, "#d0d0d0", 1, "2,2") end)
 
     # Render Wireframe (Front)
     wireframe_paths_front =
@@ -192,9 +192,9 @@ defmodule Qx.Draw.SVG.Bloch do
         {avg_z, projected}
       end)
       |> Enum.filter(fn {z, _} -> z >= 0 end)
-      |> Enum.map(fn {_, points} -> points_to_svg_path(points, "#cccccc", 1) end)
+      |> Enum.map(fn {_, points} -> points_to_svg_path(points, "#909090", 1.5) end)
 
-    # Render Axes
+    # Render Axes (tip labels with white halos)
     axes_svg =
       axes
       |> Enum.map(fn {p1, p2, label, color} ->
@@ -203,11 +203,11 @@ defmodule Qx.Draw.SVG.Bloch do
 
         """
         <line x1="#{x1}" y1="#{y1}" x2="#{x2}" y2="#{y2}" stroke="#{color}" stroke-width="1.5" opacity="0.8"/>
-        <text x="#{x2}" y="#{y2}" fill="#{color}" font-family="Arial" font-size="12" font-weight="bold">#{label}</text>
+        <text x="#{x2}" y="#{y2}" fill="#{color}" stroke="white" stroke-width="3" paint-order="stroke fill" font-family="Arial" font-size="12" font-weight="bold">#{label}</text>
         """
       end)
 
-    # Render Labels
+    # Render Labels (with white halos)
     labels_svg =
       labels
       |> Enum.map(fn {pos, text, anchor} ->
@@ -216,7 +216,8 @@ defmodule Qx.Draw.SVG.Bloch do
         lx = lx + 10
 
         """
-        <text x="#{lx}" y="#{ly}" text-anchor="#{anchor}" font-family="Arial" font-size="14" font-weight="bold" fill="#333">#{text}</text>
+        <text x="#{lx}" y="#{ly}" text-anchor="#{anchor}" font-family="Arial" font-size="14" font-weight="bold"
+          fill="#222" stroke="white" stroke-width="4" paint-order="stroke fill">#{text}</text>
         """
       end)
 
@@ -224,15 +225,28 @@ defmodule Qx.Draw.SVG.Bloch do
     {vx, vy, _} = project.(state_vector_tip)
     {ox, oy, _} = project.({0, 0, 0})
 
+    # Equatorial projection: same x/z as vector tip but y=0
+    {ex, ey, _} = project.({0, elem(state_vector_tip, 1), elem(state_vector_tip, 2)})
+
+    equatorial_svg = """
+    <line x1="#{vx}" y1="#{vy}" x2="#{ex}" y2="#{ey}" stroke="#888" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <circle cx="#{ex}" cy="#{ey}" r="4" fill="none" stroke="#888" stroke-width="1.5"/>
+    """
+
     vector_svg = """
-    <line x1="#{ox}" y1="#{oy}" x2="#{vx}" y2="#{vy}" stroke="#FF0000" stroke-width="3"/>
-    <circle cx="#{vx}" cy="#{vy}" r="5" fill="#FF0000"/>
+    <line x1="#{ox}" y1="#{oy}" x2="#{vx}" y2="#{vy}" stroke="#CC0000" stroke-width="3" marker-end="url(#arrowhead)"/>
+    <circle cx="#{vx}" cy="#{vy}" r="7" fill="#CC0000" stroke="white" stroke-width="1.5"/>
     """
 
     # Assemble SVG
     """
     <svg width="#{size}" height="#{size}" xmlns="http://www.w3.org/2000/svg" style="background: white;">
       <title>#{title}</title>
+      <defs>
+        <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#CC0000"/>
+        </marker>
+      </defs>
       <rect width="100%" height="100%" fill="white"/>
       <text x="#{cx}" y="25" text-anchor="middle" font-family="Arial" font-size="18" font-weight="bold">#{title}</text>
 
@@ -244,6 +258,12 @@ defmodule Qx.Draw.SVG.Bloch do
 
       <!-- Front Wireframe -->
       #{Enum.join(wireframe_paths_front, "\n")}
+
+      <!-- Silhouette Circle -->
+      <circle cx="#{cx}" cy="#{cy}" r="#{radius}" fill="none" stroke="#888" stroke-width="1.5"/>
+
+      <!-- Equatorial Projection Shadow -->
+      #{equatorial_svg}
 
       <!-- State Vector -->
       #{vector_svg}
