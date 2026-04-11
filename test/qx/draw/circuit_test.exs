@@ -75,6 +75,31 @@ defmodule Qx.Draw.CircuitTest do
       end)
     end
 
+    test "connector line terminates exactly at the arrowhead tip (no gap or overshoot)",
+         %{svg: svg} do
+      # The vertical connector line's y2 should equal the polygon tip y.
+      # Both must be classical_y — verified by checking they match each other.
+      [_, points_str] = Regex.run(~r/<polygon points="([^"]+)"/, svg)
+      [tip_point | _] = String.split(points_str, " ")
+      [tip_x_str, tip_y_str] = String.split(tip_point, ",")
+      tip_x = parse_float(tip_x_str)
+      tip_y = parse_float(tip_y_str)
+
+      # The vertical connector line has x1 == x2 == gate_x and y2 == classical_y.
+      connector_y2 =
+        Regex.scan(
+          ~r/<line x1="([\d.]+)" y1="[\d.]+" x2="([\d.]+)" y2="([\d.]+)" stroke="#778899"/,
+          svg
+        )
+        |> Enum.find(fn [_, x1, x2, _y2] ->
+          parse_float(x1) == parse_float(x2) and parse_float(x1) == tip_x
+        end)
+        |> then(fn [_, _x1, _x2, y2] -> parse_float(y2) end)
+
+      assert connector_y2 == tip_y,
+             "Connector line y2 (#{connector_y2}) does not match arrowhead tip y (#{tip_y})"
+    end
+
     test "arrowhead has visible height of at least 6px", %{svg: svg} do
       [_, points_str] = Regex.run(~r/<polygon points="([^"]+)"/, svg)
       [tip_point | base_points] = String.split(points_str, " ")
