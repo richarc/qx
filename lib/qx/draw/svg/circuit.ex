@@ -15,7 +15,7 @@ defmodule Qx.Draw.SVG.Circuit do
   ## Circuit Diagram Features
 
   - **Single-qubit gates**: H, X, Y, Z, S, T, RX, RY, RZ, Phase
-  - **Multi-qubit gates**: CNOT (CX), Controlled-Z (CZ), Toffoli (CCX)
+  - **Multi-qubit gates**: CNOT (CX), Controlled-Z (CZ), Controlled-Phase (CP), Toffoli (CCX)
   - **Measurements**: With visual connection to classical registers
   - **Conditionals**: Gates controlled by classical bit values
   - **Barriers**: Visual separators for circuit sections
@@ -146,6 +146,7 @@ defmodule Qx.Draw.SVG.Circuit do
       :p,
       :cx,
       :cz,
+      :cp,
       :ccx,
       :barrier,
       :measure,
@@ -301,7 +302,7 @@ defmodule Qx.Draw.SVG.Circuit do
   end
 
   defp needs_vertical_line?(gate_name) do
-    gate_name in [:cx, :cz, :ccx, :measure]
+    gate_name in [:cx, :cz, :cp, :ccx, :measure]
   end
 
   defp check_collision_and_advance(gate_name, qubits, columns, column, num_qubits) do
@@ -402,6 +403,7 @@ defmodule Qx.Draw.SVG.Circuit do
         :measure -> render_measurement(qubits, params, gate_x, start_y, diagram)
         :cx -> render_cnot(qubits, gate_x, start_y)
         :cz -> render_controlled_z(qubits, gate_x, start_y)
+        :cp -> render_controlled_phase(qubits, params, gate_x, start_y)
         :ccx -> render_toffoli(qubits, gate_x, start_y)
         _ -> render_single_qubit_gate(gate_name, qubits, params, gate_x, start_y)
       end
@@ -491,6 +493,29 @@ defmodule Qx.Draw.SVG.Circuit do
 
     line_svg = """
       <line x1="#{gate_x}" y1="#{control_y}" x2="#{gate_x}" y2="#{target_y}" stroke="#{@color_control_large}" stroke-width="#{@line_thickness}"/>
+    """
+
+    line_svg <> control_svg <> target_svg
+  end
+
+  defp render_controlled_phase([control, target], params, gate_x, start_y) do
+    control_y = start_y + control * @qubit_spacing
+    target_y = start_y + target * @qubit_spacing
+    half_w = div(@gate_width, 2)
+    half_h = div(@gate_height, 2)
+    label = "P(#{format_param(params)})"
+
+    control_svg = """
+      <circle cx="#{gate_x}" cy="#{control_y}" r="#{@control_radius}" fill="#{@color_control_small}" stroke="#{@color_control_small}" stroke-width="#{@gate_border_thickness}"/>
+    """
+
+    target_svg = """
+      <rect x="#{gate_x - half_w}" y="#{target_y - half_h}" width="#{@gate_width}" height="#{@gate_height}" rx="3" ry="3" fill="white" stroke="#{@color_control_large}" stroke-width="#{@gate_border_thickness}"/>
+      <text x="#{gate_x}" y="#{target_y + 4}" text-anchor="middle" font-family="#{@font_family}" font-size="#{@gate_font_size}" fill="#000000">#{label}</text>
+    """
+
+    line_svg = """
+      <line x1="#{gate_x}" y1="#{control_y}" x2="#{gate_x}" y2="#{target_y - half_h}" stroke="#{@color_control_large}" stroke-width="#{@line_thickness}"/>
     """
 
     line_svg <> control_svg <> target_svg

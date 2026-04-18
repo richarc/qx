@@ -284,7 +284,7 @@ defmodule Qx.Simulation do
     end
   end
 
-  defp apply_two_qubit_op(gate_name, [c, t], _params, state, num_qubits) do
+  defp apply_two_qubit_op(gate_name, [c, t], params, state, num_qubits) do
     case gate_name do
       :cx ->
         Calc.apply_cnot(state, c, t, num_qubits)
@@ -294,6 +294,9 @@ defmodule Qx.Simulation do
         |> Calc.apply_single_qubit_gate(Gates.hadamard(), t, num_qubits)
         |> Calc.apply_cnot(c, t, num_qubits)
         |> Calc.apply_single_qubit_gate(Gates.hadamard(), t, num_qubits)
+
+      :cp ->
+        Nx.dot(Gates.controlled_gate(Gates.phase(hd(params)), c, t, num_qubits), state)
 
       :measure ->
         state

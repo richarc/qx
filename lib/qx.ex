@@ -229,6 +229,32 @@ defmodule Qx do
   defdelegate cz(circuit, control_qubit, target_qubit), to: Operations
 
   @doc """
+  Applies a controlled-phase (CP) gate.
+
+  Applies a phase of e^(i*theta) to the |11⟩ basis state only.
+  All other basis states are unchanged.
+
+  ## Parameters
+    * `circuit` - Quantum circuit
+    * `control_qubit` - Control qubit index
+    * `target_qubit` - Target qubit index
+    * `theta` - Phase angle in radians
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(2) |> Qx.cp(0, 1, :math.pi())
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      1
+
+  ## Raises
+
+    * `FunctionClauseError` - If qubit indices are out of range or equal
+    * `ArgumentError` - If theta is not a number
+  """
+  @spec cp(circuit(), non_neg_integer(), non_neg_integer(), number()) :: circuit()
+  defdelegate cp(circuit, control_qubit, target_qubit, theta), to: Operations
+
+  @doc """
   Applies a controlled-controlled-X (CCNOT/Toffoli) gate.
 
   Flips target qubit if and only if both control qubits are |1⟩

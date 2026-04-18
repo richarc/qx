@@ -7,7 +7,7 @@ defmodule Qx.Operations do
   three-qubit gates (CCNOT/Toffoli).
   """
 
-  alias Qx.QuantumCircuit
+  alias Qx.{QuantumCircuit, Validation}
 
   @doc """
   Applies a Hadamard gate to the specified qubit.
@@ -296,6 +296,36 @@ defmodule Qx.Operations do
   """
   def cz(%QuantumCircuit{} = circuit, control_qubit, target_qubit) do
     QuantumCircuit.add_two_qubit_gate(circuit, :cz, control_qubit, target_qubit)
+  end
+
+  @doc """
+  Applies a controlled-phase (CP) gate.
+
+  The CP gate applies a phase of e^(i*theta) to the |11⟩ basis state only.
+  All other basis states are unchanged.
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `control_qubit` - Control qubit index
+    * `target_qubit` - Target qubit index
+    * `theta` - Phase angle in radians
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(2, 0)
+      iex> qc = Qx.Operations.cp(qc, 0, 1, :math.pi())
+      iex> [{gate, qubits, _params}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> {gate, qubits}
+      {:cp, [0, 1]}
+
+  ## Raises
+
+    * `FunctionClauseError` - If qubit indices are out of range or equal
+    * `ArgumentError` - If theta is not a number
+  """
+  def cp(%QuantumCircuit{} = circuit, control_qubit, target_qubit, theta) do
+    Validation.validate_parameter!(theta)
+    QuantumCircuit.add_two_qubit_gate(circuit, :cp, control_qubit, target_qubit, [theta])
   end
 
   @doc """
