@@ -13,7 +13,7 @@ When a bd epic closes → mark the item done here and record it in `CHANGELOG.md
 
 ---
 
-## Current: v0.5.1
+## Current: v0.5.2
 
 Statevector simulation with up to 20 qubits, two modes of operation (Circuit Mode and Calculation
 Mode), a growing gate library, OpenQASM 3.0 export, visualization, and remote execution via QxServer.
@@ -21,12 +21,12 @@ See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
 ---
 
-## v0.5.2 — Bug Fixes & Visualisation Improvements
+## v0.5.2 — Bug Fixes & Visualisation Improvements ✓ Released
 
-- [ ] Improved Bloch sphere rendering — clearer 3D representation and more visually distinct Bloch
+- [x] Improved Bloch sphere rendering — clearer 3D representation and more visually distinct Bloch
   vector position
-- [ ] Fix circuit diagram arrowhead on measure operations — arrowhead currently extends past the
-  double line representing the classical register
+- [x] Fix circuit diagram arrowhead on measure operations — arrowhead now terminates at the
+  classical register double line
 - [x] All four Bell states — `bell_state/1` and `StateInit.bell_state/2` now accept `:phi_plus`,
   `:phi_minus`, `:psi_plus`, and `:psi_minus`; previously only `|Φ+⟩` was supported
 
@@ -34,7 +34,10 @@ See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
 ## v0.6 — Expanded Gates & Better Coverage
 
-- [ ] Additional standard gates: iSWAP, Fredkin (CSWAP), and U-gate (general single-qubit unitary)
+- [x] `Qx.cp/4` — controlled-phase gate applying e^(i·θ) to the |11⟩ basis state; required for
+  QFT and QPE circuits; includes circuit diagram rendering (dot + P(θ) box notation) and OpenQASM
+  3.0 export
+- [ ] Additional standard gates: iSWAP, Fredkin (CSWAP), SWAP, and U-gate (general single-qubit unitary)
 - [ ] OpenQASM import (currently export-only)
 - [ ] Test coverage to 80%+ (currently ~66%)
 
@@ -61,7 +64,11 @@ See [CHANGELOG.md](CHANGELOG.md) for the full history.
 - [ ] API stability guarantee — no breaking changes without a major version bump
 - [ ] Stable remote execution contract (QxServer protocol versioned and documented)
 - [ ] Complete algorithm library covering all canonical textbook algorithms
-- [ ] Performance benchmarks published and tracked across releases
+- [x] Performance benchmarking infrastructure — Benchee suite for GHZ and QFT circuits across
+  n = 2–20 qubits, with console and HTML output (`mix bench`); establishes the baseline for
+  measuring GPU and distributed execution improvements
+- [ ] Performance benchmarks published and tracked across releases (baseline established; results
+  to be published once GPU acceleration via EXLA/EMLX is implemented)
 
 ---
 
