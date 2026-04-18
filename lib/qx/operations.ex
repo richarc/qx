@@ -317,6 +317,11 @@ defmodule Qx.Operations do
       iex> [{gate, qubits, _params}] = Qx.QuantumCircuit.get_instructions(qc)
       iex> {gate, qubits}
       {:cp, [0, 1]}
+
+  ## Raises
+
+    * `FunctionClauseError` - If qubit indices are out of range or equal
+    * `ArgumentError` - If theta is not a number
   """
   def cp(%QuantumCircuit{} = circuit, control_qubit, target_qubit, theta) do
     Validation.validate_parameter!(theta)

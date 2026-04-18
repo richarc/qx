@@ -107,6 +107,18 @@ defmodule Qx.CpGateTest do
     end
   end
 
+  describe "cp gate error handling" do
+    test "raises ArgumentError when theta is not a number" do
+      qc = Qx.create_circuit(2)
+      assert_raise ArgumentError, fn -> Qx.cp(qc, 0, 1, "not_a_number") end
+    end
+
+    test "raises FunctionClauseError when qubit index is out of range" do
+      qc = Qx.create_circuit(2)
+      assert_raise FunctionClauseError, fn -> Qx.cp(qc, 0, 5, :math.pi()) end
+    end
+  end
+
   describe "cp gate OpenQASM export" do
     test "exports cp gate with theta parameter" do
       circuit = Qx.create_circuit(2) |> Qx.cp(0, 1, :math.pi())
