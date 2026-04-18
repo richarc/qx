@@ -8,6 +8,7 @@ defmodule Qx.MixProject do
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      aliases: aliases(),
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
         coveralls: :test,
@@ -106,6 +107,15 @@ defmodule Qx.MixProject do
       groups_for_extras: [
         Documentation: ~r/README.*/,
         "Release Notes": ~r/CHANGELOG.*/
+      ]
+    ]
+  end
+
+  defp aliases do
+    [
+      bench: [
+        "run --no-halt bench/ghz_bench.exs",
+        "run --no-halt bench/qft_bench.exs"
       ]
     ]
   end
