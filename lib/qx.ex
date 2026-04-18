@@ -245,6 +245,11 @@ defmodule Qx do
       iex> qc = Qx.create_circuit(2) |> Qx.cp(0, 1, :math.pi())
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
+
+  ## Raises
+
+    * `FunctionClauseError` - If qubit indices are out of range or equal
+    * `ArgumentError` - If theta is not a number
   """
   @spec cp(circuit(), non_neg_integer(), non_neg_integer(), number()) :: circuit()
   defdelegate cp(circuit, control_qubit, target_qubit, theta), to: Operations

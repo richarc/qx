@@ -7,7 +7,7 @@ defmodule Qx.Operations do
   three-qubit gates (CCNOT/Toffoli).
   """
 
-  alias Qx.QuantumCircuit
+  alias Qx.{QuantumCircuit, Validation}
 
   @doc """
   Applies a Hadamard gate to the specified qubit.
@@ -319,6 +319,7 @@ defmodule Qx.Operations do
       {:cp, [0, 1]}
   """
   def cp(%QuantumCircuit{} = circuit, control_qubit, target_qubit, theta) do
+    Validation.validate_parameter!(theta)
     QuantumCircuit.add_two_qubit_gate(circuit, :cp, control_qubit, target_qubit, [theta])
   end
 
