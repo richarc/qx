@@ -299,6 +299,30 @@ defmodule Qx.Operations do
   end
 
   @doc """
+  Applies a controlled-phase (CP) gate.
+
+  The CP gate applies a phase of e^(i*theta) to the |11⟩ basis state only.
+  All other basis states are unchanged.
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `control_qubit` - Control qubit index
+    * `target_qubit` - Target qubit index
+    * `theta` - Phase angle in radians
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(2, 0)
+      iex> qc = Qx.Operations.cp(qc, 0, 1, :math.pi())
+      iex> [{gate, qubits, _params}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> {gate, qubits}
+      {:cp, [0, 1]}
+  """
+  def cp(%QuantumCircuit{} = circuit, control_qubit, target_qubit, theta) do
+    QuantumCircuit.add_two_qubit_gate(circuit, :cp, control_qubit, target_qubit, [theta])
+  end
+
+  @doc """
   Adds a barrier to the circuit for visualization purposes.
 
   Barriers are used to group operations and improve circuit readability.

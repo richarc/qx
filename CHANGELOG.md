@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `Qx.cp/4` — controlled-phase gate applying e^(i·θ) to the |11⟩ basis state, required for QFT and QPE circuits
+
 ## [0.5.2] - 2026-04-11
 
 ### Added
