@@ -275,8 +275,6 @@ defmodule Qx.Gates do
       iex> Nx.shape(Qx.Gates.u(0, 0, 0))
       {2, 2}
 
-  ## Raises
-    * `ArgumentError` - if any parameter is not a number
   """
   def u(theta, phi, lambda) do
     cos_half = :math.cos(theta / 2)

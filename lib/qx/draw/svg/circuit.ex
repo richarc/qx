@@ -670,11 +670,25 @@ defmodule Qx.Draw.SVG.Circuit do
 
   defp parameterized_gate_label(gate_name, params) do
     case gate_name do
-      :rx -> {"RX(#{format_param(params)})", @color_hadamard}
-      :ry -> {"RY(#{format_param(params)})", @color_hadamard}
-      :rz -> {"RZ(#{format_param(params)})", @color_hadamard}
-      :p -> {"P(#{format_param(params)})", @color_hadamard}
-      _ -> {to_string(gate_name) |> String.upcase(), @color_hadamard}
+      :rx ->
+        {"RX(#{format_param(params)})", @color_hadamard}
+
+      :ry ->
+        {"RY(#{format_param(params)})", @color_hadamard}
+
+      :rz ->
+        {"RZ(#{format_param(params)})", @color_hadamard}
+
+      :p ->
+        {"P(#{format_param(params)})", @color_hadamard}
+
+      :u ->
+        [theta, phi, lambda] = params
+        label = "U(#{format_param([theta])},#{format_param([phi])},#{format_param([lambda])})"
+        {label, @color_hadamard}
+
+      _ ->
+        {to_string(gate_name) |> String.upcase(), @color_hadamard}
     end
   end
 
@@ -683,13 +697,14 @@ defmodule Qx.Draw.SVG.Circuit do
     ratio = param / pi_val
 
     cond do
+      abs(param) < 0.01 -> "0"
       abs(ratio - 1) < 0.01 -> "π"
       abs(ratio - 0.5) < 0.01 -> "π/2"
       abs(ratio - 0.25) < 0.01 -> "π/4"
       abs(ratio + 1) < 0.01 -> "-π"
       abs(ratio + 0.5) < 0.01 -> "-π/2"
       abs(ratio + 0.25) < 0.01 -> "-π/4"
-      true -> Float.round(param, 2) |> to_string()
+      true -> Float.round(param * 1.0, 2) |> to_string()
     end
   end
 
