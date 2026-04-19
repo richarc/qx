@@ -383,6 +383,49 @@ defmodule Qx.Gates do
   end
 
   @doc """
+  Returns the iSWAP gate matrix for n qubits.
+
+  Exchanges qubit states while applying an i phase to the swapped components.
+  Matrix: [[1,0,0,0],[0,0,i,0],[0,i,0,0],[0,0,0,1]] in the two-qubit subspace.
+
+  ## Parameters
+    * `qubit_a` - Index of the first qubit
+    * `qubit_b` - Index of the second qubit
+    * `num_qubits` - Total number of qubits
+
+  ## Examples
+
+      iex> Nx.shape(Qx.Gates.iswap(0, 1, 2))
+      {4, 4}
+
+  ## Raises
+
+    * `FunctionClauseError` - If qubit indices are out of range or equal
+  """
+  def iswap(qubit_a, qubit_b, num_qubits) do
+    state_size = trunc(:math.pow(2, num_qubits))
+    bit_a = num_qubits - 1 - qubit_a
+    bit_b = num_qubits - 1 - qubit_b
+
+    for idx <- 0..(state_size - 1), reduce: Nx.eye(state_size, type: :c64) do
+      acc ->
+        a = Bitwise.band(Bitwise.bsr(idx, bit_a), 1)
+        b = Bitwise.band(Bitwise.bsr(idx, bit_b), 1)
+
+        if a != b do
+          j = idx |> Bitwise.bxor(Bitwise.bsl(1, bit_a)) |> Bitwise.bxor(Bitwise.bsl(1, bit_b))
+          i_val = Math.complex_matrix([[C.new(0, 1)]])
+
+          acc
+          |> Nx.put_slice([idx, idx], Nx.tensor([[0]], type: :c64))
+          |> Nx.put_slice([idx, j], i_val)
+        else
+          acc
+        end
+    end
+  end
+
+  @doc """
   Returns the Toffoli (CCX) gate matrix for n qubits.
 
   ## Parameters

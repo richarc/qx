@@ -298,6 +298,9 @@ defmodule Qx.Simulation do
       :swap ->
         Nx.dot(Gates.swap(c, t, num_qubits), state)
 
+      :iswap ->
+        Nx.dot(Gates.iswap(c, t, num_qubits), state)
+
       :cp ->
         Nx.dot(Gates.controlled_gate(Gates.phase(hd(params)), c, t, num_qubits), state)
 
