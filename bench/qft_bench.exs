@@ -16,18 +16,13 @@ build_qft = fn n ->
       end)
     end)
 
-  # Bit-reversal permutation via SWAP = 3 CX gates
+  # Bit-reversal permutation via native SWAP gate
   Enum.reduce(0..(div(n, 2) - 1)//1, circuit, fn i, c ->
-    j = n - 1 - i
-
-    c
-    |> Qx.cx(i, j)
-    |> Qx.cx(j, i)
-    |> Qx.cx(i, j)
+    Qx.swap(c, i, n - 1 - i)
   end)
 end
 
-qubit_sizes = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
+qubit_sizes = [2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 scenarios =
   Map.new(qubit_sizes, fn n ->

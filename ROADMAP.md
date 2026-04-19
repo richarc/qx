@@ -40,10 +40,30 @@ See [CHANGELOG.md](CHANGELOG.md) for the full history.
 - [x] Additional standard gates: iSWAP, Fredkin (CSWAP), SWAP, and U-gate (general single-qubit unitary)
 - [ ] OpenQASM import (currently export-only)
 - [ ] Test coverage to 80%+ (currently ~66%)
+- [ ] Document and test U gate parameter convention explicitly (qx-xt2)
+- [ ] Add explicit matrix-equality tests for CSWAP and iSWAP gates (qx-uos)
+- [ ] Add norm-drift guard and configurable renormalization in CalcFast (qx-53v)
+- [ ] Replace case dispatch with gate registry in apply_instruction (qx-agu)
 
 ---
 
-## v0.7 — Noise & Realism
+## v0.7 — Quality, Cloud & Hardware
+
+- [ ] Add tests verifying partial measurement does not corrupt unmeasured qubits (qx-d1f)
+- [ ] Add tests for nested and chained c_if conditional operations (qx-sso)
+- [ ] Add error path tests for CalcFast edge cases and invalid inputs (qx-eb1)
+- [ ] Add WHY comments to bit-manipulation logic in CalcFast Nx.Defn blocks (qx-8gf)
+- [ ] Clarify or merge Calc module responsibility with CalcFast (qx-rut)
+- [ ] Rename is_* private helpers to *? per Elixir naming convention (qx-mbv)
+- [ ] Add @spec to all defp functions in CalcFast and Simulation (qx-atv)
+- [ ] Convert case gate_name dispatch to multi-clause functions in Simulation (qx-dn2)
+- [ ] Improve Bloch sphere SVG visual quality (qx-w93)
+- [ ] Support for running on AWS Braket QPUs
+- [ ] Improvements for running on IBM Q
+
+---
+
+## v0.8 — Noise & Realism
 
 - [ ] Noise models for simulating real-hardware decoherence (bit-flip, phase-flip, depolarising)
 - [ ] Density matrix simulation as an alternative to statevector
@@ -51,7 +71,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
 ---
 
-## v0.8 — Algorithms & Learning
+## v0.9 — Algorithms & Learning
 
 - [ ] More quantum algorithm examples in tutorials: Quantum Phase Estimation (QPE), Variational Quantum
   Eigensolver (VQE), Shor's algorithm
