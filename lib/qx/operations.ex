@@ -299,6 +299,30 @@ defmodule Qx.Operations do
   end
 
   @doc """
+  Applies a SWAP gate, exchanging the quantum states of two qubits.
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `qubit_a` - Index of the first qubit
+    * `qubit_b` - Index of the second qubit
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(2, 0)
+      iex> qc = Qx.Operations.swap(qc, 0, 1)
+      iex> [{gate, qubits, _params}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> {gate, qubits}
+      {:swap, [0, 1]}
+
+  ## Raises
+
+    * `FunctionClauseError` - If qubit indices are out of range or equal
+  """
+  def swap(%QuantumCircuit{} = circuit, qubit_a, qubit_b) do
+    QuantumCircuit.add_two_qubit_gate(circuit, :swap, qubit_a, qubit_b)
+  end
+
+  @doc """
   Applies a controlled-phase (CP) gate.
 
   The CP gate applies a phase of e^(i*theta) to the |11⟩ basis state only.

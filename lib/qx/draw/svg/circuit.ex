@@ -147,6 +147,7 @@ defmodule Qx.Draw.SVG.Circuit do
       :cx,
       :cz,
       :cp,
+      :swap,
       :ccx,
       :barrier,
       :measure,
@@ -302,7 +303,7 @@ defmodule Qx.Draw.SVG.Circuit do
   end
 
   defp needs_vertical_line?(gate_name) do
-    gate_name in [:cx, :cz, :cp, :ccx, :measure]
+    gate_name in [:cx, :cz, :cp, :swap, :ccx, :measure]
   end
 
   defp check_collision_and_advance(gate_name, qubits, columns, column, num_qubits) do
@@ -397,16 +398,7 @@ defmodule Qx.Draw.SVG.Circuit do
     %{gate: gate_name, qubits: qubits, params: params, column: column} = gate_info
     gate_x = start_x + column * (@gate_width + @gate_spacing) + @gate_spacing
 
-    gate_svg =
-      case gate_name do
-        :barrier -> render_barrier(qubits, gate_x, start_y, diagram)
-        :measure -> render_measurement(qubits, params, gate_x, start_y, diagram)
-        :cx -> render_cnot(qubits, gate_x, start_y)
-        :cz -> render_controlled_z(qubits, gate_x, start_y)
-        :cp -> render_controlled_phase(qubits, params, gate_x, start_y)
-        :ccx -> render_toffoli(qubits, gate_x, start_y)
-        _ -> render_single_qubit_gate(gate_name, qubits, params, gate_x, start_y)
-      end
+    gate_svg = dispatch_gate_svg(gate_name, qubits, params, gate_x, start_y, diagram)
 
     conditional_svg =
       if Map.has_key?(gate_info, :conditional) do
@@ -417,6 +409,30 @@ defmodule Qx.Draw.SVG.Circuit do
 
     gate_svg <> conditional_svg
   end
+
+  defp dispatch_gate_svg(:barrier, qubits, _params, gate_x, start_y, diagram),
+    do: render_barrier(qubits, gate_x, start_y, diagram)
+
+  defp dispatch_gate_svg(:measure, qubits, params, gate_x, start_y, diagram),
+    do: render_measurement(qubits, params, gate_x, start_y, diagram)
+
+  defp dispatch_gate_svg(:cx, qubits, _params, gate_x, start_y, _diagram),
+    do: render_cnot(qubits, gate_x, start_y)
+
+  defp dispatch_gate_svg(:cz, qubits, _params, gate_x, start_y, _diagram),
+    do: render_controlled_z(qubits, gate_x, start_y)
+
+  defp dispatch_gate_svg(:cp, qubits, params, gate_x, start_y, _diagram),
+    do: render_controlled_phase(qubits, params, gate_x, start_y)
+
+  defp dispatch_gate_svg(:swap, qubits, _params, gate_x, start_y, _diagram),
+    do: render_swap(qubits, gate_x, start_y)
+
+  defp dispatch_gate_svg(:ccx, qubits, _params, gate_x, start_y, _diagram),
+    do: render_toffoli(qubits, gate_x, start_y)
+
+  defp dispatch_gate_svg(gate_name, qubits, params, gate_x, start_y, _diagram),
+    do: render_single_qubit_gate(gate_name, qubits, params, gate_x, start_y)
 
   defp render_barrier(_qubits, gate_x, start_y, diagram) do
     y1 = start_y
@@ -496,6 +512,25 @@ defmodule Qx.Draw.SVG.Circuit do
     """
 
     line_svg <> control_svg <> target_svg
+  end
+
+  defp render_swap([qubit_a, qubit_b], gate_x, start_y) do
+    y_a = start_y + qubit_a * @qubit_spacing
+    y_b = start_y + qubit_b * @qubit_spacing
+    d = @control_radius
+
+    cross = fn y ->
+      """
+        <line x1="#{gate_x - d}" y1="#{y - d}" x2="#{gate_x + d}" y2="#{y + d}" stroke="#{@color_control_large}" stroke-width="#{@line_thickness}"/>
+        <line x1="#{gate_x + d}" y1="#{y - d}" x2="#{gate_x - d}" y2="#{y + d}" stroke="#{@color_control_large}" stroke-width="#{@line_thickness}"/>
+      """
+    end
+
+    line_svg = """
+      <line x1="#{gate_x}" y1="#{y_a}" x2="#{gate_x}" y2="#{y_b}" stroke="#{@color_control_large}" stroke-width="#{@line_thickness}"/>
+    """
+
+    line_svg <> cross.(y_a) <> cross.(y_b)
   end
 
   defp render_controlled_phase([control, target], params, gate_x, start_y) do

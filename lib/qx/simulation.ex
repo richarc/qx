@@ -295,6 +295,9 @@ defmodule Qx.Simulation do
         |> Calc.apply_cnot(c, t, num_qubits)
         |> Calc.apply_single_qubit_gate(Gates.hadamard(), t, num_qubits)
 
+      :swap ->
+        Nx.dot(Gates.swap(c, t, num_qubits), state)
+
       :cp ->
         Nx.dot(Gates.controlled_gate(Gates.phase(hd(params)), c, t, num_qubits), state)
 
