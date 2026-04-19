@@ -323,6 +323,31 @@ defmodule Qx.Operations do
   end
 
   @doc """
+  Applies an iSWAP gate, exchanging qubit states while applying an i phase factor
+  to the swapped components.
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `qubit_a` - Index of the first qubit
+    * `qubit_b` - Index of the second qubit
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(2, 0)
+      iex> qc = Qx.Operations.iswap(qc, 0, 1)
+      iex> [{gate, qubits, _params}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> {gate, qubits}
+      {:iswap, [0, 1]}
+
+  ## Raises
+
+    * `FunctionClauseError` - If qubit indices are out of range or equal
+  """
+  def iswap(%QuantumCircuit{} = circuit, qubit_a, qubit_b) do
+    QuantumCircuit.add_two_qubit_gate(circuit, :iswap, qubit_a, qubit_b)
+  end
+
+  @doc """
   Applies a controlled-phase (CP) gate.
 
   The CP gate applies a phase of e^(i*theta) to the |11⟩ basis state only.

@@ -148,6 +148,7 @@ defmodule Qx.Draw.SVG.Circuit do
       :cz,
       :cp,
       :swap,
+      :iswap,
       :ccx,
       :barrier,
       :measure,
@@ -303,7 +304,7 @@ defmodule Qx.Draw.SVG.Circuit do
   end
 
   defp needs_vertical_line?(gate_name) do
-    gate_name in [:cx, :cz, :cp, :swap, :ccx, :measure]
+    gate_name in [:cx, :cz, :cp, :swap, :iswap, :ccx, :measure]
   end
 
   defp check_collision_and_advance(gate_name, qubits, columns, column, num_qubits) do
@@ -428,6 +429,9 @@ defmodule Qx.Draw.SVG.Circuit do
   defp dispatch_gate_svg(:swap, qubits, _params, gate_x, start_y, _diagram),
     do: render_swap(qubits, gate_x, start_y)
 
+  defp dispatch_gate_svg(:iswap, qubits, _params, gate_x, start_y, _diagram),
+    do: render_iswap(qubits, gate_x, start_y)
+
   defp dispatch_gate_svg(:ccx, qubits, _params, gate_x, start_y, _diagram),
     do: render_toffoli(qubits, gate_x, start_y)
 
@@ -531,6 +535,26 @@ defmodule Qx.Draw.SVG.Circuit do
     """
 
     line_svg <> cross.(y_a) <> cross.(y_b)
+  end
+
+  defp render_iswap([qubit_a, qubit_b], gate_x, start_y) do
+    y_a = start_y + qubit_a * @qubit_spacing
+    y_b = start_y + qubit_b * @qubit_spacing
+    half_w = div(@gate_width, 2)
+    half_h = div(@gate_height, 2)
+
+    box = fn y ->
+      """
+        <rect x="#{gate_x - half_w}" y="#{y - half_h}" width="#{@gate_width}" height="#{@gate_height}" rx="3" ry="3" fill="white" stroke="#{@color_control_large}" stroke-width="#{@gate_border_thickness}"/>
+        <text x="#{gate_x}" y="#{y + 4}" text-anchor="middle" font-family="#{@font_family}" font-size="#{@gate_font_size}" fill="#000000">iSW</text>
+      """
+    end
+
+    line_svg = """
+      <line x1="#{gate_x}" y1="#{y_a + half_h}" x2="#{gate_x}" y2="#{y_b - half_h}" stroke="#{@color_control_large}" stroke-width="#{@line_thickness}"/>
+    """
+
+    line_svg <> box.(y_a) <> box.(y_b)
   end
 
   defp render_controlled_phase([control, target], params, gate_x, start_y) do
