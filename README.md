@@ -18,7 +18,7 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 - **Statevector Simulation**: Uses statevector method for accurate quantum state representation
 - **Optional Acceleration**: Add EXLA or EMLX backends for speedup (CPU/GPU)
 - **Visualization**: Built-in plotting capabilities with SVG and VegaLite support, plus circuit diagram generation
-- **Growing Range of Gates**: Supports H, X, Y, Z, S, S†, T, RX, RY, RZ, CNOT, CZ, CP, and Toffoli gates
+- **Growing Range of Gates**: Supports H, X, Y, Z, S, S†, T, RX, RY, RZ, CNOT, CZ, CP, SWAP, iSWAP, U (general single-qubit unitary), CSWAP (Fredkin), and Toffoli gates
 - **Measurements**: Quantum measurements with classical bit storage
 - **Conditional Operations**: Mid-circuit measurement with classical feedback for quantum processes like teleportation and error correction
 - **Remote Execution**: Run circuits on real quantum hardware via QxServer, a standalone backend service supporting IBM Quantum and other providers

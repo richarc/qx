@@ -37,7 +37,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the full history.
 - [x] `Qx.cp/4` — controlled-phase gate applying e^(i·θ) to the |11⟩ basis state; required for
   QFT and QPE circuits; includes circuit diagram rendering (dot + P(θ) box notation) and OpenQASM
   3.0 export
-- [ ] Additional standard gates: iSWAP, Fredkin (CSWAP), SWAP, and U-gate (general single-qubit unitary)
+- [x] Additional standard gates: iSWAP, Fredkin (CSWAP), SWAP, and U-gate (general single-qubit unitary)
 - [ ] OpenQASM import (currently export-only)
 - [ ] Test coverage to 80%+ (currently ~66%)
 
