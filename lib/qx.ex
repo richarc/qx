@@ -229,6 +229,29 @@ defmodule Qx do
   defdelegate cz(circuit, control_qubit, target_qubit), to: Operations
 
   @doc """
+  Applies a SWAP gate, exchanging the quantum states of two qubits.
+
+  Both qubits are treated symmetrically — there is no control/target distinction.
+
+  ## Parameters
+    * `circuit` - Quantum circuit
+    * `qubit_a` - Index of the first qubit
+    * `qubit_b` - Index of the second qubit
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(2) |> Qx.swap(0, 1)
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      1
+
+  ## Raises
+
+    * `FunctionClauseError` - If qubit indices are out of range or equal
+  """
+  @spec swap(circuit(), non_neg_integer(), non_neg_integer()) :: circuit()
+  defdelegate swap(circuit, qubit_a, qubit_b), to: Operations
+
+  @doc """
   Applies a controlled-phase (CP) gate.
 
   Applies a phase of e^(i*theta) to the |11⟩ basis state only.

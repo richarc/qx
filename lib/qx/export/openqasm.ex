@@ -231,6 +231,9 @@ defmodule Qx.Export.OpenQASM do
       {:cz, qubits, params} ->
         two_qubit_gate_to_qasm("cz", qubits, params)
 
+      {:swap, qubits, params} ->
+        two_qubit_gate_to_qasm("swap", qubits, params)
+
       {:cp, [c, t], [theta]} ->
         "cp(#{theta}) q[#{c}], q[#{t}];"
 

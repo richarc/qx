@@ -263,6 +263,7 @@ defmodule Qx.Validation do
       :cx,
       :cnot,
       :cz,
+      :swap,
       :ccx,
       :toffoli
     ]

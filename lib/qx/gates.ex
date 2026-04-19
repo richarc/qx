@@ -342,6 +342,42 @@ defmodule Qx.Gates do
   end
 
   @doc """
+  Returns the SWAP gate matrix for n qubits.
+
+  Exchanges the quantum states of qubit_a and qubit_b.
+
+  ## Parameters
+    * `qubit_a` - Index of the first qubit
+    * `qubit_b` - Index of the second qubit
+    * `num_qubits` - Total number of qubits
+
+  ## Examples
+
+      iex> Qx.Gates.swap(0, 1, 2)
+  """
+  def swap(qubit_a, qubit_b, num_qubits) do
+    state_size = trunc(:math.pow(2, num_qubits))
+    bit_a = num_qubits - 1 - qubit_a
+    bit_b = num_qubits - 1 - qubit_b
+
+    for i <- 0..(state_size - 1), reduce: Nx.eye(state_size, type: :c64) do
+      acc ->
+        a = Bitwise.band(Bitwise.bsr(i, bit_a), 1)
+        b = Bitwise.band(Bitwise.bsr(i, bit_b), 1)
+
+        if a != b do
+          j = i |> Bitwise.bxor(Bitwise.bsl(1, bit_a)) |> Bitwise.bxor(Bitwise.bsl(1, bit_b))
+
+          acc
+          |> Nx.put_slice([i, i], Nx.tensor([[0]], type: :c64))
+          |> Nx.put_slice([i, j], Nx.tensor([[1]], type: :c64))
+        else
+          acc
+        end
+    end
+  end
+
+  @doc """
   Returns the Toffoli (CCX) gate matrix for n qubits.
 
   ## Parameters
