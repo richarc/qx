@@ -220,6 +220,43 @@ defmodule Qx.Operations do
   end
 
   @doc """
+  Applies the general single-qubit unitary gate U(θ,φ,λ) (IBM/OpenQASM 3 convention).
+
+  U(θ,φ,λ) = [[cos(θ/2),             -e^(iλ)·sin(θ/2) ],
+               [e^(iφ)·sin(θ/2),  e^(i(φ+λ))·cos(θ/2) ]]
+
+  Special cases:
+  - U(π, 0, π) = X gate
+  - U(π/2, 0, π) = H gate
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `qubit` - Target qubit index
+    * `theta` - Polar angle in radians
+    * `phi` - Azimuthal angle in radians
+    * `lambda` - Additional phase angle in radians
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(1, 0)
+      iex> qc = Qx.Operations.u(qc, 0, :math.pi(), 0, :math.pi())
+      iex> [{gate, qubits, params}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> {gate, qubits, length(params)}
+      {:u, [0], 3}
+
+  ## Raises
+    * `ArgumentError` - if theta, phi, or lambda is not a number
+    * `FunctionClauseError` - if qubit index is out of range
+  """
+  def u(%QuantumCircuit{} = circuit, qubit, theta, phi, lambda)
+      when qubit >= 0 and qubit < circuit.num_qubits do
+    Validation.validate_parameter!(theta)
+    Validation.validate_parameter!(phi)
+    Validation.validate_parameter!(lambda)
+    QuantumCircuit.add_gate(circuit, :u, qubit, [theta, phi, lambda])
+  end
+
+  @doc """
   Applies an S gate (phase gate with π/2 phase).
 
   ## Parameters

@@ -275,12 +275,27 @@ defmodule Qx.Simulation do
 
   defp apply_parameterized_single_qubit_op(gate_name, qubit, params, state, num_qubits) do
     case gate_name do
-      :rx -> Calc.apply_single_qubit_gate(state, Gates.rx(hd(params)), qubit, num_qubits)
-      :ry -> Calc.apply_single_qubit_gate(state, Gates.ry(hd(params)), qubit, num_qubits)
-      :rz -> Calc.apply_single_qubit_gate(state, Gates.rz(hd(params)), qubit, num_qubits)
-      :phase -> Calc.apply_single_qubit_gate(state, Gates.phase(hd(params)), qubit, num_qubits)
-      :measure -> state
-      _ -> raise "Unsupported single-qubit gate: #{gate_name}"
+      :rx ->
+        Calc.apply_single_qubit_gate(state, Gates.rx(hd(params)), qubit, num_qubits)
+
+      :ry ->
+        Calc.apply_single_qubit_gate(state, Gates.ry(hd(params)), qubit, num_qubits)
+
+      :rz ->
+        Calc.apply_single_qubit_gate(state, Gates.rz(hd(params)), qubit, num_qubits)
+
+      :phase ->
+        Calc.apply_single_qubit_gate(state, Gates.phase(hd(params)), qubit, num_qubits)
+
+      :u ->
+        [theta, phi, lambda] = params
+        Calc.apply_single_qubit_gate(state, Gates.u(theta, phi, lambda), qubit, num_qubits)
+
+      :measure ->
+        state
+
+      _ ->
+        raise "Unsupported single-qubit gate: #{gate_name}"
     end
   end
 

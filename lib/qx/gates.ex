@@ -255,6 +255,43 @@ defmodule Qx.Gates do
   end
 
   @doc """
+  Returns the general single-qubit unitary gate (IBM/OpenQASM 3 convention).
+
+  U(θ,φ,λ) = [[cos(θ/2),             -e^(iλ)·sin(θ/2) ],
+               [e^(iφ)·sin(θ/2),  e^(i(φ+λ))·cos(θ/2) ]]
+
+  Special cases:
+  - U(π, 0, π) = X gate
+  - U(π/2, 0, π) = H gate
+  - U(π, π/2, π/2) = Y gate (up to global phase)
+
+  ## Parameters
+    * `theta` - Polar angle in radians
+    * `phi` - Azimuthal angle in radians
+    * `lambda` - Additional phase angle in radians
+
+  ## Examples
+
+      iex> Nx.shape(Qx.Gates.u(0, 0, 0))
+      {2, 2}
+
+  ## Raises
+    * `ArgumentError` - if any parameter is not a number
+  """
+  def u(theta, phi, lambda) do
+    cos_half = :math.cos(theta / 2)
+    sin_half = :math.sin(theta / 2)
+    exp_phi = C.exp(C.new(0, phi))
+    exp_lambda = C.exp(C.new(0, lambda))
+    exp_phi_lambda = C.exp(C.new(0, phi + lambda))
+
+    Math.complex_matrix([
+      [C.new(cos_half, 0), C.multiply(C.new(-sin_half, 0), exp_lambda)],
+      [C.multiply(C.new(sin_half, 0), exp_phi), C.multiply(C.new(cos_half, 0), exp_phi_lambda)]
+    ])
+  end
+
+  @doc """
   Returns the identity gate matrix.
 
   I = [[1, 0],

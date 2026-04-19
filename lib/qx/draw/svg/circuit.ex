@@ -149,6 +149,7 @@ defmodule Qx.Draw.SVG.Circuit do
       :cp,
       :swap,
       :iswap,
+      :u,
       :ccx,
       :barrier,
       :measure,
@@ -431,6 +432,9 @@ defmodule Qx.Draw.SVG.Circuit do
 
   defp dispatch_gate_svg(:iswap, qubits, _params, gate_x, start_y, _diagram),
     do: render_iswap(qubits, gate_x, start_y)
+
+  defp dispatch_gate_svg(:u, qubits, params, gate_x, start_y, _diagram),
+    do: render_single_qubit_gate(:u, qubits, params, gate_x, start_y)
 
   defp dispatch_gate_svg(:ccx, qubits, _params, gate_x, start_y, _diagram),
     do: render_toffoli(qubits, gate_x, start_y)

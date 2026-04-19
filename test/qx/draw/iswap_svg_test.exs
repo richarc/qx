@@ -15,8 +15,8 @@ defmodule Qx.Draw.IswapSvgTest do
       svg = Qx.Draw.circuit(circuit)
 
       # Two iSW labels — one per qubit
-      iSW_count = svg |> String.split("iSW") |> length() |> Kernel.-(1)
-      assert iSW_count >= 2
+      isw_count = svg |> String.split("iSW") |> length() |> Kernel.-(1)
+      assert isw_count >= 2
     end
 
     test "SVG contains rect elements for the labelled boxes" do

@@ -225,6 +225,9 @@ defmodule Qx.Export.OpenQASM do
       {:phase, qubits, params} ->
         parametric_gate_to_qasm("p", qubits, params)
 
+      {:u, [qubit], [theta, phi, lambda]} ->
+        "u(#{theta}, #{phi}, #{lambda}) q[#{qubit}];"
+
       {:cx, qubits, params} ->
         two_qubit_gate_to_qasm("cx", qubits, params)
 

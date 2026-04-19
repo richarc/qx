@@ -441,6 +441,34 @@ defmodule Qx do
   defdelegate phase(circuit, qubit, phi), to: Operations
 
   @doc """
+  Applies the general single-qubit unitary gate U(θ,φ,λ) (IBM/OpenQASM 3 convention).
+
+  U(θ,φ,λ) = [[cos(θ/2),             -e^(iλ)·sin(θ/2) ],
+               [e^(iφ)·sin(θ/2),  e^(i(φ+λ))·cos(θ/2) ]]
+
+  ## Parameters
+    * `circuit` - Quantum circuit
+    * `qubit` - Target qubit index (0-based)
+    * `theta` - Polar angle in radians
+    * `phi` - Azimuthal angle in radians
+    * `lambda` - Additional phase angle in radians
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(1) |> Qx.u(0, :math.pi(), 0, :math.pi())
+      iex> [{:u, [0], params}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> length(params)
+      3
+
+  ## Raises
+
+    * `ArgumentError` - If theta, phi, or lambda is not a number
+    * `FunctionClauseError` - If qubit index is out of range
+  """
+  @spec u(circuit(), non_neg_integer(), number(), number(), number()) :: circuit()
+  defdelegate u(circuit, qubit, theta, phi, lambda), to: Operations
+
+  @doc """
   Adds a measurement operation to the circuit.
 
   ## Parameters
