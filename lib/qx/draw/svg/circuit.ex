@@ -151,6 +151,7 @@ defmodule Qx.Draw.SVG.Circuit do
       :iswap,
       :u,
       :ccx,
+      :cswap,
       :barrier,
       :measure,
       :c_if
@@ -305,7 +306,7 @@ defmodule Qx.Draw.SVG.Circuit do
   end
 
   defp needs_vertical_line?(gate_name) do
-    gate_name in [:cx, :cz, :cp, :swap, :iswap, :ccx, :measure]
+    gate_name in [:cx, :cz, :cp, :swap, :iswap, :ccx, :cswap, :measure]
   end
 
   defp check_collision_and_advance(gate_name, qubits, columns, column, num_qubits) do
@@ -438,6 +439,9 @@ defmodule Qx.Draw.SVG.Circuit do
 
   defp dispatch_gate_svg(:ccx, qubits, _params, gate_x, start_y, _diagram),
     do: render_toffoli(qubits, gate_x, start_y)
+
+  defp dispatch_gate_svg(:cswap, qubits, _params, gate_x, start_y, _diagram),
+    do: render_cswap(qubits, gate_x, start_y)
 
   defp dispatch_gate_svg(gate_name, qubits, params, gate_x, start_y, _diagram),
     do: render_single_qubit_gate(gate_name, qubits, params, gate_x, start_y)
@@ -608,6 +612,36 @@ defmodule Qx.Draw.SVG.Circuit do
     """
 
     line_svg <> controls_svg <> target_svg
+  end
+
+  defp render_cswap([control, target_a, target_b], gate_x, start_y) do
+    control_y = start_y + control * @qubit_spacing
+    ta_y = start_y + target_a * @qubit_spacing
+    tb_y = start_y + target_b * @qubit_spacing
+
+    min_y = Enum.min([control_y, ta_y, tb_y])
+    max_y = Enum.max([control_y, ta_y, tb_y])
+
+    control_svg = """
+      <circle cx="#{gate_x}" cy="#{control_y}" r="#{@control_radius}" fill="#{@color_control_small}" stroke="#{@color_control_small}" stroke-width="#{@gate_border_thickness}"/>
+    """
+
+    r = @control_radius
+
+    target_a_svg = """
+      <text x="#{gate_x}" y="#{ta_y + 5}" text-anchor="middle" font-family="#{@font_family}" font-size="#{@gate_font_size + 4}" fill="#000000">×</text>
+    """
+
+    target_b_svg = """
+      <text x="#{gate_x}" y="#{tb_y + 5}" text-anchor="middle" font-family="#{@font_family}" font-size="#{@gate_font_size + 4}" fill="#000000">×</text>
+    """
+
+    line_svg = """
+      <line x1="#{gate_x}" y1="#{min_y}" x2="#{gate_x}" y2="#{max_y}" stroke="#{@color_control_large}" stroke-width="#{@line_thickness}"/>
+    """
+
+    _ = r
+    line_svg <> control_svg <> target_a_svg <> target_b_svg
   end
 
   defp render_classical_control(gate_info, gate_x, start_y, diagram) do

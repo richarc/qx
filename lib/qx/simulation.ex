@@ -331,6 +331,10 @@ defmodule Qx.Simulation do
     Calc.apply_toffoli(state, c1, c2, t, num_qubits)
   end
 
+  defp apply_three_qubit_op(:cswap, [c, ta, tb], _params, state, num_qubits) do
+    Calc.apply_cswap(state, c, ta, tb, num_qubits)
+  end
+
   defp apply_three_qubit_op(gate_name, qubits, _params, _state, _num_qubits) do
     raise "Unsupported three-qubit gate: #{gate_name} with qubits #{inspect(qubits)}"
   end

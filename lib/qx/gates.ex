@@ -461,6 +461,45 @@ defmodule Qx.Gates do
   end
 
   @doc """
+  Returns the Fredkin (CSWAP) gate matrix for n qubits.
+
+  Swaps target_a and target_b when the control qubit is |1⟩.
+
+  ## Parameters
+    * `control` - Index of the control qubit
+    * `target_a` - Index of the first target qubit
+    * `target_b` - Index of the second target qubit
+    * `num_qubits` - Total number of qubits
+
+  ## Examples
+
+      iex> Nx.shape(Qx.Gates.cswap(0, 1, 2, 3))
+      {8, 8, 2}
+  """
+  def cswap(control, target_a, target_b, num_qubits) do
+    state_size = trunc(:math.pow(2, num_qubits))
+    identity_matrix = Nx.broadcast(0.0, {state_size, state_size, 2})
+
+    for i <- 0..(state_size - 1), reduce: identity_matrix do
+      acc ->
+        control_bit = Bitwise.band(Bitwise.bsr(i, control), 1)
+        ta_bit = Bitwise.band(Bitwise.bsr(i, target_a), 1)
+        tb_bit = Bitwise.band(Bitwise.bsr(i, target_b), 1)
+
+        if control_bit == 1 and ta_bit != tb_bit do
+          j =
+            i
+            |> Bitwise.bxor(Bitwise.bsl(1, target_a))
+            |> Bitwise.bxor(Bitwise.bsl(1, target_b))
+
+          Nx.put_slice(acc, [i, j, 0], Nx.tensor([[[1.0]]]))
+        else
+          Nx.put_slice(acc, [i, i, 0], Nx.tensor([[[1.0]]]))
+        end
+    end
+  end
+
+  @doc """
   Returns the Toffoli (CCX) gate matrix for n qubits.
 
   ## Parameters

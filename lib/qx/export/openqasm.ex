@@ -246,6 +246,9 @@ defmodule Qx.Export.OpenQASM do
       {:ccx, [c1, c2, target], []} ->
         "ccx q[#{c1}], q[#{c2}], q[#{target}];"
 
+      {:cswap, [c, ta, tb], []} ->
+        "cswap q[#{c}], q[#{ta}], q[#{tb}];"
+
       {:measure, [qubit, cbit], []} ->
         "c[#{cbit}] = measure q[#{qubit}];"
 

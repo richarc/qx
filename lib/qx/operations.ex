@@ -140,6 +140,33 @@ defmodule Qx.Operations do
   end
 
   @doc """
+  Applies a Fredkin (controlled-SWAP) gate.
+
+  Swaps the quantum states of `target_a` and `target_b` when the `control` qubit is |1⟩.
+  When the control qubit is |0⟩, the targets are left unchanged.
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `control` - Control qubit index
+    * `target_a` - First target qubit index
+    * `target_b` - Second target qubit index
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(3, 0)
+      iex> qc = Qx.Operations.cswap(qc, 0, 1, 2)
+      iex> [{gate, qubits, _params}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> {gate, qubits}
+      {:cswap, [0, 1, 2]}
+
+  ## Raises
+    * `ArgumentError` - If any two qubit indices are equal or any index is out of range
+  """
+  def cswap(%QuantumCircuit{} = circuit, control, target_a, target_b) do
+    QuantumCircuit.add_three_qubit_gate(circuit, :cswap, control, target_a, target_b)
+  end
+
+  @doc """
   Applies a rotation around the X-axis by the specified angle.
 
   ## Parameters

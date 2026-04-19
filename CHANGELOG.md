@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Qx.swap/3` — SWAP gate exchanging the quantum states of two qubits; includes circuit diagram rendering (× symbols connected by a line) and OpenQASM 3 export
 - `Qx.iswap/3` — iSWAP gate exchanging qubit states with an i phase factor on the swapped components; native to superconducting hardware; includes circuit diagram rendering (labelled iSW boxes) and OpenQASM 3 export
 - `Qx.u/5` — general single-qubit unitary gate U(θ,φ,λ) per IBM/OpenQASM 3 convention; subsumes X, Y, Z, H, RX, RY, RZ as special cases; includes circuit diagram rendering and OpenQASM 3 export
+- `Qx.cswap/4` — Fredkin (controlled-SWAP) gate; swaps two target qubits when the control is |1⟩; universal reversible gate used in quantum multiplexers and arithmetic circuits; includes circuit diagram rendering and OpenQASM 3 export
 
 ## [0.5.2] - 2026-04-11
 

@@ -100,6 +100,29 @@ defmodule Qx.Calc do
     Qx.CalcFast.apply_toffoli(state, control1, control2, target, num_qubits)
   end
 
+  @doc """
+  Applies a Fredkin (controlled-SWAP) gate to the quantum state.
+
+  Swaps `target_a` and `target_b` when the `control` qubit is |1⟩.
+
+  ## Parameters
+    * `state` - The quantum state vector
+    * `control` - Index of the control qubit
+    * `target_a` - Index of the first target qubit
+    * `target_b` - Index of the second target qubit
+    * `num_qubits` - Total number of qubits in the system
+  """
+  @spec apply_cswap(
+          Nx.Tensor.t(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          pos_integer()
+        ) :: Nx.Tensor.t()
+  def apply_cswap(state, control, target_a, target_b, num_qubits) do
+    Qx.CalcFast.apply_cswap(state, control, target_a, target_b, num_qubits)
+  end
+
   # ============================================================================
   # Private Helper Functions
   # ============================================================================
