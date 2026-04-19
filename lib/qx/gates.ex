@@ -475,22 +475,27 @@ defmodule Qx.Gates do
 
       iex> Nx.shape(Qx.Gates.cswap(0, 1, 2, 3))
       {8, 8, 2}
+
   """
   def cswap(control, target_a, target_b, num_qubits) do
     state_size = trunc(:math.pow(2, num_qubits))
     identity_matrix = Nx.broadcast(0.0, {state_size, state_size, 2})
 
+    control_bit_pos = num_qubits - 1 - control
+    ta_bit_pos = num_qubits - 1 - target_a
+    tb_bit_pos = num_qubits - 1 - target_b
+
     for i <- 0..(state_size - 1), reduce: identity_matrix do
       acc ->
-        control_bit = Bitwise.band(Bitwise.bsr(i, control), 1)
-        ta_bit = Bitwise.band(Bitwise.bsr(i, target_a), 1)
-        tb_bit = Bitwise.band(Bitwise.bsr(i, target_b), 1)
+        control_bit = Bitwise.band(Bitwise.bsr(i, control_bit_pos), 1)
+        ta_bit = Bitwise.band(Bitwise.bsr(i, ta_bit_pos), 1)
+        tb_bit = Bitwise.band(Bitwise.bsr(i, tb_bit_pos), 1)
 
         if control_bit == 1 and ta_bit != tb_bit do
           j =
             i
-            |> Bitwise.bxor(Bitwise.bsl(1, target_a))
-            |> Bitwise.bxor(Bitwise.bsl(1, target_b))
+            |> Bitwise.bxor(Bitwise.bsl(1, ta_bit_pos))
+            |> Bitwise.bxor(Bitwise.bsl(1, tb_bit_pos))
 
           Nx.put_slice(acc, [i, j, 0], Nx.tensor([[[1.0]]]))
         else
