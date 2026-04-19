@@ -353,7 +353,12 @@ defmodule Qx.Gates do
 
   ## Examples
 
-      iex> Qx.Gates.swap(0, 1, 2)
+      iex> Nx.shape(Qx.Gates.swap(0, 1, 2))
+      {4, 4}
+
+  ## Raises
+
+    * `FunctionClauseError` - If qubit indices are out of range or equal
   """
   def swap(qubit_a, qubit_b, num_qubits) do
     state_size = trunc(:math.pow(2, num_qubits))
