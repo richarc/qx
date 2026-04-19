@@ -323,6 +323,32 @@ defmodule Qx do
   defdelegate ccx(circuit, control1, control2, target), to: Operations
 
   @doc """
+  Applies a Fredkin (controlled-SWAP) gate.
+
+  Swaps the quantum states of `target_a` and `target_b` when the `control` qubit is |1⟩.
+  When the control qubit is |0⟩, the targets are unchanged.
+
+  ## Parameters
+    * `circuit` - Quantum circuit
+    * `control` - Control qubit index (0-based)
+    * `target_a` - First target qubit index (0-based)
+    * `target_b` - Second target qubit index (0-based)
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(3) |> Qx.cswap(0, 1, 2)
+      iex> [{:cswap, [0, 1, 2], []}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> :ok
+      :ok
+
+  ## Raises
+
+    * `ArgumentError` - If any two qubit indices are equal or any index is out of range
+  """
+  @spec cswap(circuit(), non_neg_integer(), non_neg_integer(), non_neg_integer()) :: circuit()
+  defdelegate cswap(circuit, control, target_a, target_b), to: Operations
+
+  @doc """
   Applies an S gate (phase gate with π/2 phase).
 
   ## Parameters

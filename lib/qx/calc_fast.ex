@@ -168,6 +168,36 @@ defmodule Qx.CalcFast do
     * `target` - Index of target qubit
     * `num_qubits` - Total number of qubits in the system
   """
+  defn apply_cswap(state, control, target_a, target_b, num_qubits) do
+    state_size = Nx.axis_size(state, 0)
+    indices = Nx.iota({state_size}, type: :s64)
+
+    # MSB convention: qubit 0 is the most significant bit
+    control_bit_pos = num_qubits - 1 - control
+    ta_bit_pos = num_qubits - 1 - target_a
+    tb_bit_pos = num_qubits - 1 - target_b
+
+    control_bits = Nx.bitwise_and(Nx.right_shift(indices, control_bit_pos), 1)
+    ta_bits = Nx.bitwise_and(Nx.right_shift(indices, ta_bit_pos), 1)
+    tb_bits = Nx.bitwise_and(Nx.right_shift(indices, tb_bit_pos), 1)
+
+    control_set = Nx.equal(control_bits, 1)
+    targets_differ = Nx.not_equal(ta_bits, tb_bits)
+    should_swap = Nx.logical_and(control_set, targets_differ)
+
+    # XOR both target bit positions to get the swap partner index
+    swap_mask =
+      Nx.bitwise_or(
+        Nx.left_shift(Nx.tensor(1, type: :s64), ta_bit_pos),
+        Nx.left_shift(Nx.tensor(1, type: :s64), tb_bit_pos)
+      )
+
+    swapped_indices = Nx.bitwise_xor(indices, swap_mask)
+    swapped_amps = Nx.take(state, swapped_indices)
+
+    Nx.select(should_swap, swapped_amps, state)
+  end
+
   defn apply_toffoli(state, control1, control2, target, num_qubits) do
     state_size = Nx.axis_size(state, 0)
 

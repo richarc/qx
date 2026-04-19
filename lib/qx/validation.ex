@@ -267,6 +267,7 @@ defmodule Qx.Validation do
       :iswap,
       :u,
       :ccx,
+      :cswap,
       :toffoli
     ]
 
