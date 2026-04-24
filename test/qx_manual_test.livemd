@@ -157,7 +157,67 @@ Each gate is applied to a chosen 2-qubit input state. The resulting probability 
 
 The Toffoli (CCX) and Fredkin (CSWAP) gates are demonstrated with inputs chosen to make the gate effect unambiguous.
 
-<!-- TODO: Add three-qubit gate cells (CCX, CSWAP) -->
+### CCX — Toffoli (controlled-controlled-NOT)
+
+The Toffoli gate flips the target qubit only when **both** control qubits are |1⟩. It is the quantum AND gate: with controls in |11⟩, the target is flipped; otherwise the state is unchanged.
+
+**Qubit mapping:** qubit 0 = control 1, qubit 1 = control 2, qubit 2 = target.
+
+#### Both controls active: |110⟩ → |111⟩
+
+```elixir
+# Expected: Only |111⟩ has P=1.0 — target qubit flipped because both controls are |1⟩
+qc =
+  Qx.create_circuit(3)
+  |> Qx.x(0)
+  |> Qx.x(1)
+  |> Qx.ccx(0, 1, 2)
+
+Qx.get_probabilities(qc) |> Qx.histogram(title: "CCX: |110⟩ → |111⟩ (both controls active)")
+```
+
+#### One control inactive: |100⟩ → unchanged
+
+```elixir
+# Expected: Only |100⟩ has P=1.0 — target unchanged because control 2 (qubit 1) is |0⟩
+qc =
+  Qx.create_circuit(3)
+  |> Qx.x(0)
+  |> Qx.ccx(0, 1, 2)
+
+Qx.get_probabilities(qc) |> Qx.histogram(title: "CCX: |100⟩ unchanged (control 1 inactive)")
+```
+
+### CSWAP — Fredkin (controlled-SWAP)
+
+The Fredkin gate swaps two target qubits only when the control qubit is |1⟩. It preserves the total number of |1⟩s among the target qubits, making it useful for quantum multiplexing.
+
+**Qubit mapping:** qubit 0 = control, qubit 1 = target A, qubit 2 = target B.
+
+#### Control active: |101⟩ → |110⟩
+
+```elixir
+# Expected: Only |110⟩ has P=1.0 — target qubits 1 and 2 swapped because control (qubit 0) is |1⟩
+qc =
+  Qx.create_circuit(3)
+  |> Qx.x(0)
+  |> Qx.x(2)
+  |> Qx.cswap(0, 1, 2)
+
+Qx.get_probabilities(qc) |> Qx.histogram(title: "CSWAP: |101⟩ → |110⟩ (control active, targets swapped)")
+```
+
+#### Control inactive: |001⟩ → unchanged
+
+```elixir
+# Expected: Only |001⟩ has P=1.0 — targets unchanged because control (qubit 0) is |0⟩
+qc =
+  Qx.create_circuit(3)
+  |> Qx.x(2)
+  |> Qx.cswap(0, 1, 2)
+
+Qx.get_probabilities(qc) |> Qx.histogram(title: "CSWAP: |001⟩ unchanged (control inactive)")
+```
 
 ---
 
