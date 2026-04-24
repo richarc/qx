@@ -9,6 +9,7 @@ Mix.install([
 ])
 
 alias Qx.{Qubit, Register}
+pi = :math.pi()
 ```
 
 ## Introduction
@@ -39,7 +40,108 @@ Each gate is applied to the |0⟩ state using Calc mode (`Qx.Qubit`). The result
 
 **Reading the Bloch sphere:** |0⟩ is the north pole, |1⟩ is the south pole, and equatorial states are superpositions. The +X axis corresponds to |+⟩ = (|0⟩+|1⟩)/√2, and the +Y axis to |i⟩ = (|0⟩+i|1⟩)/√2.
 
-<!-- TODO: Add single-qubit gate cells (H, X, Y, Z, S, T, Rx, Ry, Rz, Phase, U) -->
+### H — Hadamard
+
+Creates an equal superposition from a basis state. Rotates the Bloch vector from the north pole to the +X equator.
+
+```elixir
+# Expected: Dot at the +X equator (|+⟩ state, Bloch vector pointing right)
+Qubit.new() |> Qubit.h() |> Qx.draw_bloch(title: "H|0⟩ → |+⟩")
+```
+
+### X — Pauli-X (bit flip)
+
+Flips |0⟩ to |1⟩. Equivalent to a classical NOT gate. Rotates the Bloch vector from the north pole to the south pole.
+
+```elixir
+# Expected: Dot at the south pole (|1⟩ state)
+Qubit.new() |> Qubit.x() |> Qx.draw_bloch(title: "X|0⟩ → |1⟩")
+```
+
+### Y — Pauli-Y
+
+Applies both a bit flip and a phase flip. Like X, it maps |0⟩ to the south pole (with an imaginary phase factor i that is not visible on the Bloch sphere).
+
+```elixir
+# Expected: Dot at the south pole (i|1⟩ state; global phase i invisible on Bloch sphere)
+Qubit.new() |> Qubit.y() |> Qx.draw_bloch(title: "Y|0⟩ → i|1⟩")
+```
+
+### Z — Pauli-Z (phase flip)
+
+Leaves |0⟩ unchanged (it is an eigenstate of Z). Starting from |+⟩ makes the π phase shift visible: it rotates the equatorial vector from +X to −X.
+
+```elixir
+# Expected: Dot at the −X equator (|−⟩ state); |0⟩ is a Z eigenstate so it would stay at north pole
+Qubit.plus() |> Qubit.z() |> Qx.draw_bloch(title: "Z|+⟩ → |−⟩")
+```
+
+### S — Phase (π/2)
+
+Applies a π/2 phase shift to |1⟩. Starting from |+⟩, it rotates the equatorial vector 90° counter-clockwise from +X toward +Y.
+
+```elixir
+# Expected: Dot at the +Y equator (|i⟩ = (|0⟩ + i|1⟩)/√2)
+Qubit.plus() |> Qubit.s() |> Qx.draw_bloch(title: "S|+⟩ → |i⟩")
+```
+
+### T — Phase (π/4)
+
+Applies a π/4 phase shift to |1⟩. Starting from |+⟩, it rotates the equatorial vector 45° counter-clockwise, landing between +X and +Y.
+
+```elixir
+# Expected: Dot on the equator at 45° between +X and +Y axes
+Qubit.plus() |> Qubit.t() |> Qx.draw_bloch(title: "T|+⟩ → equator at 45°")
+```
+
+### Rx(π/2) — X-axis rotation
+
+Rotates the Bloch vector by π/2 around the X axis. From |0⟩ (north pole), this lands at the −Y equator.
+
+```elixir
+# Expected: Dot at the −Y equator (Bloch vector pointing into the page)
+Qubit.new() |> Qubit.rx(pi / 2) |> Qx.draw_bloch(title: "Rx(π/2)|0⟩ → −Y equator")
+```
+
+### Ry(π/2) — Y-axis rotation
+
+Rotates the Bloch vector by π/2 around the Y axis. From |0⟩, this produces the same +X equatorial state as H but with real amplitudes only.
+
+```elixir
+# Expected: Dot at the +X equator (same position as H|0⟩)
+Qubit.new() |> Qubit.ry(pi / 2) |> Qx.draw_bloch(title: "Ry(π/2)|0⟩ → |+⟩")
+```
+
+### Rz(π/2) — Z-axis rotation
+
+Rotates the Bloch vector by π/2 around the Z axis. Starting from |+⟩, this moves the equatorial dot 90° counter-clockwise from +X to +Y.
+
+```elixir
+# Expected: Dot at the +Y equator (|0⟩ would stay at north pole — start from |+⟩ to see the rotation)
+Qubit.plus() |> Qubit.rz(pi / 2) |> Qx.draw_bloch(title: "Rz(π/2)|+⟩ → +Y equator")
+```
+
+### Phase(π/4) — Arbitrary phase
+
+Applies an arbitrary phase e^{iφ} to the |1⟩ component. Starting from |+⟩ with φ=π/4, the equatorial dot rotates 22.5° counter-clockwise from +X.
+
+```elixir
+# Expected: Dot on the equator, rotated 22.5° counter-clockwise from +X (between +X and +Y)
+Qubit.plus() |> Qubit.phase(pi / 4) |> Qx.draw_bloch(title: "Phase(π/4)|+⟩ → 22.5° from +X")
+```
+
+### U(π/2, 0, π) — General single-qubit unitary
+
+The U gate is the most general single-qubit gate, parameterised by three Euler angles θ, φ, λ. U(θ, φ, λ) = Rz(φ) · Ry(θ) · Rz(λ). With θ=π/2, φ=0, λ=π this equals the Hadamard gate up to global phase.
+
+```elixir
+# Expected: Dot at the +X equator (same as H|0⟩, up to invisible global phase)
+# U(θ,φ,λ) = Rz(φ)·Ry(θ)·Rz(λ); pipes apply right-to-left, so Rz(λ=π) first, then Ry(θ=π/2)
+Qubit.new()
+|> Qubit.rz(pi)
+|> Qubit.ry(pi / 2)
+|> Qx.draw_bloch(title: "U(π/2, 0, π)|0⟩ ≈ H|0⟩")
+```
 
 ---
 
