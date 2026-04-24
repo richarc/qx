@@ -149,7 +149,95 @@ Qubit.new()
 
 Each gate is applied to a chosen 2-qubit input state. The resulting probability distribution is shown as a histogram. States are prepared without measurement so the full statevector is shown.
 
-<!-- TODO: Add two-qubit gate cells (CX, CZ, SWAP, iSWAP, CP) -->
+### CX — Controlled-NOT (CNOT)
+
+The CX gate flips the target qubit when the control qubit is |1⟩. It is the fundamental two-qubit entangling gate.
+
+**Qubit mapping:** qubit 0 = control, qubit 1 = target.
+
+#### Classical input: |10⟩ → |11⟩
+
+```elixir
+# Expected: Only |11⟩ has P=1.0 — target (qubit 1) flipped because control (qubit 0) is |1⟩
+Qx.create_circuit(2)
+|> Qx.x(0)
+|> Qx.cx(0, 1)
+|> Qx.get_probabilities()
+|> Qx.histogram(title: "CX: |10⟩ → |11⟩")
+```
+
+#### Bell state: H⊗I → CX → (|00⟩ + |11⟩)/√2
+
+```elixir
+# Expected: |00⟩ and |11⟩ each have P=0.5; |01⟩ and |10⟩ have P=0.0 (maximally entangled Bell state)
+Qx.create_circuit(2)
+|> Qx.h(0)
+|> Qx.cx(0, 1)
+|> Qx.get_probabilities()
+|> Qx.histogram(title: "CX: Bell state Φ⁺ = (|00⟩ + |11⟩)/√2")
+```
+
+### CZ — Controlled-Z (controlled phase flip)
+
+The CZ gate applies a −1 phase to the |11⟩ basis state. Phase changes are invisible in a plain histogram. An H-sandwich converts the phase difference into a visible amplitude: H⊗I → CZ → H⊗I maps |11⟩ → |10⟩ when the phase is present.
+
+**Input:** X(q1) sets qubit 1 to |1⟩ (control active). H(q0) puts qubit 0 in superposition before and after CZ.
+
+```elixir
+# Expected: Only |10⟩ has P=1.0 — the H-sandwich converts the CZ phase flip into a bit flip on qubit 0
+Qx.create_circuit(2)
+|> Qx.x(1)
+|> Qx.h(0)
+|> Qx.cz(0, 1)
+|> Qx.h(0)
+|> Qx.get_probabilities()
+|> Qx.histogram(title: "CZ (H-sandwich): phase flip revealed as |10⟩")
+```
+
+### SWAP
+
+The SWAP gate exchanges the states of two qubits. Starting from |10⟩ (qubit 0 = |1⟩, qubit 1 = |0⟩), the result is |01⟩.
+
+```elixir
+# Expected: Only |01⟩ has P=1.0 — qubits 0 and 1 exchanged
+Qx.create_circuit(2)
+|> Qx.x(0)
+|> Qx.swap(0, 1)
+|> Qx.get_probabilities()
+|> Qx.histogram(title: "SWAP: |10⟩ → |01⟩")
+```
+
+### iSWAP
+
+The iSWAP gate exchanges two qubits and applies an imaginary phase factor i to the swapped amplitudes. Starting from |10⟩, the result is i|01⟩ — the probability distribution is identical to SWAP because global phase is unobservable.
+
+```elixir
+# Expected: Only |01⟩ has P=1.0 — same distribution as SWAP; the i phase factor is not visible in probabilities
+Qx.create_circuit(2)
+|> Qx.x(0)
+|> Qx.iswap(0, 1)
+|> Qx.get_probabilities()
+|> Qx.histogram(title: "iSWAP: |10⟩ → i|01⟩ (i phase invisible)")
+```
+
+### CP(π/2) — Controlled phase
+
+The CP gate applies a phase e^{iθ} to the |11⟩ component only. Wrapping it between Hadamard layers creates a two-qubit interference pattern that makes the phase visible as unequal probabilities.
+
+**Circuit:** H⊗H → CP(π/2) → H⊗H
+
+```elixir
+# Expected: |00⟩ ≈ 0.625, |01⟩ ≈ 0.125, |10⟩ ≈ 0.125, |11⟩ ≈ 0.125
+# (interference from the π/2 phase shifts probability away from |00⟩ toward the other states)
+Qx.create_circuit(2)
+|> Qx.h(0)
+|> Qx.h(1)
+|> Qx.cp(0, 1, pi / 2)
+|> Qx.h(0)
+|> Qx.h(1)
+|> Qx.get_probabilities()
+|> Qx.histogram(title: "CP(π/2): interference pattern")
+```
 
 ---
 
