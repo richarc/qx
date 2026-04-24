@@ -313,7 +313,121 @@ Qx.get_probabilities(qc) |> Qx.histogram(title: "CSWAP: |001⟩ unchanged (contr
 
 Bell states, the GHZ state, and the built-in preset state helpers are demonstrated. Entangled states show characteristic correlations in their measurement probability distributions.
 
-<!-- TODO: Add entanglement cells (Bell states, GHZ, preset helpers) -->
+### Bell States
+
+The four Bell states are the maximally entangled two-qubit states. They are the quantum analogues of the four combinations of two classical bits. In each case, both qubits are in a superposition: measuring one qubit instantly determines the other.
+
+**Bell basis:**
+- **Φ+ (phi_plus)**: (|00⟩ + |11⟩)/√2 — both qubits correlated
+- **Φ− (phi_minus)**: (|00⟩ − |11⟩)/√2 — both qubits correlated, relative phase
+- **Ψ+ (psi_plus)**: (|01⟩ + |10⟩)/√2 — both qubits anti-correlated
+- **Ψ− (psi_minus)**: (|01⟩ − |10⟩)/√2 — both qubits anti-correlated, relative phase
+
+**Qubit ordering:** qubit 0 is the most-significant bit. |01⟩ means qubit 0 = |0⟩, qubit 1 = |1⟩.
+
+#### Φ+ (phi_plus): (|00⟩ + |11⟩)/√2
+
+```elixir
+# Expected: |00⟩ and |11⟩ each have P=0.5; |01⟩ and |10⟩ have P=0.0
+Qx.create_circuit(2)
+|> Qx.h(0)
+|> Qx.cx(0, 1)
+|> Qx.get_probabilities()
+|> Qx.histogram(title: "Bell Φ⁺: (|00⟩ + |11⟩)/√2")
+```
+
+#### Φ− (phi_minus): (|00⟩ − |11⟩)/√2
+
+```elixir
+# Expected: |00⟩ and |11⟩ each have P=0.5; |01⟩ and |10⟩ have P=0.0
+# (same probabilities as Φ+; the minus sign is a relative phase, invisible in histogram)
+Qx.create_circuit(2)
+|> Qx.x(0)
+|> Qx.h(0)
+|> Qx.cx(0, 1)
+|> Qx.get_probabilities()
+|> Qx.histogram(title: "Bell Φ⁻: (|00⟩ − |11⟩)/√2")
+```
+
+#### Ψ+ (psi_plus): (|01⟩ + |10⟩)/√2
+
+```elixir
+# Expected: |01⟩ and |10⟩ each have P=0.5; |00⟩ and |11⟩ have P=0.0
+Qx.create_circuit(2)
+|> Qx.x(1)
+|> Qx.h(0)
+|> Qx.cx(0, 1)
+|> Qx.get_probabilities()
+|> Qx.histogram(title: "Bell Ψ⁺: (|01⟩ + |10⟩)/√2")
+```
+
+#### Ψ− (psi_minus): (|01⟩ − |10⟩)/√2
+
+```elixir
+# Expected: |01⟩ and |10⟩ each have P=0.5; |00⟩ and |11⟩ have P=0.0
+# (same probabilities as Ψ+; the minus sign is a relative phase, invisible in histogram)
+Qx.create_circuit(2)
+|> Qx.x(0)
+|> Qx.x(1)
+|> Qx.h(0)
+|> Qx.cx(0, 1)
+|> Qx.get_probabilities()
+|> Qx.histogram(title: "Bell Ψ⁻: (|01⟩ − |10⟩)/√2")
+```
+
+### GHZ State
+
+The GHZ (Greenberger–Horne–Zeilinger) state is a three-qubit maximally entangled state: (|000⟩ + |111⟩)/√2. All three qubits are perfectly correlated — measuring any one instantly determines the other two.
+
+```elixir
+# Expected: |000⟩ and |111⟩ each have P=0.5; all other basis states have P=0.0
+Qx.create_circuit(3)
+|> Qx.h(0)
+|> Qx.cx(0, 1)
+|> Qx.cx(1, 2)
+|> Qx.get_probabilities()
+|> Qx.histogram(title: "GHZ: (|000⟩ + |111⟩)/√2")
+```
+
+### Preset State Helpers
+
+`Qx.bell_state/1`, `Qx.ghz_state/0`, and `Qx.superposition/0` are convenience functions that return pre-built circuits. Here they are displayed as state tables using `Qx.draw_state/1`, which shows each basis state with its complex amplitude and probability.
+
+#### Φ+ preset
+
+```elixir
+# Expected: table with |00⟩ amplitude ≈ 0.707+0i, |11⟩ amplitude ≈ 0.707+0i, all others zero
+Qx.bell_state(:phi_plus)
+|> Qx.get_state()
+|> Qx.draw_state(hide_zeros: true)
+```
+
+#### Ψ− preset
+
+```elixir
+# Expected: table with |01⟩ amplitude ≈ 0.707+0i, |10⟩ amplitude ≈ −0.707+0i, all others zero
+Qx.bell_state(:psi_minus)
+|> Qx.get_state()
+|> Qx.draw_state(hide_zeros: true)
+```
+
+#### GHZ preset
+
+```elixir
+# Expected: table with |000⟩ amplitude ≈ 0.707+0i, |111⟩ amplitude ≈ 0.707+0i, all others zero
+Qx.ghz_state()
+|> Qx.get_state()
+|> Qx.draw_state(hide_zeros: true)
+```
+
+#### Single-qubit superposition preset
+
+```elixir
+# Expected: table with |0⟩ amplitude ≈ 0.707+0i, |1⟩ amplitude ≈ 0.707+0i
+Qx.superposition()
+|> Qx.get_state()
+|> Qx.draw_state()
+```
 
 ---
 
