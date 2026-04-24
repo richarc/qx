@@ -437,7 +437,52 @@ Circuit diagrams are rendered as SVG using `Qx.Draw.circuit/2` and displayed inl
 
 **Reading a circuit diagram:** Time flows left to right. Horizontal lines are qubit wires. Gate boxes appear on the wire of the qubit they act on. Vertical lines with dots connect multi-qubit gates.
 
-<!-- TODO: Add circuit diagram cells (Bell, GHZ, Toffoli, QFT-style) -->
+### Bell State Circuit
+
+```elixir
+# Expected: 2 qubit wires; H box on q0; vertical line connecting q0 (dot) to q1 (⊕ box) for CX
+Qx.create_circuit(2)
+|> Qx.h(0)
+|> Qx.cx(0, 1)
+|> Qx.Draw.circuit("Bell State: H + CX")
+|> Kino.HTML.new()
+```
+
+### GHZ State Circuit
+
+```elixir
+# Expected: 3 qubit wires; H box on q0; CX from q0 to q1; CX from q1 to q2
+Qx.create_circuit(3)
+|> Qx.h(0)
+|> Qx.cx(0, 1)
+|> Qx.cx(1, 2)
+|> Qx.Draw.circuit("GHZ State: H + CX + CX")
+|> Kino.HTML.new()
+```
+
+### Toffoli (CCX) Circuit
+
+```elixir
+# Expected: 3 qubit wires; X boxes on q0 and q1; CCX with two control dots connected by vertical line to ⊕ target on q2
+Qx.create_circuit(3)
+|> Qx.x(0)
+|> Qx.x(1)
+|> Qx.ccx(0, 1, 2)
+|> Qx.Draw.circuit("Toffoli (CCX): |110⟩ → |111⟩")
+|> Kino.HTML.new()
+```
+
+### QFT-style Circuit
+
+```elixir
+# Expected: 2 qubit wires; H on q0; CP(π/2) spanning q0 and q1 (dot on q0, P(π/2) box on q1); H on q1
+Qx.create_circuit(2)
+|> Qx.h(0)
+|> Qx.cp(0, 1, pi / 2)
+|> Qx.h(1)
+|> Qx.Draw.circuit("QFT (2-qubit): H + CP(π/2) + H")
+|> Kino.HTML.new()
+```
 
 ---
 
