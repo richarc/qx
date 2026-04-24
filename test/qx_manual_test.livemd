@@ -1,0 +1,84 @@
+# Qx Manual Test Suite
+
+```elixir
+Mix.install([
+  {:qx, path: "."},
+  {:kino, "~> 0.12"},
+  {:vega_lite, "~> 0.1.11"},
+  {:kino_vega_lite, "~> 0.1.11"}
+])
+
+alias Qx.{Qubit, Register}
+```
+
+## Introduction
+
+This notebook is a **manual visual test suite** for the Qx quantum computing simulator. It is not an automated test — it is a human-facing confirmation tool.
+
+**How to use this notebook:**
+
+1. Open it in Livebook from the **project root directory** (so that `path: "."` resolves correctly).
+2. Run each cell in order using **Ctrl+Enter** (or **Run All Cells** from the toolbar).
+3. Each cell includes an `# Expected:` comment describing the correct output.
+4. Compare the rendered output to the expectation. If they match, that feature is working correctly.
+
+Each section covers a distinct area of Qx functionality:
+
+- **Single-Qubit Gates** — Bloch sphere visualization per gate (Calc mode)
+- **Two-Qubit Gates** — Probability histograms from statevector
+- **Three-Qubit Gates** — CCX (Toffoli) and CSWAP (Fredkin)
+- **Entanglement & Preset States** — Bell states, GHZ, preset helpers
+- **Circuit Diagrams** — SVG circuit rendering via `Kino.HTML`
+- **Measurement & Conditional Gates** — Shot-based simulation and `c_if`
+
+---
+
+## 1. Single-Qubit Gates
+
+Each gate is applied to the |0⟩ state using Calc mode (`Qx.Qubit`). The resulting qubit state is rendered as a Bloch sphere. The dot on the sphere shows where the state vector points.
+
+**Reading the Bloch sphere:** |0⟩ is the north pole, |1⟩ is the south pole, and equatorial states are superpositions. The +X axis corresponds to |+⟩ = (|0⟩+|1⟩)/√2, and the +Y axis to |i⟩ = (|0⟩+i|1⟩)/√2.
+
+<!-- TODO: Add single-qubit gate cells (H, X, Y, Z, S, T, Rx, Ry, Rz, Phase, U) -->
+
+---
+
+## 2. Two-Qubit Gates
+
+Each gate is applied to a chosen 2-qubit input state. The resulting probability distribution is shown as a histogram. States are prepared without measurement so the full statevector is shown.
+
+<!-- TODO: Add two-qubit gate cells (CX, CZ, SWAP, iSWAP, CP) -->
+
+---
+
+## 3. Three-Qubit Gates
+
+The Toffoli (CCX) and Fredkin (CSWAP) gates are demonstrated with inputs chosen to make the gate effect unambiguous.
+
+<!-- TODO: Add three-qubit gate cells (CCX, CSWAP) -->
+
+---
+
+## 4. Entanglement & Preset States
+
+Bell states, the GHZ state, and the built-in preset state helpers are demonstrated. Entangled states show characteristic correlations in their measurement probability distributions.
+
+<!-- TODO: Add entanglement cells (Bell states, GHZ, preset helpers) -->
+
+---
+
+## 5. Circuit Diagrams
+
+Circuit diagrams are rendered as SVG using `Qx.Draw.circuit/2` and displayed inline via `Kino.HTML.new/1`.
+
+**Reading a circuit diagram:** Time flows left to right. Horizontal lines are qubit wires. Gate boxes appear on the wire of the qubit they act on. Vertical lines with dots connect multi-qubit gates.
+
+<!-- TODO: Add circuit diagram cells (Bell, GHZ, Toffoli, QFT-style) -->
+
+---
+
+## 6. Measurement & Conditional Gates
+
+Shot-based simulation (via `Qx.run/2` with `shots:`) and classical conditional gates (`c_if`) are demonstrated. Results are shown as measurement count histograms.
+
+<!-- TODO: Add measurement and conditional gate cells -->
