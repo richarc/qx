@@ -123,11 +123,11 @@ Qubit.plus() |> Qubit.rz(pi / 2) |> Qx.draw_bloch(title: "Rz(π/2)|+⟩ → +Y e
 
 ### Phase(π/4) — Arbitrary phase
 
-Applies an arbitrary phase e^{iφ} to the |1⟩ component. Starting from |+⟩ with φ=π/4, the equatorial dot rotates 22.5° counter-clockwise from +X.
+Applies an arbitrary phase e^{iφ} to the |1⟩ component. Starting from |+⟩ with φ=π/4, the equatorial dot rotates 45° counter-clockwise from +X (same position as the T gate).
 
 ```elixir
-# Expected: Dot on the equator, rotated 22.5° counter-clockwise from +X (between +X and +Y)
-Qubit.plus() |> Qubit.phase(pi / 4) |> Qx.draw_bloch(title: "Phase(π/4)|+⟩ → 22.5° from +X", format: :svg) |> Kino.HTML.new()
+# Expected: Dot on the equator, rotated 45° counter-clockwise from +X (same position as T|+⟩)
+Qubit.plus() |> Qubit.phase(pi / 4) |> Qx.draw_bloch(title: "Phase(π/4)|+⟩ → 45° from +X", format: :svg) |> Kino.HTML.new()
 ```
 
 ### U(π/2, 0, π) — General single-qubit unitary
