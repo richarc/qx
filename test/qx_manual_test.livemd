@@ -179,19 +179,19 @@ Qx.create_circuit(2)
 
 ### CZ — Controlled-Z (controlled phase flip)
 
-The CZ gate applies a −1 phase to the |11⟩ basis state. Phase changes are invisible in a plain histogram. An H-sandwich converts the phase difference into a visible amplitude: H⊗I → CZ → H⊗I maps |11⟩ → |10⟩ when the phase is present.
+The CZ gate applies a −1 phase to the |11⟩ basis state. Phase changes are invisible in a plain histogram. An H-sandwich converts the phase difference into a visible amplitude: H⊗I → CZ → H⊗I maps |01⟩ → |11⟩: the phase kickback flips q0 when q1=|1⟩.
 
 **Input:** X(q1) sets qubit 1 to |1⟩ (control active). H(q0) puts qubit 0 in superposition before and after CZ.
 
 ```elixir
-# Expected: Only |10⟩ has P=1.0 — the H-sandwich converts the CZ phase flip into a bit flip on qubit 0
+# Expected: Only |11⟩ has P=1.0 — H-sandwich flips q0 (0→1) via phase kickback from q1=|1⟩; q1 stays at |1⟩
 Qx.create_circuit(2)
 |> Qx.x(1)
 |> Qx.h(0)
 |> Qx.cz(0, 1)
 |> Qx.h(0)
 |> Qx.get_probabilities()
-|> Qx.histogram(title: "CZ (H-sandwich): phase flip revealed as |10⟩")
+|> Qx.histogram(title: "CZ (H-sandwich): phase flip revealed as |11⟩")
 ```
 
 ### SWAP
