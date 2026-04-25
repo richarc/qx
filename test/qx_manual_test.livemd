@@ -490,4 +490,45 @@ Qx.create_circuit(2)
 
 Shot-based simulation (via `Qx.run/2` with `shots:`) and classical conditional gates (`c_if`) are demonstrated. Results are shown as measurement count histograms.
 
-<!-- TODO: Add measurement and conditional gate cells -->
+### Single-Qubit Measurement: |+⟩
+
+A Hadamard gate puts a qubit into equal superposition. Measuring it 1024 times should yield approximately 50% |0⟩ and 50% |1⟩. Exact counts will vary each run — this verifies the probabilistic nature of quantum measurement.
+
+```elixir
+# Expected: approximately 500 counts each for "0" and "1" (stochastic — exact split varies per run)
+Qx.create_circuit(1, 1)
+|> Qx.h(0)
+|> Qx.measure(0, 0)
+|> Qx.run(shots: 1024)
+|> Qx.draw_counts(title: "Single-qubit |+⟩ measurement (1024 shots)")
+```
+
+### Bell State Measurement
+
+A Bell state Φ+ = (|00⟩ + |11⟩)/√2 is maximally entangled. When measured, qubits are always correlated: only |00⟩ and |11⟩ outcomes appear, each with approximately 50% frequency.
+
+```elixir
+# Expected: approximately 500 counts each for "00" and "11"; "01" and "10" should be absent
+Qx.create_circuit(2, 2)
+|> Qx.h(0)
+|> Qx.cx(0, 1)
+|> Qx.measure(0, 0)
+|> Qx.measure(1, 1)
+|> Qx.run(shots: 1024)
+|> Qx.draw_counts(title: "Bell state Φ⁺ measurement (1024 shots)")
+```
+
+### Conditional Gate (c_if)
+
+`c_if` applies a gate only when a classical bit has a specific value. Here qubit 0 is measured into classical bit 0, then X is applied to qubit 1 only if classical bit 0 equals 1. This means qubit 1 is always set to match qubit 0: both qubits end up equal, so only "00" and "11" can appear — "01" is impossible.
+
+```elixir
+# Expected: only "00" and "11" appear (approximately 50/50); "01" must never appear
+Qx.create_circuit(2, 2)
+|> Qx.h(0)
+|> Qx.measure(0, 0)
+|> Qx.c_if(0, 1, fn qc -> Qx.x(qc, 1) end)
+|> Qx.measure(1, 1)
+|> Qx.run(shots: 1024)
+|> Qx.draw_counts(title: "c_if: qubit 1 mirrors qubit 0 (1024 shots)")
+```
