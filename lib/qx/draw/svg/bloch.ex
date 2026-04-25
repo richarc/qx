@@ -172,27 +172,21 @@ defmodule Qx.Draw.SVG.Bloch do
       {svg_x, svg_y, z2}
     end
 
-    # Render Wireframe (Back)
-    wireframe_paths_back =
+    # Single pass: project all wireframe points then split into back/front by depth
+    {back_groups, front_groups} =
       (latitudes ++ longitudes)
       |> Enum.map(fn points ->
         projected = Enum.map(points, project)
         avg_z = Enum.sum(Enum.map(projected, &elem(&1, 2))) / length(projected)
         {avg_z, projected}
       end)
-      |> Enum.filter(fn {z, _} -> z < 0 end)
-      |> Enum.map(fn {_, points} -> points_to_svg_path(points, "#d0d0d0", 1, "2,2") end)
+      |> Enum.split_with(fn {z, _} -> z < 0 end)
 
-    # Render Wireframe (Front)
+    wireframe_paths_back =
+      Enum.map(back_groups, fn {_, pts} -> points_to_svg_path(pts, "#d0d0d0", 1, "2,2") end)
+
     wireframe_paths_front =
-      (latitudes ++ longitudes)
-      |> Enum.map(fn points ->
-        projected = Enum.map(points, project)
-        avg_z = Enum.sum(Enum.map(projected, &elem(&1, 2))) / length(projected)
-        {avg_z, projected}
-      end)
-      |> Enum.filter(fn {z, _} -> z >= 0 end)
-      |> Enum.map(fn {_, points} -> points_to_svg_path(points, "#909090", 1.5) end)
+      Enum.map(front_groups, fn {_, pts} -> points_to_svg_path(pts, "#909090", 1.5) end)
 
     # Render Axes (tip labels with white halos)
     axes_svg =
