@@ -46,7 +46,7 @@ Creates an equal superposition from a basis state. Rotates the Bloch vector from
 
 ```elixir
 # Expected: Dot at the +X equator (|+⟩ state, Bloch vector pointing right)
-Qubit.new() |> Qubit.h() |> Qx.draw_bloch(title: "H|0⟩ → |+⟩")
+Qubit.new() |> Qubit.h() |> Qx.draw_bloch(title: "H|0⟩ → |+⟩", format: :svg) |> Kino.HTML.new()
 ```
 
 ### X — Pauli-X (bit flip)
@@ -55,7 +55,7 @@ Flips |0⟩ to |1⟩. Equivalent to a classical NOT gate. Rotates the Bloch vect
 
 ```elixir
 # Expected: Dot at the south pole (|1⟩ state)
-Qubit.new() |> Qubit.x() |> Qx.draw_bloch(title: "X|0⟩ → |1⟩")
+Qubit.new() |> Qubit.x() |> Qx.draw_bloch(title: "X|0⟩ → |1⟩", format: :svg) |> Kino.HTML.new()
 ```
 
 ### Y — Pauli-Y
@@ -64,7 +64,7 @@ Applies both a bit flip and a phase flip. Like X, it maps |0⟩ to the south pol
 
 ```elixir
 # Expected: Dot at the south pole (i|1⟩ state; global phase i invisible on Bloch sphere)
-Qubit.new() |> Qubit.y() |> Qx.draw_bloch(title: "Y|0⟩ → i|1⟩")
+Qubit.new() |> Qubit.y() |> Qx.draw_bloch(title: "Y|0⟩ → i|1⟩", format: :svg) |> Kino.HTML.new()
 ```
 
 ### Z — Pauli-Z (phase flip)
@@ -73,7 +73,7 @@ Leaves |0⟩ unchanged (it is an eigenstate of Z). Starting from |+⟩ makes the
 
 ```elixir
 # Expected: Dot at the −X equator (|−⟩ state); |0⟩ is a Z eigenstate so it would stay at north pole
-Qubit.plus() |> Qubit.z() |> Qx.draw_bloch(title: "Z|+⟩ → |−⟩")
+Qubit.plus() |> Qubit.z() |> Qx.draw_bloch(title: "Z|+⟩ → |−⟩", format: :svg) |> Kino.HTML.new()
 ```
 
 ### S — Phase (π/2)
@@ -82,7 +82,7 @@ Applies a π/2 phase shift to |1⟩. Starting from |+⟩, it rotates the equator
 
 ```elixir
 # Expected: Dot at the +Y equator (|i⟩ = (|0⟩ + i|1⟩)/√2)
-Qubit.plus() |> Qubit.s() |> Qx.draw_bloch(title: "S|+⟩ → |i⟩")
+Qubit.plus() |> Qubit.s() |> Qx.draw_bloch(title: "S|+⟩ → |i⟩", format: :svg) |> Kino.HTML.new()
 ```
 
 ### T — Phase (π/4)
@@ -91,7 +91,7 @@ Applies a π/4 phase shift to |1⟩. Starting from |+⟩, it rotates the equator
 
 ```elixir
 # Expected: Dot on the equator at 45° between +X and +Y axes
-Qubit.plus() |> Qubit.t() |> Qx.draw_bloch(title: "T|+⟩ → equator at 45°")
+Qubit.plus() |> Qubit.t() |> Qx.draw_bloch(title: "T|+⟩ → equator at 45°", format: :svg) |> Kino.HTML.new()
 ```
 
 ### Rx(π/2) — X-axis rotation
@@ -100,7 +100,7 @@ Rotates the Bloch vector by π/2 around the X axis. From |0⟩ (north pole), thi
 
 ```elixir
 # Expected: Dot at the −Y equator (Bloch vector pointing into the page)
-Qubit.new() |> Qubit.rx(pi / 2) |> Qx.draw_bloch(title: "Rx(π/2)|0⟩ → −Y equator")
+Qubit.new() |> Qubit.rx(pi / 2) |> Qx.draw_bloch(title: "Rx(π/2)|0⟩ → −Y equator", format: :svg) |> Kino.HTML.new()
 ```
 
 ### Ry(π/2) — Y-axis rotation
@@ -109,7 +109,7 @@ Rotates the Bloch vector by π/2 around the Y axis. From |0⟩, this produces th
 
 ```elixir
 # Expected: Dot at the +X equator (same position as H|0⟩)
-Qubit.new() |> Qubit.ry(pi / 2) |> Qx.draw_bloch(title: "Ry(π/2)|0⟩ → |+⟩")
+Qubit.new() |> Qubit.ry(pi / 2) |> Qx.draw_bloch(title: "Ry(π/2)|0⟩ → |+⟩", format: :svg) |> Kino.HTML.new()
 ```
 
 ### Rz(π/2) — Z-axis rotation
@@ -118,7 +118,7 @@ Rotates the Bloch vector by π/2 around the Z axis. Starting from |+⟩, this mo
 
 ```elixir
 # Expected: Dot at the +Y equator (|0⟩ would stay at north pole — start from |+⟩ to see the rotation)
-Qubit.plus() |> Qubit.rz(pi / 2) |> Qx.draw_bloch(title: "Rz(π/2)|+⟩ → +Y equator")
+Qubit.plus() |> Qubit.rz(pi / 2) |> Qx.draw_bloch(title: "Rz(π/2)|+⟩ → +Y equator", format: :svg) |> Kino.HTML.new()
 ```
 
 ### Phase(π/4) — Arbitrary phase
@@ -127,7 +127,7 @@ Applies an arbitrary phase e^{iφ} to the |1⟩ component. Starting from |+⟩ w
 
 ```elixir
 # Expected: Dot on the equator, rotated 22.5° counter-clockwise from +X (between +X and +Y)
-Qubit.plus() |> Qubit.phase(pi / 4) |> Qx.draw_bloch(title: "Phase(π/4)|+⟩ → 22.5° from +X")
+Qubit.plus() |> Qubit.phase(pi / 4) |> Qx.draw_bloch(title: "Phase(π/4)|+⟩ → 22.5° from +X", format: :svg) |> Kino.HTML.new()
 ```
 
 ### U(π/2, 0, π) — General single-qubit unitary
@@ -140,7 +140,7 @@ The U gate is the most general single-qubit gate, parameterised by three Euler a
 Qubit.new()
 |> Qubit.rz(pi)
 |> Qubit.ry(pi / 2)
-|> Qx.draw_bloch(title: "U(π/2, 0, π)|0⟩ ≈ H|0⟩")
+|> Qx.draw_bloch(title: "U(π/2, 0, π)|0⟩ ≈ H|0⟩", format: :svg) |> Kino.HTML.new()
 ```
 
 ---
