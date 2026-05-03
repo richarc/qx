@@ -7,12 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-05-03
+
 ### Added
+- **OpenQASM 3.0 import** — `Qx.Export.OpenQASM.from_qasm/1` and `from_qasm!/1` parse OpenQASM 3 source produced by Qx itself, by Qiskit, or by IBM Quantum and return a `%Qx.QuantumCircuit{}`. Round-trips with `to_qasm/1` (statevectors match within 1e-10).
+- **Gate definition codegen** — `Qx.Export.OpenQASM.from_qasm_function/1` (and the bang variant) parses a `gate name(p1, …) a, b { … }` definition and returns `%{name, arity, source}`, where `source` is an Elixir `def …` string that compiles via `Code.compile_string/1`. Function signature: `(circuit, params…, qubits…)`.
+- **Supported gate set on import** — direct mappings for `h, x, y, z, s, sdg, t, rx, ry, rz, p, phase, u, u3, cx, CX, cz, swap, iswap, cp, cphase, ccx, cswap`. Decompositions for `tdg → phase(-π/4)`, `sx → u(π/2, -π/2, π/2)`, `u1(λ) → phase(λ)`, `u2(φ, λ) → u(π/2, φ, λ)`. `id` is dropped.
+- **Typed import errors** — `Qx.QasmParseError` (line/column/snippet) and `Qx.QasmUnsupportedError` (feature/line/hint) for grammar failures and out-of-scope features respectively.
 - `Qx.cp/4` — controlled-phase gate applying e^(i·θ) to the |11⟩ basis state, required for QFT and QPE circuits
 - `Qx.swap/3` — SWAP gate exchanging the quantum states of two qubits; includes circuit diagram rendering (× symbols connected by a line) and OpenQASM 3 export
 - `Qx.iswap/3` — iSWAP gate exchanging qubit states with an i phase factor on the swapped components; native to superconducting hardware; includes circuit diagram rendering (labelled iSW boxes) and OpenQASM 3 export
 - `Qx.u/5` — general single-qubit unitary gate U(θ,φ,λ) per IBM/OpenQASM 3 convention; subsumes X, Y, Z, H, RX, RY, RZ as special cases; includes circuit diagram rendering and OpenQASM 3 export
 - `Qx.cswap/4` — Fredkin (controlled-SWAP) gate; swaps two target qubits when the control is |1⟩; universal reversible gate used in quantum multiplexers and arithmetic circuits; includes circuit diagram rendering and OpenQASM 3 export
+
+### Not supported on import (raises `Qx.QasmUnsupportedError`)
+- Multi-register programs (Qx models a single quantum + single classical register)
+- `else` branches on `if` (refactor as two `if` statements)
+- Gate modifiers `inv @`, `pow(N) @`, `ctrl @`, `negctrl @`
+- `def`, `for`, `while`, `switch`, classical types beyond `bit`, `defcal`, `let`, `pragma`, `extern`, `box`, `delay`, `reset`
+- stdgates `cy`, `ch`, `crx`, `cry`, `crz`, `cu` (no Qx equivalent yet)
+- Qiskit-extension gates `rxx`, `ryy`, `rzz`, `rzx` (not in `stdgates.inc`)
+- Discarded `measure q[i];` (Qx requires a classical bit target)
+- Complex boolean conditions (`&&`, `||`)
+
+### Dependencies
+- New runtime dependency: `nimble_parsec ~> 1.4` (compile-time parser generator)
 
 ## [0.5.2] - 2026-04-11
 

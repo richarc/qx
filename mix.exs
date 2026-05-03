@@ -4,7 +4,7 @@ defmodule Qx.MixProject do
   def project do
     [
       app: :qx,
-      version: "0.5.2",
+      version: "0.6.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -44,6 +44,7 @@ defmodule Qx.MixProject do
       # {:emlx, "~> 0.2", optional: true},
       {:vega_lite, "~> 0.1"},
       {:complex, "~> 0.6"},
+      {:nimble_parsec, "~> 1.4"},
       {:req, "~> 0.5"},
       {:usage_rules, "~> 0.1"},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
@@ -88,7 +89,9 @@ defmodule Qx.MixProject do
           Qx.ClassicalBitError,
           Qx.GateError,
           Qx.QubitCountError,
-          Qx.RemoteError
+          Qx.RemoteError,
+          Qx.QasmParseError,
+          Qx.QasmUnsupportedError
         ],
         "Validation & Utilities": [
           Qx.Validation,

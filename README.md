@@ -29,7 +29,7 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.5.2"}
+    {:qx_sim, "~> 0.6.0"}
   ]
 end
 ```
@@ -79,7 +79,7 @@ For the complete API, see the [hexdocs](https://hexdocs.pm/qx_sim/Qx.html).
 
 ```elixir
 Mix.install([
-  {:qx, "~> 0.5.2", hex: :qx_sim},
+  {:qx, "~> 0.6.0", hex: :qx_sim},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
   {:kino_vega_lite, "~> 0.1.11"}
@@ -426,6 +426,70 @@ probs = Qx.get_probabilities(circuit)
 Qx.histogram(probs)
 ```
 
+## Importing OpenQASM
+
+Qx can read OpenQASM 3.0 source produced by itself, by Qiskit, or by IBM Quantum. Combined with `Qx.Export.OpenQASM.to_qasm/1` this provides round-trip interoperability.
+
+### Import a complete program
+
+```elixir
+qasm = """
+OPENQASM 3.0;
+include "stdgates.inc";
+qubit[2] q;
+bit[2] c;
+h q[0];
+cx q[0], q[1];
+c[0] = measure q[0];
+c[1] = measure q[1];
+"""
+
+{:ok, circuit} = Qx.Export.OpenQASM.from_qasm(qasm)
+result = Qx.run(circuit, shots: 1024)
+```
+
+Errors come back as typed exceptions:
+
+* `Qx.QasmParseError` — grammar/syntax problems (with `:line`, `:column`, `:snippet`)
+* `Qx.QasmUnsupportedError` — valid QASM that uses a feature outside the supported subset (multi-register, gate modifiers, `else`, …)
+
+`from_qasm!/1` is the bang variant.
+
+### Import a `gate` definition as an Elixir function
+
+For storing user-defined gates as reusable circuit-transforming functions (e.g. in [qxportal](https://github.com/richarc/qxportal)), use `from_qasm_function/1`:
+
+```elixir
+qasm = """
+OPENQASM 3.0;
+include "stdgates.inc";
+gate bell a, b {
+  h a;
+  cx a, b;
+}
+"""
+
+{:ok, %{name: "bell", arity: 3, source: source}} =
+  Qx.Export.OpenQASM.from_qasm_function(qasm)
+
+# source is an Elixir `def …` string:
+#   def bell(circuit, a, b) do
+#     circuit
+#     |> Qx.h(a)
+#     |> Qx.cx(a, b)
+#   end
+
+# Compile and call it:
+[{module, _bin}] = Code.compile_string("defmodule MyGates do\n  #{source}\nend")
+new_circuit = MyGates.bell(Qx.create_circuit(2), 0, 1)
+```
+
+The signature is `(circuit, params…, qubits…)` — circuit first, then declared parameters in source order, then qubit arguments in source order.
+
+### Supported subset
+
+See `Qx.Export.OpenQASM` module documentation for the full list of supported gates, decompositions, and explicitly-excluded features.
+
 ## Running on Quantum Hardware via QxServer
 
 Qx can submit circuits to real quantum hardware through [QxServer](https://github.com/richarc/qx_server), a standalone backend service. Circuits are exported to OpenQASM 3.0, submitted via HTTP, and results are returned as `Qx.SimulationResult` structs.
@@ -520,7 +584,7 @@ EXLA provides significant speedup through XLA's LLVM optimizations.
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.5.2"},
+    {:qx_sim, "~> 0.6.0"},
     {:exla, "~> 0.10"}  # Add this line
   ]
 end
@@ -614,7 +678,7 @@ config :nx, :default_backend, {EXLA.Backend, client: :rocm}
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.5.2"},
+    {:qx_sim, "~> 0.6.0"},
     {:emlx, github: "elixir-nx/emlx", branch: "main"}  # Add this line
   ]
 end
@@ -668,7 +732,7 @@ For LiveBook, add the acceleration backend to your `Mix.install` call:
 **EXLA CPU (all platforms):**
 ```elixir
 Mix.install([
-  {:qx, "~> 0.5.2", hex: :qx_sim},
+  {:qx, "~> 0.6.0", hex: :qx_sim},
   {:exla, "~> 0.10"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -681,7 +745,7 @@ Application.put_env(:nx, :default_backend, EXLA.Backend)
 **EMLX GPU (Apple Silicon):**
 ```elixir
 Mix.install([
-  {:qx, "~> 0.5.2", hex: :qx_sim},
+  {:qx, "~> 0.6.0", hex: :qx_sim},
   {:emlx, github: "elixir-nx/emlx", branch: "main"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -694,7 +758,7 @@ Application.put_env(:nx, :default_backend, {EMLX.Backend, device: :gpu})
 **EXLA CUDA (NVIDIA GPU):** Requires `XLA_TARGET` env var set (see [CUDA setup](#exla--nvidia-gpu-cuda)).
 ```elixir
 Mix.install([
-  {:qx, "~> 0.5.2", hex: :qx_sim},
+  {:qx, "~> 0.6.0", hex: :qx_sim},
   {:exla, "~> 0.10"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -752,6 +816,6 @@ This project is licensed under the Apache License 2.0.
 
 ## Version
 
-Current version: 0.5.2
+Current version: 0.6.0
 
 For detailed API documentation, see the [hexdocs](https://hexdocs.pm/qx_sim/Qx.html).
