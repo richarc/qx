@@ -363,3 +363,133 @@ bd close <id>         # Complete work
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->
+
+<!-- ELIXIR-PHOENIX-PLUGIN:START -->
+<!-- Tailored for Qx (pure Elixir library, no Phoenix/Ecto/LiveView/Oban). Edit /phx:init template manually before re-running --update or it will be overwritten with the full Phoenix-flavoured version. -->
+
+# Elixir Plugin — Mandatory Procedures (Qx-tailored)
+
+## SKILL EXECUTION ENFORCEMENT
+
+These rules govern ALL `/phx:*` command execution. Violations invalidate the session output.
+
+1. Skills are PROCEDURES, not suggestions. Every numbered step MUST execute.
+2. Agent spawning is MANDATORY when a skill says "spawn" or "always run". Zero agents spawned when required = skill failure.
+3. Every skill MUST produce its required artifact file (`.claude/plans/{slug}/`, etc.). Chat-only output without the artifact = skill failure.
+4. "Already implemented" is a FINDING, not an exit. Document it in the artifact; do not bail out of the workflow.
+5. Read SKILL.md BEFORE executing. Do not improvise a different workflow.
+6. No unauthorized judgment calls. If the skill defines no early-exit, there is no early exit.
+7. Agent output MUST be saved to `.claude/plans/{slug}/research/{agent-name}-report.md` before synthesis.
+
+## EXECUTE BEFORE EVERY RESPONSE
+
+### STEP 1: CLASSIFY
+- Bug fix → score 0–2, skip to STEP 5
+- Review/analysis → skip to response
+- Feature → continue
+
+### STEP 2: COMPLEXITY SCORE
+
+| Factor | Points |
+|--------|--------|
+| Single file change | 0 |
+| 2–3 files | +2 |
+| 4+ files or crosses module boundaries (Calc / Operations / Simulation / Draw / Remote) | +3 |
+| New domain concept (new gate, new sim mode, new visualization) | +3 |
+| Follows existing pattern | -2 |
+| Touches `defn` / Nx kernels in `lib/qx/calc*.ex` | +3 |
+| Changes public API of `Qx`, `Qx.QuantumCircuit`, `Qx.Operations`, `Qx.Simulation`, `Qx.SimulationResult` | +3 |
+| External API or new dependency | +2 |
+
+Show the calculation: `Complexity: {score} ({factors}) → {level}`.
+
+### STEP 3: ROUTE
+
+| Score | Action |
+|-------|--------|
+| ≤ 2 | Proceed directly, or offer `/phx:quick` |
+| 3–6 | Ask 1–2 questions, then `/phx:plan` |
+| 7–10 | Ask 2–4 questions, recommend `/phx:plan --detail comprehensive` |
+| > 10 | Strongly recommend `/phx:full` |
+
+### STEP 4: INTERVIEW (if score ≥ 3)
+
+| Task type | Questions |
+|-----------|-----------|
+| New feature / gate / op | "What's in scope / out of scope?" |
+| Public API change | "Breaking change? CHANGELOG entry? Major-version bump?" |
+| Nx kernel work | "Reshape/contract or gather/select? Backend-agnostic? Benchmarked?" |
+
+### STEP 5: LOAD references silently
+
+| Pattern | Load |
+|---------|------|
+| `lib/qx/calc*.ex`, anything with `defn` | elixir-idioms (Nx/defn discipline) |
+| `*_test.exs` | testing, exunit-patterns |
+| Any other `.ex` | elixir-idioms |
+
+### STEP 6: SPAWN agents
+
+| Trigger | Agent | When |
+|---------|-------|------|
+| `/phx:plan` invoked | hex-library-researcher | ALWAYS (evaluate hex deps before adding) |
+| `/phx:review` invoked | elixir-reviewer, testing-reviewer, iron-law-judge | ALWAYS (parallel) |
+
+(`phoenix-patterns-analyst`, `liveview-architect`, `oban-specialist`, `ecto-schema-designer`, `security-analyzer` for web auth — all skipped: not applicable.)
+
+### STEP 7: PROCEED
+
+Respond. Honour the verification rules below.
+
+---
+
+## IRON LAWS — STOP if violated
+
+If code would violate ANY of these:
+1. STOP. 2. Show the problematic code. 3. Show the correct pattern. 4. Ask permission to apply the fix.
+
+**Elixir / OTP**
+1. NO `String.to_atom/1` on caller-supplied strings — atom-table exhaustion. Use `String.to_existing_atom/1` or keep strings.
+2. NO process (GenServer / Agent / Task started under a supervisor) without a runtime reason. Qx is a *library*; processes force callers to supervise. Justify with: concurrency, isolated state, or fault isolation.
+
+**Nx kernels (`lib/qx/calc*.ex`, any `defn`)**
+3. PREFER reshape + tensor contraction over `Nx.take` + `Nx.select` gather/mask patterns. Gathers don't fuse and double the work. If gather is unavoidable, leave a one-line comment saying why.
+4. `defn` functions MUST be correct on `Nx.BinaryBackend` (the default when EXLA isn't loaded). No EXLA-only assumptions.
+5. NO host-side loops over `2^n` amplitudes. Vectorise with Nx primitives.
+
+**Public API surface**
+6. Breaking changes to `Qx`, `Qx.QuantumCircuit`, `Qx.Operations`, `Qx.Simulation`, `Qx.SimulationResult`, or any module under `Qx.Behaviours` REQUIRE a CHANGELOG entry and a major-version bump (SemVer).
+7. Public functions raise typed `Qx.*Error` (`Qx.QubitIndexError`, `Qx.GateError`, etc.) on misuse. Do not let raw `Nx` / `Complex` / `ArgumentError` leak across the API boundary — route through `Qx.Validation`.
+
+## VERIFICATION — MANDATORY after code changes
+
+After ANY code change, before presenting results:
+
+```
+mix compile --warnings-as-errors && mix format --check-formatted && mix credo --strict
+```
+
+Offer `mix test` after meaningful changes. Offer `mix bench` (alias in `mix.exs`) after touching `lib/qx/calc*.ex`, `lib/qx/gates.ex`, or `lib/qx/simulation.ex`.
+
+Do NOT present code as complete until verification passes.
+
+## POST-ACTION — Offer follow-ups
+
+| After | Offer |
+|-------|-------|
+| Bug fix | "Capture as lesson with /phx:learn-from-fix?" |
+| Feature complete | "Quality check with /phx:review?" |
+| Nx kernel change | "Run `mix bench` to confirm no regression?" |
+| Public API change | "Add CHANGELOG entry and bump version in `mix.exs`?" |
+
+## QUICK REFERENCE
+
+| Want to… | Use |
+|----------|-----|
+| Simple change | Describe it (auto-complexity runs) |
+| Larger feature | `/phx:plan` → `/phx:work` → `/phx:review` |
+| Debug bug | `/phx:investigate` |
+| Review code | `/phx:review` |
+| Project health | `/phx:audit` |
+
+<!-- ELIXIR-PHOENIX-PLUGIN:END -->
