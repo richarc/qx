@@ -173,3 +173,88 @@ defmodule Qx.QubitCountError do
     %__MODULE__{message: message}
   end
 end
+
+defmodule Qx.QasmParseError do
+  @moduledoc """
+  Raised when an OpenQASM source string cannot be parsed.
+
+  Includes the line and column where parsing failed, plus an excerpt of the
+  surrounding source for debugging.
+  """
+  defexception [:line, :column, :snippet, :reason, :message]
+
+  @impl true
+  def exception(opts) when is_list(opts) do
+    line = Keyword.get(opts, :line)
+    column = Keyword.get(opts, :column)
+    snippet = Keyword.get(opts, :snippet)
+    reason = Keyword.get(opts, :reason, "syntax error")
+
+    %__MODULE__{
+      line: line,
+      column: column,
+      snippet: snippet,
+      reason: reason,
+      message: format_message(line, column, reason, snippet)
+    }
+  end
+
+  def exception(message) when is_binary(message) do
+    %__MODULE__{message: message, reason: message}
+  end
+
+  defp format_message(nil, nil, reason, _snippet), do: "QASM parse error: #{reason}"
+
+  defp format_message(line, column, reason, nil) do
+    "QASM parse error at line #{line}, column #{column}: #{reason}"
+  end
+
+  defp format_message(line, column, reason, snippet) do
+    "QASM parse error at line #{line}, column #{column}: #{reason}\n  #{snippet}"
+  end
+end
+
+defmodule Qx.QasmUnsupportedError do
+  @moduledoc """
+  Raised when an OpenQASM program uses a feature or gate that Qx does not
+  currently support.
+
+  The `feature` field identifies the construct (e.g., `"else branch"`,
+  `"gate cy"`, `"reset"`), and `line`/`column` (when known) point at the
+  offending source location.
+  """
+  defexception [:feature, :line, :column, :hint, :message]
+
+  @impl true
+  def exception(opts) when is_list(opts) do
+    feature = Keyword.fetch!(opts, :feature)
+    line = Keyword.get(opts, :line)
+    column = Keyword.get(opts, :column)
+    hint = Keyword.get(opts, :hint)
+
+    %__MODULE__{
+      feature: feature,
+      line: line,
+      column: column,
+      hint: hint,
+      message: format_message(feature, line, column, hint)
+    }
+  end
+
+  def exception(message) when is_binary(message) do
+    %__MODULE__{message: message, feature: message}
+  end
+
+  defp format_message(feature, nil, nil, nil), do: "QASM feature not supported: #{feature}"
+
+  defp format_message(feature, nil, nil, hint),
+    do: "QASM feature not supported: #{feature}. #{hint}"
+
+  defp format_message(feature, line, column, nil) do
+    "QASM feature not supported at line #{line}, column #{column}: #{feature}"
+  end
+
+  defp format_message(feature, line, column, hint) do
+    "QASM feature not supported at line #{line}, column #{column}: #{feature}. #{hint}"
+  end
+end

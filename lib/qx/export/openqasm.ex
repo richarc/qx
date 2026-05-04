@@ -1,6 +1,44 @@
 defmodule Qx.Export.OpenQASM do
   @moduledoc """
-  Export Qx quantum circuits to OpenQASM format.
+  Export Qx quantum circuits to OpenQASM format **and import** OpenQASM 3.0
+  source back into a `Qx.QuantumCircuit`.
+
+  ## Importing OpenQASM (since v0.6.0)
+
+  `from_qasm/1` parses OpenQASM 3 source produced by Qx, by Qiskit, or by
+  IBM Quantum into a circuit:
+
+      {:ok, circuit} = Qx.Export.OpenQASM.from_qasm(qasm_source)
+
+  Round-trips with `to_qasm/1` — any program emitted by `to_qasm/1` parses
+  back to a circuit with a matching state vector.
+
+  `from_qasm_function/1` parses a `gate name(p) a, b { … }` definition and
+  returns Elixir source for an equivalent function:
+
+      {:ok, %{name: "bell", arity: 3, source: source}} =
+        Qx.Export.OpenQASM.from_qasm_function(qasm_with_gate)
+
+  The generated `def name(circuit, params…, qubits…)` body composes
+  `Qx.h/2`, `Qx.cx/3`, etc. via the `|>` pipeline and can be `Code.compile_string/1`-ed.
+
+  ### Supported gate set on import
+
+  Direct mappings: `h, x, y, z, s, sdg, t, rx, ry, rz, p, phase, u, u3,
+  cx, CX, cz, swap, iswap, cp, cphase, ccx, cswap`.
+
+  Decompositions: `tdg → phase(-π/4)`, `sx → u(π/2, -π/2, π/2)`,
+  `u1(λ) → phase(λ)`, `u2(φ, λ) → u(π/2, φ, λ)`. `id` is dropped.
+
+  ### Not supported (raises `Qx.QasmUnsupportedError`)
+
+  Multi-register programs, gate modifiers (`inv`/`pow`/`ctrl`/`negctrl`),
+  `else` branches, complex boolean conditions, classical types beyond
+  `bit`, `def`, `for`, `while`, `switch`, `defcal`, `let`, `pragma`,
+  `extern`, `box`, `delay`, `reset`, the stdgates `cy/ch/crx/cry/crz/cu`,
+  and the Qiskit extensions `rxx/ryy/rzz/rzx`.
+
+  ## Exporting
 
   This module provides functionality to convert Qx quantum circuits into OpenQASM
   code that can be executed on real quantum hardware platforms including:
@@ -64,7 +102,17 @@ defmodule Qx.Export.OpenQASM do
   - Qubit ordering follows MSB convention (qubit 0 is leftmost)
   """
 
+  alias Qx.Export.OpenQASM.Codegen
+  alias Qx.Export.OpenQASM.Lowering
+  alias Qx.Export.OpenQASM.Parser
   alias Qx.QuantumCircuit
+
+  # Hard ceiling on accepted QASM source length. The nimble_parsec
+  # block-comment scanner is O(n²) on body length; capping the whole
+  # source at 1 MB keeps worst-case parse time bounded and also
+  # mitigates other unbounded-input concerns (deep parenthesisation,
+  # very long identifiers).
+  @max_qasm_size 1_048_576
 
   @doc """
   Converts a Qx quantum circuit to OpenQASM format.
@@ -300,4 +348,171 @@ defmodule Qx.Export.OpenQASM do
 
   defp format_param(param) when is_integer(param), do: "#{param}.0"
   defp format_param(param), do: "#{param}"
+
+  # ---------------------------------------------------------------------
+  # Importing — OpenQASM 3.0 → Qx.QuantumCircuit
+  # ---------------------------------------------------------------------
+
+  @doc """
+  Parses OpenQASM 3.0 source and returns a `Qx.QuantumCircuit`.
+
+  Round-trips with `to_qasm/1`: any program produced by `to_qasm/1` parses
+  back to a circuit that simulates to the same state vector.
+
+  ## Returns
+
+    * `{:ok, %Qx.QuantumCircuit{}}` on success
+    * `{:error, %Qx.QasmParseError{}}` on grammar/syntax failures
+    * `{:error, %Qx.QasmUnsupportedError{}}` for valid QASM that uses
+      features Qx does not yet support (multi-register programs, gate
+      modifiers, `else` branches, classical types beyond `bit`, …)
+    * `{:error, %Qx.QubitIndexError{}}` / `{:error, %Qx.ClassicalBitError{}}`
+      for index validation failures
+
+  ## Examples
+
+      iex> qasm = ~s\"\"\"
+      ...> OPENQASM 3.0;
+      ...> include "stdgates.inc";
+      ...> qubit[2] q;
+      ...> bit[2] c;
+      ...> h q[0];
+      ...> cx q[0], q[1];
+      ...> c[0] = measure q[0];
+      ...> c[1] = measure q[1];
+      ...> \"\"\"
+      iex> {:ok, circuit} = Qx.Export.OpenQASM.from_qasm(qasm)
+      iex> circuit.num_qubits
+      2
+
+  ## Supported features
+
+  See the module doc for the supported gate set, decompositions, and the
+  list of QASM 3 features deliberately excluded from v1 (each raises a
+  typed `Qx.QasmUnsupportedError`).
+  """
+  @spec from_qasm(String.t()) ::
+          {:ok, QuantumCircuit.t()} | {:error, Exception.t()}
+  def from_qasm(source) when is_binary(source) do
+    with :ok <- enforce_size(source),
+         {:ok, ast} <- Parser.parse(source) do
+      Lowering.lower(ast)
+    end
+  end
+
+  @doc """
+  Like `from_qasm/1` but raises on error.
+  """
+  @spec from_qasm!(String.t()) :: QuantumCircuit.t()
+  def from_qasm!(source) when is_binary(source) do
+    case from_qasm(source) do
+      {:ok, circuit} -> circuit
+      {:error, exception} -> raise exception
+    end
+  end
+
+  @doc """
+  Parses an OpenQASM 3.0 program containing a `gate` definition and
+  returns Elixir source code for an equivalent function.
+
+  The result map is `%{name: String.t(), arity: pos_integer(), source: String.t()}`
+  where `source` is a `def` definition that can be inserted into a module
+  via `Code.compile_string/1` (or stored verbatim by callers like
+  `qxportal`). The function takes `(circuit, params..., qubits...)` and
+  returns the new circuit.
+
+  When the source contains multiple gate definitions, the **last** is
+  treated as the "main" function — earlier ones are usually helpers
+  which the main one references. Since user-defined gate references
+  inside a gate body are rejected (`Qx.QasmUnsupportedError`), helpers
+  themselves cannot be code-generated through this entry point.
+
+  If no gate definition is present, returns `{:error, %Qx.QasmParseError{}}`.
+
+  ## Example
+
+      iex> qasm = ~s\"\"\"
+      ...> OPENQASM 3.0;
+      ...> include "stdgates.inc";
+      ...> gate bell a, b {
+      ...>   h a;
+      ...>   cx a, b;
+      ...> }
+      ...> \"\"\"
+      iex> {:ok, %{name: "bell", arity: 3, source: source}} =
+      ...>   Qx.Export.OpenQASM.from_qasm_function(qasm)
+      iex> source =~ "def bell(circuit, a, b)"
+      true
+  """
+  @spec from_qasm_function(String.t()) :: {:ok, map()} | {:error, Exception.t()}
+  def from_qasm_function(source) when is_binary(source) do
+    with :ok <- enforce_size(source),
+         {:ok, {:program, statements}} <-
+           source |> Parser.parse() |> reclassify_unsupported(),
+         {:ok, gate_def} <- find_main_gate_def(statements) do
+      Codegen.generate(gate_def)
+    end
+  end
+
+  defp enforce_size(source) when byte_size(source) <= @max_qasm_size, do: :ok
+
+  defp enforce_size(source) do
+    {:error,
+     Qx.QasmParseError.exception(
+       reason:
+         "QASM source exceeds maximum size of #{@max_qasm_size} bytes (got #{byte_size(source)})"
+     )}
+  end
+
+  # Parser-level rejections that semantically mean "feature unsupported"
+  # rather than "syntax error" surface as the typed unsupported exception.
+  defp reclassify_unsupported({:ok, _} = ok), do: ok
+
+  defp reclassify_unsupported({:error, %Qx.QasmParseError{reason: reason} = err}) do
+    cond do
+      is_binary(reason) and String.starts_with?(reason, "gate modifiers") ->
+        {:error,
+         Qx.QasmUnsupportedError.exception(
+           feature: reason,
+           line: err.line,
+           hint: "Expand the modifier in source before importing"
+         )}
+
+      is_binary(reason) and String.starts_with?(reason, "complex boolean") ->
+        {:error, Qx.QasmUnsupportedError.exception(feature: reason, line: err.line)}
+
+      is_binary(reason) and String.starts_with?(reason, "`else`") ->
+        {:error, Qx.QasmUnsupportedError.exception(feature: reason, line: err.line)}
+
+      true ->
+        {:error, err}
+    end
+  end
+
+  @doc """
+  Like `from_qasm_function/1` but raises on error.
+  """
+  @spec from_qasm_function!(String.t()) :: map()
+  def from_qasm_function!(source) when is_binary(source) do
+    case from_qasm_function(source) do
+      {:ok, result} -> result
+      {:error, exception} -> raise exception
+    end
+  end
+
+  # When the source contains multiple gate definitions, the *last* is
+  # treated as the "main" function — earlier ones are usually helpers
+  # which the main one references. Codegen rejects user-defined gate
+  # references, so the helpers themselves can't be code-generated.
+  defp find_main_gate_def(statements) do
+    case statements
+         |> Enum.filter(&match?({:gate_def, _, _, _, _, _}, &1))
+         |> List.last() do
+      nil ->
+        {:error, Qx.QasmParseError.exception(reason: "no `gate` definition found in QASM source")}
+
+      gate_def ->
+        {:ok, gate_def}
+    end
+  end
 end
