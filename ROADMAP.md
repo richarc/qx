@@ -3,13 +3,19 @@
 This roadmap captures the strategic direction for Qx. Items are grouped by release version, not by
 date — software dates go stale; versions don't.
 
-**The two-tool model:**
+**The tooling model:**
 - `ROADMAP.md` — *What* and *When* (strategic, version-scoped, public intent)
-- `bd` (beads) — *How* and *Who* (granular issues, dependencies, in-progress work)
+- `.claude/plans/<slug>/plan.md` — *How* for **features** (per-plan implementation detail)
+- `bd` (beads) — *How* for **bugs and deferred work** (granular issues, dependencies)
 - `CHANGELOG.md` — *What was done* (historical record of completed work)
 
-When a roadmap item is ready to be worked on → create bd issues from it.
-When a bd epic closes → mark the item done here and record it in `CHANGELOG.md`.
+**Item legend** below: `(plan: <slug>)` = feature tracked by a plan file
+under `.claude/plans/`; `(qx-<id>)` = bd issue (bug, task, or deferred work).
+
+When a roadmap **feature** item is ready → run `/plan <description>` to
+create the branch and plan file. When a roadmap **bug/task** item is
+ready → claim the bd issue and run `/implement <id>`. After PR merge,
+flip the roadmap checkbox.
 
 ---
 
@@ -45,7 +51,7 @@ the full history.
   converts a `gate name(p) a, b { … }` definition into compilable Elixir source. Typed
   `Qx.QasmParseError` and `Qx.QasmUnsupportedError` for grammar failures and out-of-scope features.
   Backed by a hand-written nimble_parsec grammar; new runtime dependency `nimble_parsec ~> 1.4`.
-  (qx-0c5)
+  (plan: openqasm-import)
 
 ---
 

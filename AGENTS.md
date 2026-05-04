@@ -286,12 +286,38 @@ For more details, see README.md and QUICKSTART.md.
 
 ## Development Workflow
 
-| Phase | Command | What it does |
-|-------|---------|--------------|
-| Planning | `/plan [description]` | Requirements gathering → bd issues |
-| Implementation | `/implement [issue-id]` | TDD implementation of a bd issue |
-| PR Review | `/pr [issue-id]` | Create PR, automated review, close issue |
-| Release | release-manager agent | Publish to Hex.pm + GitHub |
+There are two paths. Pick by what kind of work you're doing.
+
+### Feature Workflow (plan-file driven)
+
+The plan file at `.claude/plans/<slug>/plan.md` is the source of truth.
+**No bd issue is created** for features — bd is reserved for bugs and
+deferred work.
+
+| Step | Command | What it does |
+|------|---------|--------------|
+| 0 | `/plan <description>` | Derives a slug, creates branch `feat/<slug>` from main, then delegates to `/phx:plan` to produce `.claude/plans/<slug>/{plan,scratchpad}.md` |
+| 1 | `/phx:work .claude/plans/<slug>/plan.md` | Implements the plan phase by phase; runs verify after each phase |
+| 2 | `/phx:verify` | Optional — explicit compile/format/credo/test gate after manual fixes |
+| 3 | `/phx:review` | Spawns parallel specialist agents; produces a verdict |
+| 4 | `/phx:triage` | Optional — interactive filtering when review yields ≥ 5 findings |
+| 5 | apply triaged fixes | Manually or via another `/phx:work` cycle on the same plan |
+| 6 | `/pr <slug>` | Push, create PR, automated review, **interactive merge**, branch delete; runs `bd preflight`; prompts ROADMAP.md check-off |
+| 7 | `/phx:compound` | Capture solved patterns as searchable docs |
+| 8 | iterate steps 0–7 | One feature per ROADMAP item |
+| 9 | `release-manager` agent | Run when a ROADMAP version section has all items checked |
+
+For end-to-end with no human checkpoints, use `/phx:full` instead of
+steps 1–7. Reserve it for low-risk additive features.
+
+### Bug-fix Workflow (bd driven)
+
+| Step | Command | What it does |
+|------|---------|--------------|
+| 0 | `git checkout -b bd-<id>/<slug>` | Branch off main using the bd issue id |
+| 1 | `/implement <bd-id>` | TDD fix following the bd issue's acceptance criteria |
+| 2 | `/phx:verify` | Explicit quality gate |
+| 3 | `/pr <bd-id>` | Push, PR, review, merge, **`bd close <id>`**, branch delete |
 
 ### TDD Rules (enforced by hook + instruction)
 
@@ -301,12 +327,26 @@ For more details, see README.md and QUICKSTART.md.
 
 ### Branch Strategy
 
-- One branch per bd issue: `bd-<issue-id>/<short-description>`
-- All branches PR into main; deleted after squash merge
+- **Feature branches**: `feat/<slug>` — slug matches `.claude/plans/<slug>/`
+- **Bug-fix branches**: `bd-<issue-id>/<slug>` — id matches the bd issue
+- **Branch creation**: handled by `/plan` (features) at Step 0 or by the user (bugs) at Step 0
+- **Branch deletion**: handled by `/pr` at merge via `gh pr merge --squash --delete-branch`
+- All branches PR into `main`; never push directly to `main` after the
+  initial `chore(workflow)` setup commit
 
-### Issue Lifecycle
+### Feature Lifecycle
 
-`open` → `in_progress` (claim) → [implement] → PR created → PR merged → `closed`
+```
+roadmap item → /plan creates branch + plan file → /phx:work implements
+            → /phx:review verdict → /pr → merged to main → /phx:compound
+            → ROADMAP.md check-off → loop
+```
+
+### Bug Lifecycle
+
+```
+bd open → claim (in_progress) → /implement → /pr → merged → bd closed
+```
 
 ### Hook: Test File Guard
 
@@ -320,22 +360,36 @@ backstop for that path.
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
 ## Beads Issue Tracker
 
-This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
+This project uses **bd (beads)** for **bug tracking and deferred work** —
+not for feature planning. Features live in `.claude/plans/<slug>/plan.md`
+and are driven by the workflow above.
+
+### What goes where
+
+| If it's… | Tracked in | Started by |
+|---|---|---|
+| A new feature (any size) | `.claude/plans/<slug>/plan.md` | `/plan <description>` |
+| A reproducible bug | bd issue (`type=bug`) | `/implement <bd-id>` |
+| Discovered work uncovered during a feature | bd issue (`type=task`) with `discovered-from:<slug>` | (filed during work; addressed later) |
+| Tech debt / refactor / polish | bd issue (`type=task`) | `/implement <bd-id>` |
+| Quality target on the roadmap (e.g. "test coverage to 80%") | bd issue, referenced from ROADMAP.md | per-issue `/implement` |
 
 ### Quick Reference
 
 ```bash
-bd ready              # Find available work
+bd ready              # Find available bug / task work
 bd show <id>          # View issue details
-bd update <id> --claim  # Claim work
-bd close <id>         # Complete work
+bd create "..." -t bug|task -p 0-4 --json   # Create new issue
+bd close <id>         # Complete work (called automatically by /pr in bug mode)
+bd preflight          # Pre-PR check (called automatically by /pr in feature mode)
 ```
 
 ### Rules
 
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
-- Run `bd prime` for detailed command reference and session close protocol
+- Use bd for **bugs, deferred items, and discovered work** — NOT for feature planning
+- Do NOT use TodoWrite, TaskCreate, or markdown TODO lists for ongoing work tracking
 - Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
+- Run `bd prime` for detailed command reference and session close protocol
 
 ## Session Completion
 
@@ -343,10 +397,12 @@ bd close <id>         # Complete work
 
 **MANDATORY WORKFLOW:**
 
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
+1. **File bd issues** for any out-of-scope work or bugs discovered during the session that aren't part of the current feature plan. Use `--deps discovered-from:<slug>` to link back to the originating plan.
+2. **Update the active plan** - if a feature is in progress, ensure `.claude/plans/<slug>/plan.md` checkboxes reflect what's actually done; record open decisions in `scratchpad.md`.
+3. **Run quality gates** (if code changed) - Tests, linters, builds
+4. **Update bd state** - Close finished bug fixes; nothing to do for features at session boundaries (the plan file is the state).
+5. **Check off ROADMAP** - if a roadmap item completed this session, flip its `- [ ]` to `- [x]` and commit.
+6. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
    bd dolt push
@@ -477,19 +533,31 @@ Do NOT present code as complete until verification passes.
 
 | After | Offer |
 |-------|-------|
-| Bug fix | "Capture as lesson with /phx:learn-from-fix?" |
-| Feature complete | "Quality check with /phx:review?" |
+| Bug fix | "Capture as lesson with `/phx:learn-from-fix`?" |
+| Review verdict | "Triage findings with `/phx:triage`?" |
+| Merged PR | "Capture solved patterns with `/phx:compound`?" |
 | Nx kernel change | "Run `mix bench` to confirm no regression?" |
 | Public API change | "Add CHANGELOG entry and bump version in `mix.exs`?" |
+| ROADMAP version section now fully checked | "Run release-manager agent to publish to Hex.pm + GitHub?" |
 
 ## QUICK REFERENCE
 
 | Want to… | Use |
 |----------|-----|
 | Simple change | Describe it (auto-complexity runs) |
-| Larger feature | `/phx:plan` → `/phx:work` → `/phx:review` |
+| Feature (full chain) | `/plan` → `/phx:work` → `/phx:verify` → `/phx:review` → `/phx:triage` → `/pr` → `/phx:compound` |
+| Feature (one-shot, low-risk) | `/phx:full` |
 | Debug bug | `/phx:investigate` |
+| Bug fix | `/implement <bd-id>` → `/pr <bd-id>` |
 | Review code | `/phx:review` |
+| Verify changes | `/phx:verify` |
 | Project health | `/phx:audit` |
+| Release | `release-manager` agent (when ROADMAP version fully checked) |
+
+## Roadmap & Release Triggers
+
+- `ROADMAP.md` is the strategic plan. Each item maps to either a feature plan slug (`(plan: <slug>)`) or a bd issue (`(qx-<id>)`).
+- After every PR merge, `/pr` prompts you to check off the matching ROADMAP item. Don't skip this — the release trigger depends on it.
+- When a `## v0.X — …` section in ROADMAP.md has all items checked, that's the cue to invoke the `release-manager` agent. Don't release on time-based cadence; release when the milestone is actually complete.
 
 <!-- ELIXIR-PHOENIX-PLUGIN:END -->

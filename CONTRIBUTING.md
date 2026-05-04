@@ -372,22 +372,34 @@ end
 
 ## Issue Tracking
 
-This project uses **bd (beads)** for issue tracking. See AGENTS.md for details on how to work with bd.
+This project tracks work in two places. See [AGENTS.md](AGENTS.md) for the
+full workflow.
 
-Quick reference:
-```bash
-# Check for ready work
-bd ready --json
+### Features
 
-# Create new issue
-bd create "Issue title" -t bug|feature|task -p 0-4 --json
+Features are tracked by a **plan file** at `.claude/plans/<slug>/plan.md`,
+created by `/plan <description>`. The plan is the source of truth — bd is
+not used for feature planning.
 
-# Claim and update
-bd update bd-42 --status in_progress --json
-
-# Complete work
-bd close bd-42 --reason "Completed" --json
+```text
+/plan add OpenQASM 3.0 import   →  .claude/plans/openqasm-import/plan.md
+                                   git branch feat/openqasm-import
 ```
+
+### Bugs and deferred work
+
+Use **bd (beads)** for bugs, tech-debt, polish, and any work you want to
+defer. Discovered work surfaced during a feature should also land in bd
+with a `discovered-from:<plan-slug>` link.
+
+```bash
+bd ready --json                                     # what's available now
+bd create "Title" -t bug|task -p 0-4 --json        # file a new bug or task
+bd update qx-42 --status in_progress --json        # claim
+bd close qx-42 --reason "Fixed in PR #N" --json    # complete (called by /pr)
+```
+
+The full bd command set is in [CLAUDE.md / AGENTS.md](AGENTS.md#beads-issue-tracker).
 
 ## Questions?
 
