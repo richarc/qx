@@ -21,6 +21,7 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 - **Growing Range of Gates**: Supports H, X, Y, Z, S, S†, T, RX, RY, RZ, CNOT, CZ, CP, SWAP, iSWAP, U (general single-qubit unitary), CSWAP (Fredkin), and Toffoli gates
 - **Measurements**: Quantum measurements with classical bit storage
 - **Conditional Operations**: Mid-circuit measurement with classical feedback for quantum processes like teleportation and error correction
+- **OpenQASM 3.0 Round-Trip**: Export Qx circuits to OpenQASM 3.0 and import OpenQASM 3.0 source produced by Qx, Qiskit, or IBM Quantum (`Qx.Export.OpenQASM.to_qasm/1` and `from_qasm/1`)
 - **Remote Execution**: Run circuits on real quantum hardware via QxServer, a standalone backend service supporting IBM Quantum and other providers
 - **LiveBook Integration**: Full support with interactive visualizations in LiveBook
 
@@ -114,7 +115,7 @@ Qx offers two ways to work with quantum states:
 
 **Calculation Mode** (`Qx.Qubit` / `Qx.Register`): Gates apply immediately and you can inspect state at any step. Best for learning, debugging, and interactive exploration.
 
-**Circuit Mode** (`Qx.create_circuit`): Build a circuit description first, then execute it with `Qx.run/2`. Best for multi-shot simulations, measurements with classical feedback, exporting to OpenQASM, and running on real hardware.
+**Circuit Mode** (`Qx.create_circuit`): Build a circuit description first, then execute it with `Qx.run/2`. Best for multi-shot simulations, measurements with classical feedback, OpenQASM 3.0 export and import, and running on real hardware.
 
 | | Calculation Mode | Circuit Mode |
 |---|---|---|

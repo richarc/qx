@@ -45,3 +45,6 @@ cover/
 .dolt/
 *.db
 .beads-credential-key
+
+# QASM artefacts written to repo root by example scripts
+/*.qasm

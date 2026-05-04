@@ -203,14 +203,16 @@ defmodule Qx.QasmParseError do
     %__MODULE__{message: message, reason: message}
   end
 
-  defp format_message(nil, nil, reason, _snippet), do: "QASM parse error: #{reason}"
-
-  defp format_message(line, column, reason, nil) do
-    "QASM parse error at line #{line}, column #{column}: #{reason}"
-  end
-
   defp format_message(line, column, reason, snippet) do
-    "QASM parse error at line #{line}, column #{column}: #{reason}\n  #{snippet}"
+    location =
+      case {line, column} do
+        {nil, _} -> ""
+        {l, nil} -> " at line #{l}"
+        {l, c} -> " at line #{l}, column #{c}"
+      end
+
+    suffix = if snippet, do: "\n  #{snippet}", else: ""
+    "QASM parse error#{location}: #{reason}#{suffix}"
   end
 end
 
@@ -245,16 +247,13 @@ defmodule Qx.QasmUnsupportedError do
     %__MODULE__{message: message, feature: message}
   end
 
-  defp format_message(feature, nil, nil, nil), do: "QASM feature not supported: #{feature}"
-
-  defp format_message(feature, nil, nil, hint),
-    do: "QASM feature not supported: #{feature}. #{hint}"
-
-  defp format_message(feature, line, column, nil) do
-    "QASM feature not supported at line #{line}, column #{column}: #{feature}"
-  end
-
   defp format_message(feature, line, column, hint) do
-    "QASM feature not supported at line #{line}, column #{column}: #{feature}. #{hint}"
+    location = format_location(line, column)
+    suffix = if hint, do: ". #{hint}", else: ""
+    "QASM feature not supported#{location}: #{feature}#{suffix}"
   end
+
+  defp format_location(nil, _), do: ""
+  defp format_location(line, nil), do: " at line #{line}"
+  defp format_location(line, column), do: " at line #{line}, column #{column}"
 end
