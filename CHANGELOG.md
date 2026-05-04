@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.6.0] - 2026-05-03
+## [0.6.0] - 2026-05-04
 
 ### Added
 - **OpenQASM 3.0 import** — `Qx.Export.OpenQASM.from_qasm/1` and `from_qasm!/1` parse OpenQASM 3 source produced by Qx itself, by Qiskit, or by IBM Quantum and return a `%Qx.QuantumCircuit{}`. Round-trips with `to_qasm/1` (statevectors match within 1e-10).
@@ -308,6 +308,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.6.0]: https://github.com/richarc/qx/releases/tag/v0.6.0
 [0.5.2]: https://github.com/richarc/qx/releases/tag/v0.5.2
 [0.5.1]: https://github.com/richarc/qx/releases/tag/v0.5.1
 [0.5.0]: https://github.com/richarc/qx/releases/tag/v0.5.0

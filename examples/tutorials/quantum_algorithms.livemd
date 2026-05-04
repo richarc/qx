@@ -2,7 +2,7 @@
 
 ```elixir
 Mix.install([
-  {:qx, "~> 0.5.2", hex: :qx_sim},
+  {:qx, "~> 0.6.0", hex: :qx_sim},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
   {:kino_vega_lite, "~> 0.1.11"}
