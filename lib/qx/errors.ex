@@ -146,11 +146,85 @@ defmodule Qx.GateError do
   end
 end
 
-defmodule Qx.RemoteError do
+defmodule Qx.Hardware.NoMeasurementsError do
   @moduledoc """
-  Raised when a QxServer remote request fails.
+  Raised when a circuit submitted to `Qx.Hardware` has no measurement
+  instructions.
+
+  Hardware backends return shot-based counts, so at least one measured
+  qubit is required for the result to be meaningful.
   """
-  defexception [:status, :message]
+  defexception [:circuit_id, :message]
+
+  @impl true
+  def exception(%{__struct__: Qx.QuantumCircuit} = circuit) do
+    id = Map.get(circuit, :id) || Map.get(circuit, :name)
+
+    %__MODULE__{
+      circuit_id: id,
+      message:
+        "Circuit has no measurement instructions. " <>
+          "Hardware execution requires at least one `measure/2` call before submission."
+    }
+  end
+
+  def exception(message) when is_binary(message) do
+    %__MODULE__{message: message}
+  end
+end
+
+defmodule Qx.Hardware.ExecutionError do
+  @moduledoc """
+  Raised by `Qx.Hardware.run!/3` (and friends) when the underlying
+  pipeline returns `{:error, {stage, reason}}` and the caller asked for
+  a bang variant.
+
+  The `:stage` is one of the pipeline stage atoms documented on
+  `Qx.Hardware` (`:config`, `:portal`, `:ibm_auth`, `:ibm_submit`,
+  `:ibm_poll`, `:ibm_poll_timeout`, `:ibm_job_failed`, `:ibm_results`).
+  """
+  defexception [:stage, :reason, :message]
+
+  @impl true
+  def exception({stage, reason}) when is_atom(stage) do
+    %__MODULE__{
+      stage: stage,
+      reason: reason,
+      message: "Qx.Hardware pipeline failed at #{stage}: #{inspect(reason)}"
+    }
+  end
+
+  def exception(reason) do
+    %__MODULE__{
+      message: "Qx.Hardware pipeline failed: #{inspect(reason)}"
+    }
+  end
+end
+
+defmodule Qx.Hardware.ConfigError do
+  @moduledoc """
+  Raised when a `Qx.Hardware.Config` value is invalid.
+
+  The `:field` identifies which configuration key failed, and `:reason`
+  carries a human-readable explanation.
+  """
+  defexception [:field, :reason, :message]
+
+  @impl true
+  def exception(opts) when is_list(opts) do
+    field = Keyword.get(opts, :field)
+    reason = Keyword.get(opts, :reason)
+    message = Keyword.get(opts, :message) || format_message(field, reason)
+
+    %__MODULE__{field: field, reason: reason, message: message}
+  end
+
+  def exception(message) when is_binary(message) do
+    %__MODULE__{message: message}
+  end
+
+  defp format_message(nil, reason) when is_binary(reason), do: reason
+  defp format_message(field, reason), do: "Invalid `#{field}`: #{reason}"
 end
 
 defmodule Qx.QubitCountError do

@@ -4,9 +4,10 @@ defmodule Qx.MixProject do
   def project do
     [
       app: :qx,
-      version: "0.6.0",
+      version: "0.7.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
+      elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       aliases: aliases(),
       test_coverage: [tool: ExCoveralls],
@@ -25,9 +26,12 @@ defmodule Qx.MixProject do
       docs: docs(),
       package: package(),
       description:
-        "A quantum computing library for Elixir with statevector simulation, circuit visualization, and remote execution on real quantum hardware via QxServer"
+        "A quantum computing library for Elixir with statevector simulation, circuit visualization, and direct execution on IBM Quantum hardware"
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 
   # Run "mix help compile.app" to learn about applications.
   def application do
@@ -46,13 +50,15 @@ defmodule Qx.MixProject do
       {:complex, "~> 0.6"},
       {:nimble_parsec, "~> 1.4"},
       {:req, "~> 0.5"},
+      {:jason, "~> 1.4"},
       {:usage_rules, "~> 0.1"},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       {:benchee, "~> 1.3", only: :dev},
       {:benchee_html, "~> 1.0", only: :dev},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.18", only: :test},
-      {:plug, "~> 1.0", only: :test}
+      {:plug, "~> 1.0", only: :test},
+      {:bypass, "~> 2.1", only: :test}
     ]
   end
 
@@ -75,9 +81,11 @@ defmodule Qx.MixProject do
           Qx.SimulationResult
         ],
         Visualization: [Qx.Draw],
-        "Remote Execution": [
-          Qx.Remote,
-          Qx.Remote.Config,
+        "Hardware Execution": [
+          Qx.Hardware,
+          Qx.Hardware.Config,
+          Qx.Hardware.Ibm,
+          Qx.Hardware.Portal,
           Qx.ResultBuilder
         ],
         "Error Handling": [
@@ -89,7 +97,8 @@ defmodule Qx.MixProject do
           Qx.ClassicalBitError,
           Qx.GateError,
           Qx.QubitCountError,
-          Qx.RemoteError,
+          Qx.Hardware.NoMeasurementsError,
+          Qx.Hardware.ConfigError,
           Qx.QasmParseError,
           Qx.QasmUnsupportedError
         ],

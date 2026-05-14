@@ -2,8 +2,9 @@ defmodule Qx.ResultBuilder do
   @moduledoc """
   Builds `Qx.SimulationResult` structs from counts data.
 
-  Used by `Qx.Remote` to reconstruct results from the qx_server JSON
-  response, and by provider adapters when converting hardware results.
+  Used by `Qx.Hardware` to reconstruct results from IBM Quantum's
+  shot-based response, and by provider adapters when converting
+  hardware results.
 
   > #### Statevector placeholder {: .warning}
   >

@@ -55,11 +55,12 @@ the full history.
 
 ---
 
-## v0.7 — Quality & Test Coverage
+## v0.7 — Direct IBM Hardware Execution + Quality
 
-Test-coverage and refactor items that didn't make the v0.6 cut, plus internal-quality work.
-Hardware-execution items previously in this milestone have moved to v0.8.
+Direct-to-IBM quantum hardware execution (was originally scheduled for v0.8) plus
+test-coverage and refactor items that didn't make the v0.6 cut.
 
+- [x] `Qx.Hardware` — direct-to-IBM execution (qxportal transpile → IBM submit → poll → result-build). Replaces the deleted `Qx.Remote` (qx_server) module. (plan: qx-hardware)
 - [ ] Test coverage to 80%+ (currently ~66%)
 - [ ] Document and test U gate parameter convention explicitly (qx-xt2)
 - [ ] Add explicit matrix-equality tests for CSWAP and iSWAP gates (qx-uos)
@@ -77,16 +78,13 @@ Hardware-execution items previously in this milestone have moved to v0.8.
 
 ---
 
-## v0.8 — Real Hardware Execution
+## v0.8 — Additional Hardware Backends
 
-Bring QPU-backed execution to a first-class state. Items pulled from v0.7 (AWS Braket, IBM Q)
-and v1.0 (QxServer protocol stabilisation) — the natural release that proves Qx works
-end-to-end against multiple real backends.
+Now that direct IBM execution shipped in v0.7, broaden hardware support.
 
 - [ ] Support for running on AWS Braket QPUs (moved from v0.7)
-- [ ] Improvements for running on IBM Q (moved from v0.7)
-- [ ] Stable remote execution contract — QxServer protocol versioned and documented
-  (moved from v1.0)
+- [x] Improvements for running on IBM Q — delivered in v0.7 as `Qx.Hardware`
+- [ ] ~~Stable remote execution contract — QxServer protocol versioned~~ — superseded by direct IBM execution in v0.7 (qx_server path retired)
 
 ---
 
@@ -138,7 +136,7 @@ These are explicitly not planned, to set honest expectations:
 
 - **Full fault-tolerant simulation** — the memory requirements make this impractical at the qubit
   counts Qx targets
-- **Hardware control / pulse-level scheduling** — QxServer handles the hardware layer; Qx stays at
+- **Hardware control / pulse-level scheduling** — IBM Quantum handles the hardware layer; Qx stays at
   the circuit abstraction level
 - **Classical co-processing / hybrid workflows beyond conditional gates** — out of scope until the
   core simulation story is complete

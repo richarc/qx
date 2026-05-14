@@ -491,68 +491,79 @@ The signature is `(circuit, params…, qubits…)` — circuit first, then decla
 
 See `Qx.Export.OpenQASM` module documentation for the full list of supported gates, decompositions, and explicitly-excluded features.
 
-## Running on Quantum Hardware via QxServer
+## Running on IBM Quantum Hardware
 
-Qx can submit circuits to real quantum hardware through [QxServer](https://github.com/richarc/qx_server), a standalone backend service. Circuits are exported to OpenQASM 3.0, submitted via HTTP, and results are returned as `Qx.SimulationResult` structs.
+Qx can submit circuits directly to IBM Quantum hardware via `Qx.Hardware`. Circuits are exported to OpenQASM 3.0, transpiled through the qxportal service, submitted to IBM, and results are returned as `Qx.SimulationResult` structs.
 
 ### Prerequisites
 
-1. A running QxServer instance (see [qx_server](https://github.com/richarc/qx_server))
-2. Provider credentials configured on the server (e.g., IBM Quantum API key)
+1. A [qxportal](https://qxquantum.com) account and API token.
+2. An IBM Cloud account with the Quantum service enabled — you'll need:
+   - IBM Cloud API key
+   - Quantum service CRN (Cloud Resource Name)
+   - Region (e.g. `"us-east"`)
 
 ### Setup
 
+The simplest path uses environment variables and `Qx.Hardware.Config.from_env!/1`:
+
+```bash
+export QX_PORTAL_URL=https://api.qxquantum.com
+export QX_PORTAL_TOKEN=<your qxportal token>
+export QX_IBM_API_KEY=<your IBM Cloud API key>
+export QX_IBM_CRN=<your IBM Quantum service CRN>
+export QX_IBM_REGION=us-east
+export QX_IBM_BACKEND=ibm_brisbane
+```
+
 ```elixir
-config = Qx.Remote.Config.new!(
-  url: "http://localhost:4040",
-  api_key: System.get_env("QX_SERVER_API_KEY")
-)
+config = Qx.Hardware.Config.from_env!()
+```
+
+Or construct the struct directly:
+
+```elixir
+{:ok, config} =
+  Qx.Hardware.Config.new(
+    portal_url: "https://api.qxquantum.com",
+    portal_token: System.fetch_env!("QX_PORTAL_TOKEN"),
+    ibm_api_key: System.fetch_env!("QX_IBM_API_KEY"),
+    ibm_crn: System.fetch_env!("QX_IBM_CRN"),
+    ibm_region: "us-east",
+    backend: "ibm_brisbane",
+    optimization_level: 1,
+    shots: 4096
+  )
 ```
 
 ### Run a Circuit on Hardware
 
 ```elixir
-# Build a Bell state circuit
-circuit = Qx.create_circuit(2, 2)
+circuit =
+  Qx.QuantumCircuit.new(2, 2)
   |> Qx.h(0)
   |> Qx.cx(0, 1)
   |> Qx.measure(0, 0)
   |> Qx.measure(1, 1)
 
-# Submit to hardware and wait for results
-{:ok, result} = Qx.Remote.run(circuit, config,
-  backend: "ibm_fez",
-  shots: 4096
-)
+{:ok, result} = Qx.Hardware.run(circuit, config, on_status: &IO.inspect/1)
 
 IO.inspect(result.counts)
-# => %{"00" => 2048, "11" => 2048}  (approximately)
+# => %{"00" => 2050, "11" => 2046}  (approximately)
 ```
 
-### Step-by-Step Execution
+`Qx.Hardware.run/3` is synchronous: it blocks until the IBM job reaches a terminal status. Status callback events fire at each pipeline stage (authentication, transpile, submit, poll, results).
 
-For more control, submit and await separately:
+### Lower-Level Entry Points
 
-```elixir
-# Submit (non-blocking)
-{:ok, job} = Qx.Remote.submit(circuit, config, backend: "ibm_fez")
-IO.puts("Job submitted: #{job["job_id"]}")
+  * `Qx.Hardware.submit_qasm/3` — submit a hand-authored OpenQASM 3.0 program.
+  * `Qx.Hardware.transpile/3` — transpile only (no submission), useful for inspection.
+  * `Qx.Hardware.list_backends/2` — enumerate backends visible to the configured account.
+  * `Qx.Hardware.cancel/3` — best-effort job cancellation.
 
-# Poll with status callback
-{:ok, result} = Qx.Remote.await(job["job_id"], config,
-  on_status: fn status -> IO.puts("Status: #{status["status"]}") end
-)
-```
+### Privacy invariant
 
-### List Available Backends
-
-```elixir
-{:ok, backends} = Qx.Remote.list_backends(config, provider: "ibm")
-
-for b <- backends do
-  IO.puts("#{b["name"]} - #{b["qubits"]} qubits")
-end
-```
+`Qx.Hardware` uses two independent HTTP clients (`Qx.Hardware.Portal` for qxportal, `Qx.Hardware.Ibm` for IBM Cloud). The portal token never reaches IBM, and the IBM API key never reaches the portal — both clients read only their own fields from the shared `Qx.Hardware.Config`.
 
 ## Performance & Acceleration
 

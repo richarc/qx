@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-05-14
+
+### BREAKING
+
+- **Removed `Qx.Remote`, `Qx.Remote.Config`, and `Qx.RemoteError`.** The qx_server-based hardware path has been replaced by direct-to-IBM execution via `Qx.Hardware`. There is no shim; the credential shape and call sites are different.
+
+  Migration:
+
+  ```elixir
+  # before (0.6.x)
+  config = Qx.Remote.Config.new!(url: "...", api_key: "...")
+  {:ok, result} = Qx.Remote.run(circuit, config, backend: "ibm_brisbane", shots: 4096)
+
+  # after (0.7.x)
+  config =
+    Qx.Hardware.Config.new!(
+      portal_url: "https://api.qxquantum.com",
+      portal_token: "<qxportal token>",
+      ibm_api_key: "<ibm cloud api key>",
+      ibm_crn: "<ibm quantum service crn>",
+      ibm_region: "us-east",
+      backend: "ibm_brisbane",
+      shots: 4096
+    )
+
+  {:ok, result} = Qx.Hardware.run(circuit, config)
+  ```
+
+  The new `Qx.Hardware.Config.from_env!/1` reads `QX_PORTAL_URL`, `QX_PORTAL_TOKEN`, `QX_IBM_API_KEY`, `QX_IBM_CRN`, `QX_IBM_REGION`, `QX_IBM_BACKEND` for a one-liner setup.
+
+### Added
+
+- **`Qx.Hardware`** — public namespace owning the full direct-to-IBM execution pipeline (IAM exchange → qxportal transpile → IBM submit → poll → result-build).
+- **`Qx.Hardware.Config`** — credential + execution-preference struct (`portal_url`, `portal_token`, `ibm_api_key`, `ibm_crn`, `ibm_region`, `backend`, `optimization_level`, `shots`). Validates region against the IBM allowlist, optimization_level `0..3`, shots `1..100_000`, portal URL scheme.
+- **`Qx.Hardware.Ibm`** — Req-based client for IBM Quantum (Qiskit Runtime REST API). IAM exchange + 401-refresh-retry, backends list, backend configuration, Sampler V2 submission, poll loop with Pascal-Case status allowlist, sample-aggregation to counts, best-effort cancel.
+- **`Qx.Hardware.Portal`** — Req-based client for the qxportal `/api/v1/me` and `/api/v1/transpile` endpoints. Atomize allowlist for response keys.
+- **`Qx.Hardware.NoMeasurementsError`** — raised when a circuit submitted to hardware has no `measure/2` instructions.
+- **`Qx.Hardware.ConfigError`** — typed validation error for `Qx.Hardware.Config`.
+- **Privacy invariant** — two independent HTTP clients; the portal token never reaches IBM, and the IBM API key/CRN never reach the portal.
+- **Status callback** — pipeline progress events (`{:portal, :transpiling}`, `{:ibm, :polling, status}`, …). All atoms literal (Iron Law #1 — no `String.to_atom` on caller input).
+
+### Removed
+
+- `Qx.Remote`, `Qx.Remote.Config`, `Qx.RemoteError` (see BREAKING above).
+- `examples/remote/` — superseded by `examples/hardware/run_on_ibm.exs`.
+
+### Dependencies
+
+- New test-only dep: `{:bypass, "~> 2.1"}` (HTTP stubbing for portal + IBM tests).
+- Explicit pin: `{:jason, "~> 1.4"}` (previously transitive via Req/Plug).
+
 ## [0.6.0] - 2026-05-04
 
 ### Added
