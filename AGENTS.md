@@ -1,3 +1,19 @@
+# Qx — core quantum-computing library
+
+> **Workspace context.** This repo lives inside the [`qxquantum`](../CLAUDE.md)
+> multi-root workspace alongside [`qxportal/`](../qxportal/CLAUDE.md) and
+> [`kino_qx/`](../kino_qx/CLAUDE.md). Each repo is independent — its own
+> git remote, branches, PRs, releases, and CI. Cross-repo changes ship as
+> separate PRs in each repo: land upstream (here) first, then bump the
+> dependency downstream. See `../CLAUDE.md` for the shared development model.
+>
+> **Stack:** Pure Elixir library (no Phoenix / Ecto / LiveView / Oban).
+> Lifecycle is driven by the `/elixir-phoenix` plugin (`/phx:*` skills).
+> Issues are tracked in `bd` for **bugs and deferred work only** — features
+> live in `.claude/plans/<slug>/plan.md`, not in `bd`.
+>
+> *(This file is `AGENTS.md`; `CLAUDE.md` in this folder is a symlink to it.)*
+
 <!-- usage-rules-start -->
 <!-- usage-rules-header -->
 # Usage Rules
@@ -364,15 +380,7 @@ This project uses **bd (beads)** for **bug tracking and deferred work** —
 not for feature planning. Features live in `.claude/plans/<slug>/plan.md`
 and are driven by the workflow above.
 
-### What goes where
-
-| If it's… | Tracked in | Started by |
-|---|---|---|
-| A new feature (any size) | `.claude/plans/<slug>/plan.md` | `/plan <description>` |
-| A reproducible bug | bd issue (`type=bug`) | `/implement <bd-id>` |
-| Discovered work uncovered during a feature | bd issue (`type=task`) with `discovered-from:<slug>` | (filed during work; addressed later) |
-| Tech debt / refactor / polish | bd issue (`type=task`) | `/implement <bd-id>` |
-| Quality target on the roadmap (e.g. "test coverage to 80%") | bd issue, referenced from ROADMAP.md | per-issue `/implement` |
+For the "what goes where" matrix (features → plan file, bugs/discovered/tech-debt → bd), see [`../CLAUDE.md`](../CLAUDE.md#2-beads-bd--bugs-and-deferred-work-only). One qx-specific addition: roadmap quality targets (e.g. "test coverage to 80%") are filed as bd issues and referenced from `ROADMAP.md`.
 
 ### Quick Reference
 
