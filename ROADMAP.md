@@ -55,12 +55,20 @@ the full history.
 
 ---
 
-## v0.7 — Direct IBM Hardware Execution + Quality
+## v0.7 — Direct IBM Hardware Execution
 
-Direct-to-IBM quantum hardware execution (was originally scheduled for v0.8) plus
-test-coverage and refactor items that didn't make the v0.6 cut.
+Direct-to-IBM quantum hardware execution (was originally scheduled for v0.8).
 
 - [x] `Qx.Hardware` — direct-to-IBM execution (qxportal transpile → IBM submit → poll → result-build). Replaces the deleted `Qx.Remote` (qx_server) module. (plan: qx-hardware)
+- [x] Improvements for running on IBM Q — delivered in v0.7 as `Qx.Hardware`
+
+---
+
+## v0.8 — Quality, Test Coverage & Additional Hardware Backends
+
+Test-coverage and refactor items that didn't make the v0.6/v0.7 cut, plus
+broadening hardware support beyond IBM.
+
 - [ ] Test coverage to 80%+ (currently ~66%)
 - [ ] Document and test U gate parameter convention explicitly (qx-xt2)
 - [ ] Add explicit matrix-equality tests for CSWAP and iSWAP gates (qx-uos)
@@ -75,15 +83,7 @@ test-coverage and refactor items that didn't make the v0.6 cut.
 - [ ] Add @spec to all defp functions in CalcFast and Simulation (qx-atv)
 - [ ] Convert case gate_name dispatch to multi-clause functions in Simulation (qx-dn2)
 - [ ] Improve Bloch sphere SVG visual quality (qx-w93)
-
----
-
-## v0.8 — Additional Hardware Backends
-
-Now that direct IBM execution shipped in v0.7, broaden hardware support.
-
 - [ ] Support for running on AWS Braket QPUs (moved from v0.7)
-- [x] Improvements for running on IBM Q — delivered in v0.7 as `Qx.Hardware`
 - [ ] ~~Stable remote execution contract — QxServer protocol versioned~~ — superseded by direct IBM execution in v0.7 (qx_server path retired)
 
 ---

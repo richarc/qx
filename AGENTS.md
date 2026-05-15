@@ -8,9 +8,14 @@
 > dependency downstream. See `../CLAUDE.md` for the shared development model.
 >
 > **Stack:** Pure Elixir library (no Phoenix / Ecto / LiveView / Oban).
-> Lifecycle is driven by the `/elixir-phoenix` plugin (`/phx:*` skills).
-> Issues are tracked in `bd` for **bugs and deferred work only** — features
-> live in `.claude/plans/<slug>/plan.md`, not in `bd`.
+> The full development lifecycle (plan → work → review → verify → release)
+> is driven by the `/elixir-phoenix` plugin (`/phx:*` skills). All work —
+> features and bug fixes alike — lives in `.claude/plans/<slug>/plan.md`.
+>
+> **`bd` (beads) is deprecated.** Existing `.beads/` issues are left in
+> place for later extraction; do not create new `bd` issues and do not
+> rely on `bd` for tracking. Out-of-scope work is noted in the plan's
+> `scratchpad.md` or in `ROADMAP.md`.
 >
 > *(This file is `AGENTS.md`; `CLAUDE.md` in this folder is a symlink to it.)*
 
@@ -158,182 +163,43 @@ mix usage_rules.search_docs "Enum.zip" --query-by title
 <!-- usage_rules:otp-end -->
 <!-- usage-rules-end -->
 
-## Issue Tracking with bd (beads)
-
-**IMPORTANT**: This project uses **bd (beads)** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
-
-### Why bd?
-
-- Dependency-aware: Track blockers and relationships between issues
-- Git-friendly: Auto-syncs to JSONL for version control
-- Agent-optimized: JSON output, ready work detection, discovered-from links
-- Prevents duplicate tracking systems and confusion
-
-### Quick Start
-
-**Check for ready work:**
-```bash
-bd ready --json
-```
-
-**Create new issues:**
-```bash
-bd create "Issue title" -t bug|feature|task -p 0-4 --json
-bd create "Issue title" -p 1 --deps discovered-from:bd-123 --json
-bd create "Subtask" --parent <epic-id> --json  # Hierarchical subtask (gets ID like epic-id.1)
-```
-
-**Claim and update:**
-```bash
-bd update bd-42 --status in_progress --json
-bd update bd-42 --priority 1 --json
-```
-
-**Complete work:**
-```bash
-bd close bd-42 --reason "Completed" --json
-```
-
-### Issue Types
-
-- `bug` - Something broken
-- `feature` - New functionality
-- `task` - Work item (tests, docs, refactoring)
-- `epic` - Large feature with subtasks
-- `chore` - Maintenance (dependencies, tooling)
-
-### Priorities
-
-- `0` - Critical (security, data loss, broken builds)
-- `1` - High (major features, important bugs)
-- `2` - Medium (default, nice-to-have)
-- `3` - Low (polish, optimization)
-- `4` - Backlog (future ideas)
-
-### Workflow for AI Agents
-
-1. **Check ready work**: `bd ready` shows unblocked issues
-2. **Claim your task**: `bd update <id> --status in_progress`
-3. **Work on it**: Implement, test, document
-4. **Discover new work?** Create linked issue:
-   - `bd create "Found bug" -p 1 --deps discovered-from:<parent-id>`
-5. **Complete**: `bd close <id> --reason "Done"`
-6. **Commit together**: Always commit the `.beads/issues.jsonl` file together with the code changes so issue state stays in sync with code state
-
-### Auto-Sync
-
-bd automatically syncs with git:
-- Exports to `.beads/issues.jsonl` after changes (5s debounce)
-- Imports from JSONL when newer (e.g., after `git pull`)
-- No manual export/import needed!
-
-### GitHub Copilot Integration
-
-If using GitHub Copilot, also create `.github/copilot-instructions.md` for automatic instruction loading.
-Run `bd onboard` to get the content, or see step 2 of the onboard instructions.
-
-### MCP Server (Recommended)
-
-If using Claude or MCP-compatible clients, install the beads MCP server:
-
-```bash
-pip install beads-mcp
-```
-
-Add to MCP config (e.g., `~/.config/claude/config.json`):
-```json
-{
-  "beads": {
-    "command": "beads-mcp",
-    "args": []
-  }
-}
-```
-
-Then use `mcp__beads__*` functions instead of CLI commands.
-
-### Managing AI-Generated Planning Documents
-
-AI assistants often create planning and design documents during development:
-- PLAN.md, IMPLEMENTATION.md, ARCHITECTURE.md
-- DESIGN.md, CODEBASE_SUMMARY.md, INTEGRATION_PLAN.md
-- TESTING_GUIDE.md, TECHNICAL_DESIGN.md, and similar files
-
-**Best Practice: Use a dedicated directory for these ephemeral files**
-
-**Recommended approach:**
-- Create a `history/` directory in the project root
-- Store ALL AI-generated planning/design docs in `history/`
-- Keep the repository root clean and focused on permanent project files
-- Only access `history/` when explicitly asked to review past planning
-
-**Example .gitignore entry (optional):**
-```
-# AI planning documents (ephemeral)
-history/
-```
-
-**Benefits:**
-- ✅ Clean repository root
-- ✅ Clear separation between ephemeral and permanent documentation
-- ✅ Easy to exclude from version control if desired
-- ✅ Preserves planning history for archeological research
-- ✅ Reduces noise when browsing the project
-
-### CLI Help
-
-Run `bd <command> --help` to see all available flags for any command.
-For example: `bd create --help` shows `--parent`, `--deps`, `--assignee`, etc.
-
-### Important Rules
-
-- ✅ Use bd for ALL task tracking
-- ✅ Always use `--json` flag for programmatic use
-- ✅ Link discovered work with `discovered-from` dependencies
-- ✅ Check `bd ready` before asking "what should I work on?"
-- ✅ Store AI planning docs in `history/` directory
-- ✅ Run `bd <cmd> --help` to discover available flags
-- ❌ Do NOT create markdown TODO lists
-- ❌ Do NOT use external issue trackers
-- ❌ Do NOT duplicate tracking systems
-- ❌ Do NOT clutter repo root with planning documents
-
-For more details, see README.md and QUICKSTART.md.
-
 ## Development Workflow
 
-There are two paths. Pick by what kind of work you're doing.
-
-### Feature Workflow (plan-file driven)
-
-The plan file at `.claude/plans/<slug>/plan.md` is the source of truth.
-**No bd issue is created** for features — bd is reserved for bugs and
-deferred work.
+One path for all work — features and bug fixes alike. The plan file at
+`.claude/plans/<slug>/plan.md` is the single source of truth. The
+`/elixir-phoenix` plugin drives every stage; see the
+**Elixir Plugin — Mandatory Procedures** block at the end of this file
+for the complexity routing and Iron Laws the plugin enforces.
 
 | Step | Command | What it does |
 |------|---------|--------------|
-| 0 | `/plan <description>` | Derives a slug, creates branch `feat/<slug>` from main, then delegates to `/phx:plan` to produce `.claude/plans/<slug>/{plan,scratchpad}.md` |
-| 1 | `/phx:work .claude/plans/<slug>/plan.md` | Implements the plan phase by phase; runs verify after each phase |
-| 2 | `/phx:verify` | Optional — explicit compile/format/credo/test gate after manual fixes |
-| 3 | `/phx:review` | Spawns parallel specialist agents; produces a verdict |
-| 4 | `/phx:triage` | Optional — interactive filtering when review yields ≥ 5 findings |
-| 5 | apply triaged fixes | Manually or via another `/phx:work` cycle on the same plan |
-| 6 | `/pr <slug>` | Push, create PR, automated review, **interactive merge**, branch delete; runs `bd preflight`; prompts ROADMAP.md check-off |
-| 7 | `/phx:compound` | Capture solved patterns as searchable docs |
-| 8 | iterate steps 0–7 | One feature per ROADMAP item |
-| 9 | `release-manager` agent | Run when a ROADMAP version section has all items checked |
+| 0 | `git checkout -b feat/<slug>` (or `fix/<slug>` for a bug) from `main` | Create the working branch |
+| 1 | `/phx:plan <description>` | Produces `.claude/plans/<slug>/{plan,scratchpad}.md` (auto-complexity routing picks plan depth; `/phx:quick` for &lt;50-line single-file changes) |
+| 2 | `/phx:work .claude/plans/<slug>/plan.md` | Implements the plan phase by phase; runs verify after each phase |
+| 3 | `/phx:verify` | Optional — explicit compile/format/credo/test gate after manual fixes |
+| 4 | `/phx:review` | Spawns parallel specialist agents; produces a verdict |
+| 5 | `/phx:triage` | Optional — interactive filtering when review yields ≥ 5 findings |
+| 6 | apply triaged fixes | Manually or via another `/phx:work` cycle on the same plan |
+| 7 | `git push -u origin <branch>` then `gh pr create` | Push and open the PR. PR description links the plan slug and references the matching ROADMAP item |
+| 8 | **Human reviews the PR** | The maintainer (Craig Richards) reads the diff on the PR page and waits for CI to go green. This is a required human gate — the agent does **not** self-approve or merge its own work. The agent stops here and waits for the maintainer's decision |
+| 9 | `gh pr merge --squash --delete-branch` — **only after the maintainer approves** | Merges to `main` and deletes the local + remote branch |
+| 10 | tick the matching ROADMAP item in a follow-up commit on `main` | Required — the release trigger reads ROADMAP check-state |
+| 11 | `/phx:compound` | Capture solved patterns as searchable docs |
+| 12 | iterate steps 0–11 | One ROADMAP item per cycle |
+| 13 | `release-manager` agent | Run when a ROADMAP version section has all items checked |
 
-For end-to-end with no human checkpoints, use `/phx:full` instead of
-steps 1–7. Reserve it for low-risk additive features.
+**Two review boundaries, not one.** `/phx:review` (step 4) is the
+agent self-checking its own work *before* it leaves the branch — fast,
+automated, catches correctness/idiom/Iron-Law issues. The **PR review
+(step 8) is the human gate**: a person with product authority reads the
+CI-verified diff and decides whether it belongs in the trunk.
+`/phx:review` answers "is this code correct?"; the human PR review
+answers "do we want this, as designed, merged into `main`?" The agent
+must not collapse these — it stops at step 8 and waits.
 
-### Bug-fix Workflow (bd driven)
-
-| Step | Command | What it does |
-|------|---------|--------------|
-| 0 | `git checkout -b bd-<id>/<slug>` | Branch off main using the bd issue id |
-| 1 | `/implement <bd-id>` | TDD fix following the bd issue's acceptance criteria |
-| 2 | `/phx:verify` | Explicit quality gate |
-| 3 | `/pr <bd-id>` | Push, PR, review, merge, **`bd close <id>`**, branch delete |
+For end-to-end with no agent checkpoints, use `/phx:full` instead of
+steps 2–6. PR creation is automatic; **the human PR review (step 8) and
+merge are never skipped** — `/phx:full` still stops for the maintainer.
 
 ### TDD Rules (enforced by hook + instruction)
 
@@ -344,25 +210,22 @@ steps 1–7. Reserve it for low-risk additive features.
 ### Branch Strategy
 
 - **Feature branches**: `feat/<slug>` — slug matches `.claude/plans/<slug>/`
-- **Bug-fix branches**: `bd-<issue-id>/<slug>` — id matches the bd issue
-- **Branch creation**: handled by `/plan` (features) at Step 0 or by the user (bugs) at Step 0
-- **Branch deletion**: handled by `/pr` at merge via `gh pr merge --squash --delete-branch`
+- **Bug-fix branches**: `fix/<slug>` — slug matches `.claude/plans/<slug>/`
+- **Branch creation**: by the user at Step 0 (before `/phx:plan`)
+- **Branch deletion**: pass `--delete-branch` to `gh pr merge --squash` at merge time
 - All branches PR into `main`; never push directly to `main` after the
   initial `chore(workflow)` setup commit
 
-### Feature Lifecycle
+### Lifecycle
 
 ```
-roadmap item → /plan creates branch + plan file → /phx:work implements
-            → /phx:review verdict → /pr → merged to main → /phx:compound
-            → ROADMAP.md check-off → loop
+ROADMAP item → git branch → /phx:plan → /phx:work → /phx:review (agent self-check)
+            → gh pr create → ⟪ HUMAN reviews PR + CI green ⟫ → gh pr merge --squash --delete-branch
+            → ROADMAP.md check-off commit → /phx:compound → loop
 ```
 
-### Bug Lifecycle
-
-```
-bd open → claim (in_progress) → /implement → /pr → merged → bd closed
-```
+The `⟪ HUMAN reviews PR ⟫` step is a hard stop for the agent: open the
+PR, report it's ready, and wait. Do not merge your own PR.
 
 ### Hook: Test File Guard
 
@@ -373,31 +236,23 @@ the intended change to the user, and wait for explicit approval before proceedin
 Note: The hook does not cover `Bash` tool calls (e.g. `sed -i`). The instruction above is the
 backstop for that path.
 
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
-## Beads Issue Tracker
+## Issue & Work Tracking
 
-This project uses **bd (beads)** for **bug tracking and deferred work** —
-not for feature planning. Features live in `.claude/plans/<slug>/plan.md`
-and are driven by the workflow above.
+`bd` (beads) is **deprecated** in this repo. The existing `.beads/`
+database is retained for later extraction — do **not** create new `bd`
+issues, run `bd dolt push`, or rely on `bd` for tracking.
 
-For the "what goes where" matrix (features → plan file, bugs/discovered/tech-debt → bd), see [`../CLAUDE.md`](../CLAUDE.md#2-beads-bd--bugs-and-deferred-work-only). One qx-specific addition: roadmap quality targets (e.g. "test coverage to 80%") are filed as bd issues and referenced from `ROADMAP.md`.
+Tracking now lives entirely in plan files and the roadmap:
 
-### Quick Reference
-
-```bash
-bd ready              # Find available bug / task work
-bd show <id>          # View issue details
-bd create "..." -t bug|task -p 0-4 --json   # Create new issue
-bd close <id>         # Complete work (called automatically by /pr in bug mode)
-bd preflight          # Pre-PR check (called automatically by /pr in feature mode)
-```
-
-### Rules
-
-- Use bd for **bugs, deferred items, and discovered work** — NOT for feature planning
-- Do NOT use TodoWrite, TaskCreate, or markdown TODO lists for ongoing work tracking
-- Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
-- Run `bd prime` for detailed command reference and session close protocol
+- **Active work** → `.claude/plans/<slug>/plan.md` checkboxes (the state).
+- **Open decisions / dead-ends** → `.claude/plans/<slug>/scratchpad.md`.
+- **Out-of-scope or discovered work** → note it in the active plan's
+  `scratchpad.md`, or add a line to `ROADMAP.md` under the appropriate
+  version section.
+- **Roadmap quality targets** (e.g. "test coverage to 80%") → tracked as
+  `ROADMAP.md` checklist items, not `bd` issues.
+- Do **not** use `TodoWrite`, `TaskCreate`, or markdown TODO lists for
+  ongoing tracking — the plan file is the single source of truth.
 
 ## Session Completion
 
@@ -405,28 +260,25 @@ bd preflight          # Pre-PR check (called automatically by /pr in feature mod
 
 **MANDATORY WORKFLOW:**
 
-1. **File bd issues** for any out-of-scope work or bugs discovered during the session that aren't part of the current feature plan. Use `--deps discovered-from:<slug>` to link back to the originating plan.
-2. **Update the active plan** - if a feature is in progress, ensure `.claude/plans/<slug>/plan.md` checkboxes reflect what's actually done; record open decisions in `scratchpad.md`.
-3. **Run quality gates** (if code changed) - Tests, linters, builds
-4. **Update bd state** - Close finished bug fixes; nothing to do for features at session boundaries (the plan file is the state).
-5. **Check off ROADMAP** - if a roadmap item completed this session, flip its `- [ ]` to `- [x]` and commit.
-6. **PUSH TO REMOTE** - This is MANDATORY:
+1. **Capture out-of-scope work** discovered during the session — add it to the active plan's `scratchpad.md` or to `ROADMAP.md`.
+2. **Update the active plan** - ensure `.claude/plans/<slug>/plan.md` checkboxes reflect what's actually done; record open decisions in `scratchpad.md`.
+3. **Run quality gates** (if code changed) - `mix compile --warnings-as-errors && mix format --check-formatted && mix credo --strict && mix test`.
+4. **Check off ROADMAP** - if a roadmap item completed this session, flip its `- [ ]` to `- [x]` and commit.
+5. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
-   bd dolt push
    git push
    git status  # MUST show "up to date with origin"
    ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
+6. **Clean up** - Clear stashes, prune remote branches
+7. **Verify** - All changes committed AND pushed
+8. **Hand off** - Provide context for next session
 
 **CRITICAL RULES:**
 - Work is NOT complete until `git push` succeeds
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
-<!-- END BEADS INTEGRATION -->
 
 <!-- ELIXIR-PHOENIX-PLUGIN:START -->
 <!-- Tailored for Qx (pure Elixir library, no Phoenix/Ecto/LiveView/Oban). Edit /phx:init template manually before re-running --update or it will be overwritten with the full Phoenix-flavoured version. -->
@@ -458,7 +310,7 @@ These rules govern ALL `/phx:*` command execution. Violations invalidate the ses
 |--------|--------|
 | Single file change | 0 |
 | 2–3 files | +2 |
-| 4+ files or crosses module boundaries (Calc / Operations / Simulation / Draw / Remote) | +3 |
+| 4+ files or crosses module boundaries (Calc / Operations / Simulation / Draw / Hardware) | +3 |
 | New domain concept (new gate, new sim mode, new visualization) | +3 |
 | Follows existing pattern | -2 |
 | Touches `defn` / Nx kernels in `lib/qx/calc*.ex` | +3 |
@@ -552,11 +404,10 @@ Do NOT present code as complete until verification passes.
 
 | Want to… | Use |
 |----------|-----|
-| Simple change | Describe it (auto-complexity runs) |
-| Feature (full chain) | `/plan` → `/phx:work` → `/phx:verify` → `/phx:review` → `/phx:triage` → `/pr` → `/phx:compound` |
-| Feature (one-shot, low-risk) | `/phx:full` |
-| Debug bug | `/phx:investigate` |
-| Bug fix | `/implement <bd-id>` → `/pr <bd-id>` |
+| Simple change (&lt;50 lines, 1 file) | `/phx:quick` (or describe it — auto-complexity runs) |
+| Feature or bug fix (full chain) | branch → `/phx:plan` → `/phx:work` → `/phx:verify` → `/phx:review` → `/phx:triage` → `gh pr create` → **wait for human PR review** → `gh pr merge --squash --delete-branch` → ROADMAP tick → `/phx:compound` |
+| One-shot, low-risk | `/phx:full` then `gh pr create`, then **wait for human PR review** before merge |
+| Debug a bug (root cause) | `/phx:investigate` |
 | Review code | `/phx:review` |
 | Verify changes | `/phx:verify` |
 | Project health | `/phx:audit` |
@@ -564,8 +415,8 @@ Do NOT present code as complete until verification passes.
 
 ## Roadmap & Release Triggers
 
-- `ROADMAP.md` is the strategic plan. Each item maps to either a feature plan slug (`(plan: <slug>)`) or a bd issue (`(qx-<id>)`).
-- After every PR merge, `/pr` prompts you to check off the matching ROADMAP item. Don't skip this — the release trigger depends on it.
+- `ROADMAP.md` is the strategic plan. Each item maps to a plan slug (`(plan: <slug>)`); items without a plan yet are plain checklist lines.
+- After every PR merge, manually tick the matching ROADMAP item in a follow-up commit on `main`. Don't skip this — the release trigger depends on it.
 - When a `## v0.X — …` section in ROADMAP.md has all items checked, that's the cue to invoke the `release-manager` agent. Don't release on time-based cadence; release when the milestone is actually complete.
 
 <!-- ELIXIR-PHOENIX-PLUGIN:END -->
