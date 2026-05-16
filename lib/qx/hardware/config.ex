@@ -90,6 +90,12 @@ defmodule Qx.Hardware.Config do
     :backend
   ]
 
+  # Redact the four credential fields from ANY inspect/1 — Logger
+  # output, BEAM crash reports dumping a closure env, error tuples that
+  # embed the struct, ad-hoc debugging. Without this they appear in
+  # plaintext (qx-o9h). Non-secret fields stay visible so the struct is
+  # still useful to inspect.
+  @derive {Inspect, except: [:portal_token, :ibm_api_key, :ibm_crn, :access_token]}
   defstruct [
     :portal_url,
     :portal_token,

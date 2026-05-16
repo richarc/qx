@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-05-16
+
+### Fixed
+
+- **`Qx.Hardware.connect/2` now supports discovery before a backend is
+  chosen.** It previously hard-validated `backend ∈ backends_list` and
+  returned a `Qx.Hardware.ConfigError` on a blank backend, which broke
+  the connect-then-pick flow (e.g. a UI populating a backend dropdown
+  from the connect result). Blank (`nil`/`""`/whitespace) `backend` now
+  skips the membership check and returns the populated config; a
+  *set* backend is still validated (catches typos early). `run/3`,
+  `run!/3`, and `submit_qasm/3` now reject a blank backend up front
+  with a clear `ConfigError` instead of failing deep in an IBM call.
+
+### Security
+
+- **`Qx.Hardware.Config` no longer leaks credentials via `inspect/1`**
+  (qx-o9h). Added `@derive {Inspect, except: [...]}` so `:portal_token`,
+  `:ibm_api_key`, `:ibm_crn`, and `:access_token` are redacted in all
+  inspect output (Logger, BEAM crash reports, error tuples embedding
+  the struct). Non-secret fields remain visible.
+
 ## [0.7.0] - 2026-05-15
 
 ### BREAKING
