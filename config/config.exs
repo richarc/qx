@@ -24,6 +24,11 @@ import Config
 # optimized CPU execution, which is still 10-50x faster than
 # the default Nx.BinaryBackend.
 
+# Norm-drift guard (Qx.Simulation): compile-time gated dev/test
+# assertion. Off by default so :prod and :dev pay zero cost; flipped
+# on in config/test.exs so the suite proves circuits stay normalized.
+config :qx, assert_norm: false
+
 # Import environment-specific config
 if config_env() == :test do
   import_config "test.exs"

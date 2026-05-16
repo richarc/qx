@@ -570,6 +570,11 @@ defmodule Qx do
   ## Options
     * `:shots` - Number of measurement shots (default: 1024)
     * `:backend` - Nx backend to use (e.g., `{EXLA.Backend, client: :host}`)
+    * `:renormalize` - Counter unitary float drift (default: `false`).
+      `false` = off; `true` = renormalize at measurement-time;
+      positive integer `N` = renormalize every `N` gates and at
+      measurement-time. Other values raise `Qx.OptionError`. See
+      `Qx.Simulation.run/2` for the float32 accuracy note.
 
   ## Returns
   A map containing:

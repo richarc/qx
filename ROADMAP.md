@@ -49,7 +49,7 @@ broadening hardware support beyond IBM.
 - [ ] Test coverage to 80%+ (currently ~66%)
 - [x] Document and test U gate parameter convention explicitly (qx-xt2)
 - [x] Add explicit matrix-equality tests for CSWAP and iSWAP gates (qx-uos)
-- [ ] Add norm-drift guard and configurable renormalization in CalcFast (qx-53v)
+- [x] Add norm-drift guard and configurable renormalization in CalcFast (qx-53v)
 - [ ] Replace case dispatch with gate registry in apply_instruction (qx-agu)
 - [ ] Add tests verifying partial measurement does not corrupt unmeasured qubits (qx-d1f)
 - [ ] Add tests for nested and chained c_if conditional operations (qx-sso)

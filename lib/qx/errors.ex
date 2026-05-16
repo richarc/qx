@@ -5,6 +5,29 @@ defmodule Qx.Error do
   defexception [:message]
 end
 
+defmodule Qx.OptionError do
+  @moduledoc """
+  Raised when an option passed to a public Qx function is invalid.
+
+  Carries the offending `:option` name and `:value` so callers can
+  pattern-match on the cause rather than parsing the message.
+  """
+  defexception [:option, :value, :message]
+
+  @impl true
+  def exception({option, value, hint}) do
+    %__MODULE__{
+      option: option,
+      value: value,
+      message: "Invalid value for option #{inspect(option)}: #{inspect(value)}. #{hint}"
+    }
+  end
+
+  def exception(message) when is_binary(message) do
+    %__MODULE__{message: message}
+  end
+end
+
 defmodule Qx.QubitIndexError do
   @moduledoc """
   Raised when a qubit index is out of range.

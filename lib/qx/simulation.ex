@@ -7,9 +7,19 @@ defmodule Qx.Simulation do
   All quantum states and operations properly support complex number arithmetic.
   """
 
-  alias Qx.{Calc, Gates, Math, QuantumCircuit, SimulationResult}
+  alias Qx.{Calc, Gates, Math, QuantumCircuit, SimulationResult, Validation}
 
   @type simulation_result :: SimulationResult.t()
+
+  # Dev/test-only norm-drift guard, compile-time gated. In :prod
+  # `@assert_norm` is false (config/config.exs) so `assert_norm/1`'s
+  # body — including the host sync inside `validate_normalized!/2`
+  # (`Nx.to_number`) — is dead code there (Iron Law Nx #5).
+  # config/test.exs flips it true. `@norm_tolerance` is float32-real:
+  # `:c64` states drift ~1.2e-7 even right after `Math.normalize/1`,
+  # so 1.0e-10 is unreachable — 1.0e-6 still traps gross drift.
+  @assert_norm Application.compile_env(:qx, :assert_norm, false)
+  @norm_tolerance 1.0e-6
 
   @doc """
   Executes a quantum circuit and returns the simulation results.
@@ -21,6 +31,19 @@ defmodule Qx.Simulation do
   ## Options
     * `:shots` - Number of measurement shots (default: 1024)
     * `:backend` - Nx backend to use for computation (default: current Nx default)
+    * `:renormalize` - Counter unitary float drift by renormalizing the
+      statevector (default: `false`). Accepts:
+        * `false` — no renormalization (current behaviour, zero cost)
+        * `true` — renormalize once at measurement-time (before
+          probabilities are computed)
+        * positive integer `N` — renormalize every `N` gates **and** at
+          measurement-time
+      Any other value raises `Qx.OptionError`.
+
+      Note: states are `:c64` (complex float32, ε≈1.2e-7). Even
+      immediately after renormalization the total probability deviates
+      from 1.0 by ~1e-7, so renormalization bounds drift but does not
+      eliminate it; do not expect sub-1e-7 accuracy in this backend.
 
   ## Backend Selection
 
@@ -47,18 +70,24 @@ defmodule Qx.Simulation do
       iex> result = Qx.Simulation.run(qc, shots: 2048)
       iex> result.shots
       2048
+
+      # Renormalize every 8 gates to counter long-circuit float drift
+      iex> result = Qx.Simulation.run(qc, renormalize: 8)
+      iex> is_map(result)
+      true
   """
   def run(%QuantumCircuit{} = circuit, options \\ []) do
     shots = Keyword.get(options, :shots, 1024)
     backend = Keyword.get(options, :backend)
+    renorm = resolve_renormalize(options)
 
     run_fn = fn ->
       # Check if circuit has conditionals - if so, use shot-by-shot execution
       if has_conditionals?(circuit) do
-        run_with_conditionals(circuit, shots)
+        run_with_conditionals(circuit, shots, renorm)
       else
         # Use optimized path for non-conditional circuits
-        run_without_conditionals(circuit, shots)
+        run_without_conditionals(circuit, shots, renorm)
       end
     end
 
@@ -70,10 +99,27 @@ defmodule Qx.Simulation do
     end
   end
 
+  # Resolve the `:renormalize` opt to the internal form threaded
+  # through the engine: :off | :measurement | {:every, n}.
+  defp resolve_renormalize(options) do
+    options
+    |> Keyword.get(:renormalize, false)
+    |> Validation.validate_renormalize!()
+    |> to_renorm()
+  end
+
+  defp to_renorm(false), do: :off
+  defp to_renorm(true), do: :measurement
+  defp to_renorm(n), do: {:every, n}
+
   # Original implementation for circuits without conditionals
-  defp run_without_conditionals(%QuantumCircuit{} = circuit, shots) do
-    # Execute the circuit to get final state
-    final_state = execute_circuit(circuit)
+  defp run_without_conditionals(%QuantumCircuit{} = circuit, shots, renorm) do
+    # Execute the circuit; renorm per-gate for {:every, n}, then once
+    # more at measurement-time for :measurement / {:every, n}.
+    final_state =
+      circuit
+      |> execute_circuit(renorm)
+      |> maybe_measurement_renorm(renorm)
 
     # Calculate probabilities from complex state
     probabilities = Math.probabilities(final_state)
@@ -91,11 +137,11 @@ defmodule Qx.Simulation do
   end
 
   # New implementation for circuits with conditionals
-  defp run_with_conditionals(%QuantumCircuit{} = circuit, shots) do
+  defp run_with_conditionals(%QuantumCircuit{} = circuit, shots, renorm) do
     # Execute each shot independently
     results =
       for _shot <- 1..shots do
-        execute_single_shot(circuit)
+        execute_single_shot(circuit, renorm)
       end
 
     # Extract classical bits from all shots
@@ -107,7 +153,8 @@ defmodule Qx.Simulation do
     # Calculate average probabilities (from final states)
     # Note: For conditional circuits, we can't provide a single final state
     # We'll use the last shot's state as representative
-    {final_state, _} = List.last(results)
+    {last_state, _} = List.last(results)
+    final_state = maybe_measurement_renorm(last_state, renorm)
     probabilities = Math.probabilities(final_state)
 
     %SimulationResult{
@@ -152,7 +199,7 @@ defmodule Qx.Simulation do
 
     backend = Keyword.get(options, :backend)
 
-    exec_fn = fn -> execute_circuit(circuit) end
+    exec_fn = fn -> execute_circuit(circuit, :off) end
 
     if backend do
       Nx.with_default_backend(backend, exec_fn)
@@ -200,7 +247,7 @@ defmodule Qx.Simulation do
     backend = Keyword.get(options, :backend)
 
     prob_fn = fn ->
-      final_state = execute_circuit(circuit)
+      final_state = execute_circuit(circuit, :off)
       Math.probabilities(final_state)
     end
 
@@ -213,14 +260,56 @@ defmodule Qx.Simulation do
 
   # Private functions
 
-  defp execute_circuit(%QuantumCircuit{} = circuit) do
+  defp execute_circuit(%QuantumCircuit{} = circuit, renorm) do
     # Convert initial real state to complex representation
     initial_complex_state = real_state_to_complex(circuit.state)
     instructions = QuantumCircuit.get_instructions(circuit)
 
-    Enum.reduce(instructions, initial_complex_state, fn instruction, state ->
-      apply_instruction(instruction, state, circuit.num_qubits)
-    end)
+    {final_state, _count} =
+      Enum.reduce(instructions, {initial_complex_state, 0}, fn instruction, {state, count} ->
+        apply_gate_step(state, instruction, count, circuit.num_qubits, renorm)
+      end)
+
+    final_state
+  end
+
+  # Apply one gate, advance the 1-based gate counter, and run the
+  # per-gate renorm + dev/test norm guard. Single source of the
+  # every-n cadence so the non-conditional path, the conditional
+  # timeline, and gates *inside* a `c_if` block all count identically.
+  defp apply_gate_step(state, instruction, count, num_qubits, renorm) do
+    next = count + 1
+
+    new_state =
+      instruction
+      |> apply_instruction(state, num_qubits)
+      |> maybe_gate_renorm(renorm, next)
+      |> assert_norm()
+
+    {new_state, next}
+  end
+
+  # Measurement-time renorm: applied for :measurement and {:every, n}.
+  # :off preserves the exact prior behaviour at zero cost.
+  defp maybe_measurement_renorm(state, :off), do: state
+  defp maybe_measurement_renorm(state, _renorm), do: Math.normalize(state)
+
+  # Per-gate renorm for {:every, n}: renorm after the `ordinal`-th gate
+  # (1-based) when `ordinal` is a multiple of n. :off / :measurement
+  # add no per-gate work (catch-all clause just returns state).
+  defp maybe_gate_renorm(state, {:every, n}, ordinal) do
+    if rem(ordinal, n) == 0, do: Math.normalize(state), else: state
+  end
+
+  defp maybe_gate_renorm(state, _renorm, _ordinal), do: state
+
+  # Dev/test norm-drift guard. `validate_normalized!/2` does a host
+  # sync (`Nx.to_number`); acceptable ONLY because @assert_norm is
+  # compiled false in :prod (config/config.exs) so this is dead code
+  # there (Iron Law Nx #5). Active in :test (config/test.exs).
+  defp assert_norm(state) do
+    if @assert_norm, do: :ok = Validation.validate_normalized!(state, @norm_tolerance)
+    state
   end
 
   defp real_state_to_complex(state) do
@@ -391,17 +480,21 @@ defmodule Qx.Simulation do
   end
 
   # Execute a single shot of a circuit with conditionals
-  defp execute_single_shot(%QuantumCircuit{} = circuit) do
+  defp execute_single_shot(%QuantumCircuit{} = circuit, renorm) do
     initial_state = real_state_to_complex(circuit.state)
     classical_bits = List.duplicate(0, circuit.num_classical_bits)
 
     # Create instruction timeline (merges instructions and measurements)
     timeline = create_instruction_timeline(circuit)
 
-    # Execute timeline sequentially
-    {final_state, final_classical_bits} =
-      Enum.reduce(timeline, {initial_state, classical_bits}, fn item, {state, cbits} ->
-        process_timeline_item(item, state, cbits, circuit.num_qubits)
+    # Execute timeline sequentially, threading a 1-based gate counter
+    # (NOT a timeline index) so the {:every, n} cadence counts actual
+    # gate applications — including gates *inside* a c_if block
+    # (W1 fix). Measurements do not advance the counter (a measurement
+    # is not a unitary gate; collapse already renormalizes).
+    {final_state, final_classical_bits, _count} =
+      Enum.reduce(timeline, {initial_state, classical_bits, 0}, fn item, {state, cbits, count} ->
+        process_timeline_item(item, state, cbits, count, circuit.num_qubits, renorm)
       end)
 
     {final_state, final_classical_bits}
@@ -491,32 +584,35 @@ defmodule Qx.Simulation do
     Nx.tensor(collapsed_data, type: :c64)
   end
 
-  defp process_timeline_item(item, state, cbits, num_qubits) do
+  defp process_timeline_item(item, state, cbits, count, num_qubits, renorm) do
     case item do
       {:instruction, instruction} ->
-        {apply_instruction(instruction, state, num_qubits), cbits}
+        {new_state, next} = apply_gate_step(state, instruction, count, num_qubits, renorm)
+        {new_state, cbits, next}
 
       {:measurement, {qubit, cbit}} ->
         {new_state, measured_value} =
           perform_single_measurement(state, qubit, num_qubits)
 
-        {new_state, List.replace_at(cbits, cbit, measured_value)}
+        {new_state, List.replace_at(cbits, cbit, measured_value), count}
 
       {:conditional, {cbit, value, instructions}} ->
-        process_conditional(cbits, cbit, value, instructions, state, num_qubits)
+        process_conditional(cbits, cbit, value, instructions, state, count, num_qubits, renorm)
     end
   end
 
-  defp process_conditional(cbits, cbit, value, instructions, state, num_qubits) do
+  defp process_conditional(cbits, cbit, value, instructions, state, count, num_qubits, renorm) do
     if Enum.at(cbits, cbit) == value do
-      new_state =
-        Enum.reduce(instructions, state, fn instr, s ->
-          apply_instruction(instr, s, num_qubits)
+      # c_if sub-gates advance the SAME gate counter, so renormalize: N
+      # spans the conditional block consistently (W1 fix).
+      {new_state, new_count} =
+        Enum.reduce(instructions, {state, count}, fn instr, {s, c} ->
+          apply_gate_step(s, instr, c, num_qubits, renorm)
         end)
 
-      {new_state, cbits}
+      {new_state, cbits, new_count}
     else
-      {state, cbits}
+      {state, cbits, count}
     end
   end
 end

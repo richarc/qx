@@ -90,6 +90,7 @@ defmodule Qx.MixProject do
         ],
         "Error Handling": [
           Qx.Error,
+          Qx.OptionError,
           Qx.QubitIndexError,
           Qx.StateNormalizationError,
           Qx.MeasurementError,
@@ -127,7 +128,8 @@ defmodule Qx.MixProject do
     [
       bench: [
         "run --no-halt bench/ghz_bench.exs",
-        "run --no-halt bench/qft_bench.exs"
+        "run --no-halt bench/qft_bench.exs",
+        "run --no-halt bench/renormalization_bench.exs"
       ]
     ]
   end

@@ -299,4 +299,39 @@ defmodule Qx.Validation do
 
     :ok
   end
+
+  @doc """
+  Validates the `:renormalize` option for `Qx.Simulation.run/2`.
+
+  Accepts `false`, `true`, or a positive integer; returns the value
+  unchanged on success. Raises `Qx.OptionError` on anything else
+  (negative/zero integers, floats, atoms, …) so misuse surfaces as a
+  typed Qx error rather than a downstream `FunctionClauseError`.
+
+  ## Examples
+
+      iex> Qx.Validation.validate_renormalize!(false)
+      false
+
+      iex> Qx.Validation.validate_renormalize!(true)
+      true
+
+      iex> Qx.Validation.validate_renormalize!(10)
+      10
+
+      iex> Qx.Validation.validate_renormalize!(-1)
+      ** (Qx.OptionError) Invalid value for option :renormalize: -1. Expected false, true, or a positive integer.
+
+      iex> Qx.Validation.validate_renormalize!(:bad)
+      ** (Qx.OptionError) Invalid value for option :renormalize: :bad. Expected false, true, or a positive integer.
+  """
+  @spec validate_renormalize!(term()) :: false | true | pos_integer()
+  def validate_renormalize!(false), do: false
+  def validate_renormalize!(true), do: true
+  def validate_renormalize!(n) when is_integer(n) and n > 0, do: n
+
+  def validate_renormalize!(value) do
+    raise Qx.OptionError,
+          {:renormalize, value, "Expected false, true, or a positive integer."}
+  end
 end

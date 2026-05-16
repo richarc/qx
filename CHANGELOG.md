@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Configurable statevector renormalization + dev/test norm-drift
+  guard in `Qx.Simulation.run/2` / `Qx.run/2` (qx-53v).** New
+  `:renormalize` option (default `false` — fully backwards compatible,
+  zero cost when off): `true` renormalizes at measurement-time; a
+  positive integer `N` renormalizes every `N` gates and at
+  measurement-time; any other value raises the new typed
+  `Qx.OptionError`. A compile-time-gated assertion
+  (`Application.compile_env(:qx, :assert_norm, false)`, on in `:test`,
+  off in `:prod`/`:dev`) fails fast if a circuit's total probability
+  drifts beyond `1.0e-6`. **Additive and non-breaking** — no major
+  version bump. Note: states are `:c64` (float32), so the practical
+  norm-accuracy floor is ~1e-7; renormalization bounds drift rather
+  than eliminating it.
+
 ## [0.7.1] - 2026-05-16
 
 ### Fixed
