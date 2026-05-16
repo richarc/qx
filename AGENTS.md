@@ -171,35 +171,40 @@ One path for all work — features and bug fixes alike. The plan file at
 **Elixir Plugin — Mandatory Procedures** block at the end of this file
 for the complexity routing and Iron Laws the plugin enforces.
 
+**No pull requests.** There is one human developer/reviewer.
+`/phx:review` is the **merge gate** that replaces a PR review (see
+below). Pushing branches and `main` is **backup only** — pushing never
+publishes. The **only** release gate is a deliberate version tag (see
+**Release**).
+
 | Step | Command | What it does |
 |------|---------|--------------|
-| 0 | `git checkout -b feat/<slug>` (or `fix/<slug>` for a bug) from `main` | Create the working branch |
-| 1 | `/phx:plan <description>` | Produces `.claude/plans/<slug>/{plan,scratchpad}.md` (auto-complexity routing picks plan depth; `/phx:quick` for &lt;50-line single-file changes) |
-| 2 | `/phx:work .claude/plans/<slug>/plan.md` | Implements the plan phase by phase; runs verify after each phase |
+| 0 | `git checkout -b feat/<slug>` (or `fix/<slug>`) from `main` | Create the working branch |
+| 1 | `/phx:plan <description>` | Produces `.claude/plans/<slug>/{plan,scratchpad}.md` (auto-complexity routing; `/phx:quick` for &lt;50-line single-file changes) |
+| 2 | `/phx:work .claude/plans/<slug>/plan.md` | Implements phase by phase; verify after each phase. Cross-repo deps stay `{:dep, path: "../<repo>"}` during dev |
 | 3 | `/phx:verify` | Optional — explicit compile/format/credo/test gate after manual fixes |
-| 4 | `/phx:review` | Spawns parallel specialist agents; produces a verdict |
-| 5 | `/phx:triage` | Optional — interactive filtering when review yields ≥ 5 findings |
-| 6 | apply triaged fixes | Manually or via another `/phx:work` cycle on the same plan |
-| 7 | `git push -u origin <branch>` then `gh pr create` | Push and open the PR. PR description links the plan slug and references the matching ROADMAP item |
-| 8 | **Human reviews the PR** | The maintainer (Craig Richards) reads the diff on the PR page and waits for CI to go green. This is a required human gate — the agent does **not** self-approve or merge its own work. The agent stops here and waits for the maintainer's decision |
-| 9 | `gh pr merge --squash --delete-branch` — **only after the maintainer approves** | Merges to `main` and deletes the local + remote branch |
-| 10 | tick the matching ROADMAP item in a follow-up commit on `main` | Required — the release trigger reads ROADMAP check-state |
-| 11 | `/phx:compound` | Capture solved patterns as searchable docs |
-| 12 | iterate steps 0–11 | One ROADMAP item per cycle |
-| 13 | `release-manager` agent | Run when a ROADMAP version section has all items checked |
+| 4 | `/phx:review` | **Merge gate.** Parallel specialist agents produce a verdict. Must be PASS (or all findings triaged) before merge |
+| 5 | `/phx:triage` | When review yields ≥ 5 findings — filter, then fix (loop step 2) |
+| 6 | `git push -u origin <branch>` | Backup only — no PR, no release. Push whenever; lose-nothing insurance |
+| 7 | merge to `main` — **only after `/phx:review` PASS** | `git checkout main && git merge --squash <branch> && git commit` (one clean commit per change). The human authorizes this |
+| 8 | tick the matching ROADMAP item in that commit | Required — the release trigger reads ROADMAP check-state |
+| 9 | `git push origin main` then `git branch -d <branch>` | Keeps `origin/main` truthful (still no release); clean up the branch |
+| 10 | `/phx:compound` | Capture solved patterns as searchable docs |
+| 11 | iterate steps 0–10 | One ROADMAP item per cycle |
+| 12 | **Release** (below) | Only when a ROADMAP `## v0.X` section is fully checked |
 
-**Two review boundaries, not one.** `/phx:review` (step 4) is the
-agent self-checking its own work *before* it leaves the branch — fast,
-automated, catches correctness/idiom/Iron-Law issues. The **PR review
-(step 8) is the human gate**: a person with product authority reads the
-CI-verified diff and decides whether it belongs in the trunk.
-`/phx:review` answers "is this code correct?"; the human PR review
-answers "do we want this, as designed, merged into `main`?" The agent
-must not collapse these — it stops at step 8 and waits.
+### The merge gate (replaces the PR review)
+
+For a single developer, `/phx:review` *is* the quality boundary a PR
+used to provide — the rigorous self-check before code enters `main`.
+Code does **not** merge until `/phx:review` is **PASS**, or every
+finding is triaged (step 5) and resolved. The human authorizes the
+merge: the agent runs the review, reports the verdict, and stops — it
+does not squash-merge unreviewed work to `main`. There is no GitHub PR
+and no second reviewer; the gate is the review verdict, not a PR page.
 
 For end-to-end with no agent checkpoints, use `/phx:full` instead of
-steps 2–6. PR creation is automatic; **the human PR review (step 8) and
-merge are never skipped** — `/phx:full` still stops for the maintainer.
+steps 2–5. It still stops at the merge gate for your authorization.
 
 ### TDD Rules (enforced by hook + instruction)
 
@@ -209,23 +214,38 @@ merge are never skipped** — `/phx:full` still stops for the maintainer.
 
 ### Branch Strategy
 
-- **Feature branches**: `feat/<slug>` — slug matches `.claude/plans/<slug>/`
-- **Bug-fix branches**: `fix/<slug>` — slug matches `.claude/plans/<slug>/`
-- **Branch creation**: by the user at Step 0 (before `/phx:plan`)
-- **Branch deletion**: pass `--delete-branch` to `gh pr merge --squash` at merge time
-- All branches PR into `main`; never push directly to `main` after the
-  initial `chore(workflow)` setup commit
+- **Feature branches**: `feat/<slug>`; **bug-fix**: `fix/<slug>` — slug matches `.claude/plans/<slug>/`
+- **Branch creation**: by the user at step 0 (before `/phx:plan`)
+- **Merge**: locally with `git merge --squash` after `/phx:review` PASS; `git branch -d` after
+- Push branches to origin freely for backup — pushing **never** triggers a release
 
 ### Lifecycle
 
 ```
-ROADMAP item → git branch → /phx:plan → /phx:work → /phx:review (agent self-check)
-            → gh pr create → ⟪ HUMAN reviews PR + CI green ⟫ → gh pr merge --squash --delete-branch
-            → ROADMAP.md check-off commit → /phx:compound → loop
+ROADMAP item → git branch → /phx:plan → /phx:work → /phx:verify
+            → /phx:review  ⟪ MERGE GATE: PASS or all findings triaged ⟫
+            → git merge --squash → main → ROADMAP check-off → git push origin main
+            → /phx:compound → loop
+            ⟂ release ONLY on a deliberate version tag (see Release)
 ```
 
-The `⟪ HUMAN reviews PR ⟫` step is a hard stop for the agent: open the
-PR, report it's ready, and wait. Do not merge your own PR.
+The merge gate is a hard stop for the agent: run `/phx:review`, report
+the verdict, and wait for the human to authorize the merge.
+
+### Release (the only publish gate)
+
+Pushing branches or `main` never publishes — releases are
+**tag-triggered** (`release.yml` fires on `vX.Y.Z`). Cut a release only
+when a ROADMAP `## v0.X` section is fully checked:
+
+1. Bump `version:` in `mix.exs` and add the `CHANGELOG.md` `[0.X.Y]` section.
+2. **Flip any `{:dep, path: "../<repo>"}` → the published hex version**
+   (e.g. `{:qx, "~> 0.7", hex: :qx_sim}`) and re-run `/phx:verify`.
+   Shipping a path dep = an uninstallable package. (Qx is upstream and
+   normally has no sibling path deps; this is the workspace-wide rule.)
+3. Invoke the `release-manager` agent (or follow `RELEASE.md`): tag
+   `vX.Y.Z` and push the tag → the workflow publishes Hex + the GitHub
+   Release. This tag push is the single, deliberate release action.
 
 ### Hook: Test File Guard
 
@@ -395,7 +415,7 @@ Do NOT present code as complete until verification passes.
 |-------|-------|
 | Bug fix | "Capture as lesson with `/phx:learn-from-fix`?" |
 | Review verdict | "Triage findings with `/phx:triage`?" |
-| Merged PR | "Capture solved patterns with `/phx:compound`?" |
+| Merge to `main` | "Capture solved patterns with `/phx:compound`?" |
 | Nx kernel change | "Run `mix bench` to confirm no regression?" |
 | Public API change | "Add CHANGELOG entry and bump version in `mix.exs`?" |
 | ROADMAP version section now fully checked | "Run release-manager agent to publish to Hex.pm + GitHub?" |
@@ -405,8 +425,8 @@ Do NOT present code as complete until verification passes.
 | Want to… | Use |
 |----------|-----|
 | Simple change (&lt;50 lines, 1 file) | `/phx:quick` (or describe it — auto-complexity runs) |
-| Feature or bug fix (full chain) | branch → `/phx:plan` → `/phx:work` → `/phx:verify` → `/phx:review` → `/phx:triage` → `gh pr create` → **wait for human PR review** → `gh pr merge --squash --delete-branch` → ROADMAP tick → `/phx:compound` |
-| One-shot, low-risk | `/phx:full` then `gh pr create`, then **wait for human PR review** before merge |
+| Feature or bug fix (full chain) | branch → `/phx:plan` → `/phx:work` → `/phx:verify` → `/phx:review` (**merge gate: PASS/triaged**) → `git merge --squash` → `main` → ROADMAP tick → `git push origin main` → `/phx:compound` |
+| One-shot, low-risk | `/phx:full`, then it stops at the `/phx:review` merge gate for your authorization |
 | Debug a bug (root cause) | `/phx:investigate` |
 | Review code | `/phx:review` |
 | Verify changes | `/phx:verify` |
@@ -416,7 +436,7 @@ Do NOT present code as complete until verification passes.
 ## Roadmap & Release Triggers
 
 - `ROADMAP.md` is the strategic plan. Each item maps to a plan slug (`(plan: <slug>)`); items without a plan yet are plain checklist lines.
-- After every PR merge, manually tick the matching ROADMAP item in a follow-up commit on `main`. Don't skip this — the release trigger depends on it.
+- After every merge to `main`, tick the matching ROADMAP item in that commit. Don't skip this — the release trigger reads ROADMAP check-state.
 - When a `## v0.X — …` section in ROADMAP.md has all items checked, that's the cue to invoke the `release-manager` agent. Don't release on time-based cadence; release when the milestone is actually complete.
 
 <!-- ELIXIR-PHOENIX-PLUGIN:END -->
