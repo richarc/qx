@@ -392,6 +392,7 @@ If code would violate ANY of these:
 3. PREFER reshape + tensor contraction over `Nx.take` + `Nx.select` gather/mask patterns. Gathers don't fuse and double the work. If gather is unavoidable, leave a one-line comment saying why.
 4. `defn` functions MUST be correct on `Nx.BinaryBackend` (the default when EXLA isn't loaded). No EXLA-only assumptions.
 5. NO host-side loops over `2^n` amplitudes. Vectorise with Nx primitives.
+8. PRECISION/TOLERANCE targets MUST be feasible at the runtime float width. Qx states are `:c64` (complex **float32**, ε≈1.2e-7): a norm/equality/tolerance target below ~`1.0e-6` (e.g. `1.0e-10`) is unreachable even immediately after `Qx.Math.normalize/1`. Do NOT specify or assert sub-epsilon tolerances; if a plan/AC demands one, surface it with measured data and amend before implementing (don't silently pick a new number). Express long-circuit norm guarantees as *relative* (renormalized drift < un-renormalized) or as a guard-fires test — not an absolute sub-ε number. Reuse `Qx.Math.normalize/1` + `Qx.Validation.validate_normalized!/2`; do NOT hand-roll a norm-form assertion. Any resulting dev/test host sync (e.g. `Nx.to_number`) MUST be compile-gated out of `:prod` via `Application.compile_env/3` (see Nx #5). (Numbered 8 to preserve existing cross-references to laws #6/#7.)
 
 **Public API surface**
 6. Breaking changes to `Qx`, `Qx.QuantumCircuit`, `Qx.Operations`, `Qx.Simulation`, `Qx.SimulationResult`, or any module under `Qx.Behaviours` REQUIRE a CHANGELOG entry and a major-version bump (SemVer).
