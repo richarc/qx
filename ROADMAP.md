@@ -3,29 +3,6 @@
 This roadmap captures the strategic direction for Qx. Items are grouped by release version, not by
 date — software dates go stale; versions don't.
 
-**The tooling model:**
-- `ROADMAP.md` — *What* and *When* (strategic, version-scoped, public intent)
-- `.claude/plans/<slug>/plan.md` — *How* for **features** (per-plan implementation detail)
-- `bd` (beads) — *How* for **bugs and deferred work** (granular issues, dependencies)
-- `CHANGELOG.md` — *What was done* (historical record of completed work)
-
-**Item legend** below: `(plan: <slug>)` = feature tracked by a plan file
-under `.claude/plans/`; `(qx-<id>)` = bd issue (bug, task, or deferred work).
-
-When a roadmap **feature** item is ready → run `/plan <description>` to
-create the branch and plan file. When a roadmap **bug/task** item is
-ready → claim the bd issue and run `/implement <id>`. After PR merge,
-flip the roadmap checkbox.
-
----
-
-## Current: v0.6.0
-
-Statevector simulation with up to 20 qubits, two modes of operation (Circuit Mode and Calculation
-Mode), a growing gate library, OpenQASM 3.0 **export and import** (round-trip with Qiskit / IBM
-Quantum), visualization, and remote execution via QxServer. See [CHANGELOG.md](CHANGELOG.md) for
-the full history.
-
 ---
 
 ## v0.5.2 — Bug Fixes & Visualisation Improvements ✓ Released
