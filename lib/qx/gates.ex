@@ -431,6 +431,11 @@ defmodule Qx.Gates do
   Exchanges qubit states while applying an i phase to the swapped components.
   Matrix: [[1,0,0,0],[0,0,i,0],[0,i,0,0],[0,0,0,1]] in the two-qubit subspace.
 
+  Convention: OpenQASM 3.0 `iswap` / Qiskit `iSwapGate` — a **+i**
+  (not −i) phase is applied to the swapped |01⟩↔|10⟩ amplitudes.
+  Returns a `:c64` `{2ⁿ, 2ⁿ}` tensor. MSB qubit order (qubit 0 is the
+  most significant bit, matching the rest of Qx: `num_qubits - 1 - q`).
+
   ## Parameters
     * `qubit_a` - Index of the first qubit
     * `qubit_b` - Index of the second qubit
@@ -473,6 +478,12 @@ defmodule Qx.Gates do
 
   Swaps target_a and target_b when the control qubit is |1⟩.
 
+  Convention: OpenQASM 3.0 `cswap` / Qiskit `CSwapGate` (Fredkin).
+  MSB qubit order (qubit 0 is the most significant bit, matching the
+  rest of Qx: `num_qubits - 1 - q`); when the control is |1⟩ the two
+  targets are swapped, e.g. |101⟩↔|110⟩ for `cswap(0, 1, 2, 3)`.
+  Returns a `:c64` `{2ⁿ, 2ⁿ}` permutation tensor (all entries are real 0 or 1).
+
   ## Parameters
     * `control` - Index of the control qubit
     * `target_a` - Index of the first target qubit
@@ -482,18 +493,17 @@ defmodule Qx.Gates do
   ## Examples
 
       iex> Nx.shape(Qx.Gates.cswap(0, 1, 2, 3))
-      {8, 8, 2}
+      {8, 8}
 
   """
   def cswap(control, target_a, target_b, num_qubits) do
     state_size = trunc(:math.pow(2, num_qubits))
-    identity_matrix = Nx.broadcast(0.0, {state_size, state_size, 2})
 
     control_bit_pos = num_qubits - 1 - control
     ta_bit_pos = num_qubits - 1 - target_a
     tb_bit_pos = num_qubits - 1 - target_b
 
-    for i <- 0..(state_size - 1), reduce: identity_matrix do
+    for i <- 0..(state_size - 1), reduce: Nx.eye(state_size, type: :c64) do
       acc ->
         control_bit = Bitwise.band(Bitwise.bsr(i, control_bit_pos), 1)
         ta_bit = Bitwise.band(Bitwise.bsr(i, ta_bit_pos), 1)
@@ -505,9 +515,11 @@ defmodule Qx.Gates do
             |> Bitwise.bxor(Bitwise.bsl(1, ta_bit_pos))
             |> Bitwise.bxor(Bitwise.bsl(1, tb_bit_pos))
 
-          Nx.put_slice(acc, [i, j, 0], Nx.tensor([[[1.0]]]))
+          acc
+          |> Nx.put_slice([i, i], Nx.tensor([[0]], type: :c64))
+          |> Nx.put_slice([i, j], Nx.tensor([[1]], type: :c64))
         else
-          Nx.put_slice(acc, [i, i, 0], Nx.tensor([[[1.0]]]))
+          acc
         end
     end
   end
