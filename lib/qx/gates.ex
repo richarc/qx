@@ -255,20 +255,28 @@ defmodule Qx.Gates do
   end
 
   @doc """
-  Returns the general single-qubit unitary gate (IBM/OpenQASM 3 convention).
+  Returns the general single-qubit unitary gate U(θ,φ,λ).
 
   U(θ,φ,λ) = [[cos(θ/2),             -e^(iλ)·sin(θ/2) ],
                [e^(iφ)·sin(θ/2),  e^(i(φ+λ))·cos(θ/2) ]]
 
+  Follows the **OpenQASM 3.0** specification built-in `U` gate /
+  Qiskit `qiskit.circuit.library.UGate` convention.
+
+  Decomposition identity: `U(θ,φ,λ) = RZ(φ)·RY(θ)·RZ(λ)` up to the
+  global phase `e^{i(φ+λ)/2}`. For the X/H/I/Y special cases below the
+  result is exact — Qiskit's `UGate` carries no extra global phase.
+
   Special cases:
   - U(π, 0, π) = X gate
   - U(π/2, 0, π) = H gate
+  - U(0, 0, 0) = I gate
   - U(π, π/2, π/2) = Y gate (up to global phase)
 
   ## Parameters
-    * `theta` - Polar angle in radians
-    * `phi` - Azimuthal angle in radians
-    * `lambda` - Additional phase angle in radians
+    * `theta` (θ) - Polar rotation angle in radians
+    * `phi` (φ) - Phase angle in radians
+    * `lambda` (λ) - Phase angle in radians
 
   ## Examples
 

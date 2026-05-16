@@ -47,7 +47,7 @@ Test-coverage and refactor items that didn't make the v0.6/v0.7 cut, plus
 broadening hardware support beyond IBM.
 
 - [ ] Test coverage to 80%+ (currently ~66%)
-- [ ] Document and test U gate parameter convention explicitly (qx-xt2)
+- [x] Document and test U gate parameter convention explicitly (qx-xt2)
 - [ ] Add explicit matrix-equality tests for CSWAP and iSWAP gates (qx-uos)
 - [ ] Add norm-drift guard and configurable renormalization in CalcFast (qx-53v)
 - [ ] Replace case dispatch with gate registry in apply_instruction (qx-agu)
