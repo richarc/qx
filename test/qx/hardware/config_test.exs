@@ -108,4 +108,42 @@ defmodule Qx.Hardware.ConfigTest do
       end
     end
   end
+
+  describe "inspect/1 secret redaction (qx-o9h)" do
+    setup do
+      config =
+        Config.new!(
+          portal_url: "https://api.qxquantum.com",
+          portal_token: "PTOK-SECRET-123",
+          ibm_api_key: "IBMKEY-SECRET-456",
+          ibm_crn: "crn:v1:bluemix:SECRET-789",
+          ibm_region: "us-east",
+          backend: "ibm_brisbane"
+        )
+
+      config = %{config | access_token: "ACCESS-SECRET-000"}
+      %{config: config, dump: inspect(config)}
+    end
+
+    test "no credential value appears in inspect output", %{dump: dump} do
+      refute dump =~ "PTOK-SECRET-123"
+      refute dump =~ "IBMKEY-SECRET-456"
+      refute dump =~ "SECRET-789"
+      refute dump =~ "ACCESS-SECRET-000"
+    end
+
+    test "secrets redacted even when the struct is nested in a tuple/log shape",
+         %{config: config} do
+      dump = inspect({:error, {:ibm_submit, %{config: config}}})
+      refute dump =~ "PTOK-SECRET-123"
+      refute dump =~ "IBMKEY-SECRET-456"
+      refute dump =~ "ACCESS-SECRET-000"
+    end
+
+    test "non-secret fields stay visible", %{dump: dump} do
+      assert dump =~ "ibm_brisbane"
+      assert dump =~ "us-east"
+      assert dump =~ "api.qxquantum.com"
+    end
+  end
 end

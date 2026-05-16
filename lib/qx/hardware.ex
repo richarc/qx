@@ -168,7 +168,8 @@ defmodule Qx.Hardware do
     seed = Keyword.get(opts, :seed_transpiler)
     num_bits = Keyword.get(opts, :num_bits)
 
-    with {:ok, config} <- ensure_connected(config, portal, ibm, on_status),
+    with :ok <- require_backend(config),
+         {:ok, config} <- ensure_connected(config, portal, ibm, on_status),
          {:ok, ibm_cfg} <- ibm_authenticate(config, ibm, on_status),
          {:ok, props} <- ibm_fetch_backend(ibm_cfg, ibm, on_status),
          {:ok, transpiled} <-
@@ -246,12 +247,24 @@ defmodule Qx.Hardware do
   end
 
   @doc """
-  Establishes a session with qxportal: fetches `/api/v1/me` and the
-  IBM backends list, validates that `config.backend` is present.
+  Establishes a session with qxportal: fetches `/api/v1/me`, performs
+  the IBM IAM exchange, and lists the account's backends.
 
   Returns the same config with `identity` and `backends_list`
-  populated. Idempotent: a call on an already-connected config that
-  already lists the requested backend is a no-op.
+  populated.
+
+  This is a *discovery* call — it is meant to be usable **before** a
+  backend has been chosen (the caller typically picks from the returned
+  `backends_list`). Therefore:
+
+    * if `config.backend` is blank (`nil` or `""`), the backend
+      membership check is skipped and the populated config is returned;
+    * if `config.backend` is set, it is validated against the fetched
+      `backends_list` and a `Qx.Hardware.ConfigError` is returned when
+      it is not available to the account (catches typos early).
+
+  Running a circuit still requires a chosen backend — `run/3`,
+  `run!/3`, and `submit_qasm/3` reject a blank backend up front.
   """
   @spec connect(Config.t(), opts()) :: {:ok, Config.t()} | error()
   def connect(%Config{} = config, opts \\ []) do
@@ -306,20 +319,48 @@ defmodule Qx.Hardware do
             token_expires_at: ibm_cfg.token_expires_at
         }
 
-      if config.backend in backends do
-        {:ok, config}
-      else
-        {:error,
-         {:config,
-          ConfigError.exception(
-            field: :backend,
-            reason:
-              "backend #{inspect(config.backend)} not in account's backends " <>
-                inspect(backends)
-          )}}
+      cond do
+        # Discovery call: no backend chosen yet — return the populated
+        # config so the caller can pick from backends_list.
+        blank_backend?(config) ->
+          {:ok, config}
+
+        config.backend in backends ->
+          {:ok, config}
+
+        true ->
+          {:error,
+           {:config,
+            ConfigError.exception(
+              field: :backend,
+              reason:
+                "backend #{inspect(config.backend)} not in account's backends " <>
+                  inspect(backends)
+            )}}
       end
     end
   end
+
+  # A backend must be chosen before a circuit can run/submit. `connect/2`
+  # (discovery) is exempt — it populates backends_list precisely so the
+  # caller can choose.
+  defp require_backend(%Config{} = config) do
+    if blank_backend?(config) do
+      {:error,
+       {:config,
+        ConfigError.exception(
+          field: :backend,
+          reason: "is required to run a circuit (none selected)"
+        )}}
+    else
+      :ok
+    end
+  end
+
+  defp blank_backend?(%Config{backend: nil}), do: true
+  defp blank_backend?(%Config{backend: ""}), do: true
+  defp blank_backend?(%Config{backend: b}) when is_binary(b), do: String.trim(b) == ""
+  defp blank_backend?(%Config{}), do: false
 
   defp identity_label(%{email: email}) when is_binary(email), do: email
   defp identity_label(%{"email" => email}) when is_binary(email), do: email

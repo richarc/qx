@@ -406,6 +406,74 @@ defmodule Qx.HardwareTest do
     end
   end
 
+  describe "connect/2 (discovery — blank backend allowed)" do
+    setup ctx do
+      Recorder.set(ctx.recorder, :portal_me, {:ok, %{email: "disco@example.com"}})
+
+      Recorder.set(
+        ctx.recorder,
+        :iam_exchange,
+        {:ok, Map.put(ctx.config, :access_token, "t")}
+      )
+
+      Recorder.set(
+        ctx.recorder,
+        :list_backends,
+        {:ok,
+         [
+           %{name: "ibm_brisbane", status: "active", num_qubits: 127},
+           %{name: "ibm_kyoto", status: "active", num_qubits: 127}
+         ]}
+      )
+
+      :ok
+    end
+
+    test "empty-string backend → {:ok, config} with identity + backends_list", ctx do
+      config = %{ctx.config | identity: nil, backends_list: [], backend: ""}
+
+      assert {:ok, %Qx.Hardware.Config{} = connected} =
+               Hardware.connect(config, ibm: StubIbm.Ibm, portal: StubIbm.Portal)
+
+      assert connected.identity == "disco@example.com"
+      assert connected.backends_list == ["ibm_brisbane", "ibm_kyoto"]
+    end
+
+    test "nil backend → {:ok, config} (discovery)", ctx do
+      config = %{ctx.config | identity: nil, backends_list: [], backend: nil}
+
+      assert {:ok, %Qx.Hardware.Config{backends_list: ["ibm_brisbane", "ibm_kyoto"]}} =
+               Hardware.connect(config, ibm: StubIbm.Ibm, portal: StubIbm.Portal)
+    end
+
+    test "set + valid backend still validates and passes", ctx do
+      config = %{ctx.config | identity: nil, backends_list: [], backend: "ibm_kyoto"}
+
+      assert {:ok, %Qx.Hardware.Config{}} =
+               Hardware.connect(config, ibm: StubIbm.Ibm, portal: StubIbm.Portal)
+    end
+
+    test "set + invalid backend still fails with ConfigError (typo caught)", ctx do
+      config = %{ctx.config | identity: nil, backends_list: [], backend: "ibm_typo"}
+
+      assert {:error, {:config, %ConfigError{field: :backend}}} =
+               Hardware.connect(config, ibm: StubIbm.Ibm, portal: StubIbm.Portal)
+    end
+  end
+
+  describe "run/3 backend precondition" do
+    test "blank backend → {:error, {:config, ConfigError}} before any network", ctx do
+      config = %{ctx.config | backend: ""}
+
+      assert {:error, {:config, %ConfigError{field: :backend, reason: reason}}} =
+               Hardware.run(bell_circuit(), config, base_opts())
+
+      assert reason =~ "required"
+      # Fails the precondition before touching portal/ibm stubs.
+      assert Recorder.calls(ctx.recorder) == []
+    end
+  end
+
   describe "cancel/3" do
     test "happy path → :ok", ctx do
       Recorder.set(
