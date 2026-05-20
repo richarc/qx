@@ -26,7 +26,15 @@ defmodule Qx.MixProject do
       docs: docs(),
       package: package(),
       description:
-        "A quantum computing library for Elixir with statevector simulation, circuit visualization, and direct execution on IBM Quantum hardware"
+        "A quantum computing library for Elixir with statevector simulation, circuit visualization, and direct execution on IBM Quantum hardware",
+      usage_rules: usage_rules()
+    ]
+  end
+
+  defp usage_rules do
+    [
+      file: "AGENTS.md",
+      usage_rules: [:usage_rules]
     ]
   end
 
@@ -51,7 +59,7 @@ defmodule Qx.MixProject do
       {:nimble_parsec, "~> 1.4"},
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
-      {:usage_rules, "~> 0.1"},
+      {:usage_rules, "~> 1.2"},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       {:benchee, "~> 1.3", only: :dev},
       {:benchee_html, "~> 1.0", only: :dev},

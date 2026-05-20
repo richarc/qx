@@ -20,17 +20,9 @@
 > *(This file is `AGENTS.md`; `CLAUDE.md` in this folder is a symlink to it.)*
 
 <!-- usage-rules-start -->
-<!-- usage-rules-header -->
-# Usage Rules
-
-**IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
-Before attempting to use any of these packages or to discover if you should use them, review their 
-usage rules to understand the correct patterns, conventions, and best practices.
-<!-- usage-rules-header-end -->
-
 <!-- usage_rules-start -->
 ## usage_rules usage
-_A dev tool for Elixir projects to gather LLM usage rules from dependencies_
+_A config-driven dev tool for Elixir projects to manage AGENTS.md files and agent skills from dependencies_
 
 ## Using Usage Rules
 
