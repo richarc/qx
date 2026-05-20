@@ -59,7 +59,7 @@ defmodule Qx.MixProject do
       {:nimble_parsec, "~> 1.4"},
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
-      {:usage_rules, "~> 1.2"},
+      {:usage_rules, "~> 1.2", only: :dev, runtime: false},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       {:benchee, "~> 1.3", only: :dev},
       {:benchee_html, "~> 1.0", only: :dev},
