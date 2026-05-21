@@ -41,28 +41,48 @@ Direct-to-IBM quantum hardware execution (was originally scheduled for v0.8).
 
 ---
 
-## v0.8 — Quality, Test Coverage & Additional Hardware Backends
+## v0.8 — Typed Errors, Renormalization & Conventions
 
-Test-coverage and refactor items that didn't make the v0.6/v0.7 cut, plus
-broadening hardware support beyond IBM.
+Quality and correctness polish — typed-error discipline at the public
+API, configurable statevector renormalization, and small Elixir-idiom
+cleanups. The bulk of v0.8's original test-coverage + refactor +
+hardware items was rescoped into v0.8.1 / v0.8.2 (see below).
 
-- [ ] Test coverage to 80%+ (currently ~66%)
 - [x] Document and test U gate parameter convention explicitly (qx-xt2)
 - [x] Add explicit matrix-equality tests for CSWAP and iSWAP gates (qx-uos)
 - [x] Add norm-drift guard and configurable renormalization in CalcFast (qx-53v)
 - [x] Typed errors at public API boundaries (Iron Law #7) — resolves arch-review C1/C2/C3 + `set_state/2`; bumps 0.8.0 (plan: iron-law-7-critical)
-- [ ] Replace case dispatch with gate registry in apply_instruction (qx-agu)
+- [ ] Rename is_* private helpers to *? per Elixir naming convention (qx-mbv)
+- [ ] ~~Stable remote execution contract — QxServer protocol versioned~~ — superseded by direct IBM execution in v0.7 (qx_server path retired)
+
+---
+
+## v0.8.1 — Test Coverage & Quality
+
+Raise test coverage to the v0.8 target and harden the simulator's
+quality story — error-path tests, missing `@spec`s, and inline
+documentation for the bit-manipulation hot paths.
+
+- [ ] Test coverage to 80%+ (currently ~66%)
 - [ ] Add tests verifying partial measurement does not corrupt unmeasured qubits (qx-d1f)
 - [ ] Add tests for nested and chained c_if conditional operations (qx-sso)
 - [ ] Add error path tests for CalcFast edge cases and invalid inputs (qx-eb1)
-- [ ] Add WHY comments to bit-manipulation logic in CalcFast Nx.Defn blocks (qx-8gf)
-- [ ] Clarify or merge Calc module responsibility with CalcFast (qx-rut)
-- [ ] Rename is_* private helpers to *? per Elixir naming convention (qx-mbv)
 - [ ] Add @spec to all defp functions in CalcFast and Simulation (qx-atv)
+- [ ] Add WHY comments to bit-manipulation logic in CalcFast Nx.Defn blocks (qx-8gf)
+
+---
+
+## v0.8.2 — Simulation Refactor, Visualization & AWS Braket
+
+Replace the case-dispatch core in `Qx.Simulation` with a gate registry
+/ multi-clause functions, clarify the Calc / CalcFast split, polish the
+Bloch sphere renderer, and broaden hardware support beyond IBM.
+
+- [ ] Replace case dispatch with gate registry in apply_instruction (qx-agu)
 - [ ] Convert case gate_name dispatch to multi-clause functions in Simulation (qx-dn2)
+- [ ] Clarify or merge Calc module responsibility with CalcFast (qx-rut)
 - [ ] Improve Bloch sphere SVG visual quality (qx-w93)
 - [ ] Support for running on AWS Braket QPUs (moved from v0.7)
-- [ ] ~~Stable remote execution contract — QxServer protocol versioned~~ — superseded by direct IBM execution in v0.7 (qx_server path retired)
 
 ---
 
