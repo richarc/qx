@@ -26,6 +26,7 @@ defmodule Qx do
   - `Qx.Qubit` - Functions for qubit creation and manipulation
   - `Qx.QuantumCircuit` - Quantum circuit creation and management
   - `Qx.Operations` - Quantum gate operations
+  - `Qx.Patterns` - Composite circuit-building patterns (`h_all`, `measure_all`, `cx_chain`, …)
   - `Qx.Simulation` - Circuit execution and simulation
   - `Qx.Draw` - Visualization of results
   - `Qx.Math` - Core mathematical functions for quantum mechanics
@@ -49,7 +50,7 @@ defmodule Qx do
   See `Qx.Export.OpenQASM` for more details and examples.
   """
 
-  alias Qx.{Draw, Operations, QuantumCircuit, Simulation}
+  alias Qx.{Draw, Operations, Patterns, QuantumCircuit, Simulation}
 
   @type circuit :: QuantumCircuit.t()
   @type simulation_result :: Simulation.simulation_result()
@@ -522,6 +523,108 @@ defmodule Qx do
   """
   @spec measure(circuit(), non_neg_integer(), non_neg_integer()) :: circuit()
   defdelegate measure(circuit, qubit, classical_bit), to: Operations
+
+  @doc """
+  Applies a Hadamard gate to every qubit in the circuit.
+
+  Convenience for the recurring `Enum.reduce(0..(n - 1), qc, &Qx.h(&2, &1))`
+  motif (Grover diffuser, Bernstein-Vazirani oracle, equal-superposition
+  preparation). See `Qx.Patterns` for the full set of composite patterns.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(3) |> Qx.h_all()
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      3
+  """
+  @spec h_all(circuit()) :: circuit()
+  defdelegate h_all(circuit), to: Patterns
+
+  @doc """
+  Applies a Pauli-X gate to every qubit in the circuit.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(2) |> Qx.x_all()
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      2
+  """
+  @spec x_all(circuit()) :: circuit()
+  defdelegate x_all(circuit), to: Patterns
+
+  @doc """
+  Applies a Pauli-Y gate to every qubit in the circuit.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(2) |> Qx.y_all()
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      2
+  """
+  @spec y_all(circuit()) :: circuit()
+  defdelegate y_all(circuit), to: Patterns
+
+  @doc """
+  Applies a Pauli-Z gate to every qubit in the circuit.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(2) |> Qx.z_all()
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      2
+  """
+  @spec z_all(circuit()) :: circuit()
+  defdelegate z_all(circuit), to: Patterns
+
+  @doc """
+  Measures every qubit into its same-index classical bit.
+
+  Raises `Qx.ClassicalBitError` if `circuit.num_classical_bits < num_qubits` —
+  the caller owns the circuit shape (see `Qx.Patterns.measure_all/1`).
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(3, 3) |> Qx.measure_all()
+      iex> length(Qx.QuantumCircuit.get_measurements(qc))
+      3
+
+  ## Raises
+
+    * `Qx.ClassicalBitError` - If `num_classical_bits < num_qubits`
+  """
+  @spec measure_all(circuit()) :: circuit()
+  defdelegate measure_all(circuit), to: Patterns
+
+  @doc """
+  Adds a single barrier instruction spanning every qubit.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(3) |> Qx.barrier_all()
+      iex> Qx.QuantumCircuit.get_instructions(qc)
+      [{:barrier, [0, 1, 2], []}]
+  """
+  @spec barrier_all(circuit()) :: circuit()
+  defdelegate barrier_all(circuit), to: Patterns
+
+  @doc """
+  Applies a linear cascade of CNOTs along `qubits`.
+
+  For `qubits = [q0, q1, …, qk]`, emits `cx(q0, q1) → cx(q1, q2) → …`. Empty
+  and single-element lists are no-ops. See `Qx.Patterns.cx_chain/2`.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(3) |> Qx.h(0) |> Qx.cx_chain([0, 1, 2])
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      3
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If any qubit index is out of range
+  """
+  @spec cx_chain(circuit(), [non_neg_integer()]) :: circuit()
+  defdelegate cx_chain(circuit, qubits), to: Patterns
 
   @doc """
   Applies gates conditionally based on a classical bit value.

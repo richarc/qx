@@ -83,6 +83,7 @@ defmodule Qx.MixProject do
       groups_for_modules: [
         "Core API": [Qx],
         "Circuit Building": [Qx.QuantumCircuit, Qx.Operations],
+        "Composite Patterns": [Qx.Patterns],
         "Calculation Mode": [Qx.Qubit, Qx.Register],
         "Simulation & Results": [
           Qx.Simulation,

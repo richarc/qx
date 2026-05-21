@@ -59,6 +59,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   CNOT with `control == target`, Toffoli with repeated qubits).
   Message: `"Qubit indices must be distinct, got: [...]"`.
 
+- **`Qx.Patterns` — composite circuit-building helpers.** New module
+  providing seven thin wrappers over `Qx.Operations` for the recurring
+  "apply to every qubit" / "CNOT chain" motifs that appear in tutorials
+  (Grover diffuser, Bernstein-Vazirani oracle, GHZ preparation):
+
+  - `Qx.Patterns.h_all/1`, `x_all/1`, `y_all/1`, `z_all/1` — apply the
+    single-qubit gate to every qubit in the circuit.
+  - `Qx.Patterns.measure_all/1` — measure qubit `i` into classical bit
+    `i` for all qubits. Raises `Qx.ClassicalBitError` if
+    `num_classical_bits < num_qubits` (caller owns circuit shape — no
+    auto-grow).
+  - `Qx.Patterns.barrier_all/1` — single barrier across every qubit.
+  - `Qx.Patterns.cx_chain/2` — linear CNOT cascade
+    (`cx(q0,q1) → cx(q1,q2) → …`) along the supplied qubit list;
+    `[]` and `[q]` are deliberate no-ops.
+
+  All seven are also exposed at the top level (`Qx.h_all/1`,
+  `Qx.measure_all/1`, …) via `defdelegate`. Purely additive — no
+  breaking change. Out-of-range qubit indices propagate the existing
+  typed `Qx.QubitIndexError` inherited from
+  `Qx.QuantumCircuit.add_*` / `Qx.Validation`.
+
 - **Configurable statevector renormalization + dev/test norm-drift
   guard in `Qx.Simulation.run/2` / `Qx.run/2` (qx-53v).** New
   `:renormalize` option (default `false` — fully backwards compatible,

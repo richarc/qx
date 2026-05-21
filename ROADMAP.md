@@ -53,7 +53,7 @@ hardware items was rescoped into v0.8.1 / v0.8.2 (see below).
 - [x] Add norm-drift guard and configurable renormalization in CalcFast (qx-53v)
 - [x] Typed errors at public API boundaries (Iron Law #7) — resolves arch-review C1/C2/C3 + `set_state/2`; bumps 0.8.0 (plan: iron-law-7-critical)
 - [ ] Rename is_* private helpers to *? per Elixir naming convention (qx-mbv)
-- [ ] Circuit-building convenience helpers — `h_all/x_all/y_all/z_all`, `measure_all`, `barrier_all`, `cx_chain` in a new `Qx.Patterns` module (plan: circuit-helpers)
+- [x] Circuit-building convenience helpers — `h_all/x_all/y_all/z_all`, `measure_all`, `barrier_all`, `cx_chain` in a new `Qx.Patterns` module (plan: circuit-helpers)
 - [ ] ~~Stable remote execution contract — QxServer protocol versioned~~ — superseded by direct IBM execution in v0.7 (qx_server path retired)
 
 ---
