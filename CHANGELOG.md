@@ -7,7 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-05-21
+
+### BREAKING
+
+- **Typed errors at public API boundaries (Iron Law #7).** Out-of-range
+  qubit indices, duplicate qubit indices, classical-bit OOR, invalid
+  conditional values, and unsupported gates now raise the matching
+  `Qx.*Error` exception instead of `FunctionClauseError`, `ArgumentError`,
+  or `RuntimeError`. Resolves C1/C2/C3 of
+  `.claude/audit/reports/arch-review.md`.
+
+  - `Qx.QuantumCircuit.add_gate/4`, `add_two_qubit_gate/5`,
+    `add_three_qubit_gate/6`, `add_measurement/3` now raise
+    `Qx.QubitIndexError` for out-of-range or duplicate qubits, and
+    `Qx.ClassicalBitError` for out-of-range classical-bit indices.
+  - `Qx.Operations.barrier/2` now raises `Qx.QubitIndexError`.
+  - `Qx.Operations.c_if/4` now raises `Qx.ClassicalBitError`
+    (out-of-range bit) and `Qx.ConditionalError` (invalid value,
+    non-function `gate_fn`, nested conditional).
+  - `Qx.Simulation.run/2` (and the `Qx.run/2` delegate) now raises
+    `Qx.GateError, {:unsupported_gate, gate_name}` instead of
+    `RuntimeError` for unsupported gate names at any arity.
+  - `Qx.QuantumCircuit.set_state/2` now raises `Qx.StateShapeError`
+    instead of `ArgumentError` on size or rank mismatch.
+  - `Qx` and `Qx.Operations` docstring `## Raises` sections updated
+    accordingly.
+
+  Migration: rescue clauses matching `FunctionClauseError`,
+  `ArgumentError`, or `RuntimeError` at these public call sites must
+  be updated to the matching `Qx.*Error` exception. The same `try`
+  block can rescue `Qx.Error` to catch any Qx-raised exception.
+
+  **Known deferred (not fixed in 0.8.0):** `Qx.Validation`
+  (`validate_qubits_different!`, `validate_state_shape!`,
+  `validate_parameter!`) still raises bare `ArgumentError`; `Qx.Qubit`
+  and `Qx.Register` still raise `ArgumentError` from public functions;
+  `Qx.Operations.u/5` still fires `FunctionClauseError` for OOR qubit
+  (its own bounds guard). These map to arch-review findings H1, M3,
+  M4, M5 and are scheduled for a follow-on Iron Law #7 sweep.
+
 ### Added
+
+- **`Qx.StateShapeError`** — new exception type raised by
+  `Qx.QuantumCircuit.set_state/2` when the supplied state vector's
+  shape doesn't match `{2^num_qubits}`. Carries `:actual` and
+  `:expected` size fields.
+
+- **`Qx.QubitIndexError` `{:duplicate, qubits}` constructor.** New
+  `exception/1` clause to raise on distinct-indices violations (e.g.
+  CNOT with `control == target`, Toffoli with repeated qubits).
+  Message: `"Qubit indices must be distinct, got: [...]"`.
 
 - **Configurable statevector renormalization + dev/test norm-drift
   guard in `Qx.Simulation.run/2` / `Qx.run/2` (qx-53v).** New
@@ -18,10 +68,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Qx.OptionError`. A compile-time-gated assertion
   (`Application.compile_env(:qx, :assert_norm, false)`, on in `:test`,
   off in `:prod`/`:dev`) fails fast if a circuit's total probability
-  drifts beyond `1.0e-6`. **Additive and non-breaking** — no major
-  version bump. Note: states are `:c64` (float32), so the practical
-  norm-accuracy floor is ~1e-7; renormalization bounds drift rather
-  than eliminating it.
+  drifts beyond `1.0e-6`. Note: states are `:c64` (float32), so the
+  practical norm-accuracy floor is ~1e-7; renormalization bounds drift
+  rather than eliminating it.
 
 ## [0.7.1] - 2026-05-16
 

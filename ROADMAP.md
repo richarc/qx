@@ -50,6 +50,7 @@ broadening hardware support beyond IBM.
 - [x] Document and test U gate parameter convention explicitly (qx-xt2)
 - [x] Add explicit matrix-equality tests for CSWAP and iSWAP gates (qx-uos)
 - [x] Add norm-drift guard and configurable renormalization in CalcFast (qx-53v)
+- [x] Typed errors at public API boundaries (Iron Law #7) — resolves arch-review C1/C2/C3 + `set_state/2`; bumps 0.8.0 (plan: iron-law-7-critical)
 - [ ] Replace case dispatch with gate registry in apply_instruction (qx-agu)
 - [ ] Add tests verifying partial measurement does not corrupt unmeasured qubits (qx-d1f)
 - [ ] Add tests for nested and chained c_if conditional operations (qx-sso)

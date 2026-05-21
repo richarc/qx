@@ -113,10 +113,9 @@ defmodule Qx.CpGateTest do
       assert_raise ArgumentError, fn -> Qx.cp(qc, 0, 1, "not_a_number") end
     end
 
-    test "raises FunctionClauseError when qubit index is out of range" do
-      qc = Qx.create_circuit(2)
-      assert_raise FunctionClauseError, fn -> Qx.cp(qc, 0, 5, :math.pi()) end
-    end
+    # Out-of-range qubit test moved to
+    # test/qx/quantum_circuit_typed_errors_test.exs in 0.8.0 —
+    # Qx.cp now raises Qx.QubitIndexError, not FunctionClauseError.
   end
 
   describe "cp gate OpenQASM export" do

@@ -201,21 +201,10 @@ defmodule QxTest do
       assert {:c_if, [0, 1], _} = List.last(instructions)
     end
 
-    test "c_if raises error for invalid classical bit" do
-      qc = Qx.create_circuit(2, 1)
-
-      assert_raise ArgumentError, fn ->
-        Qx.c_if(qc, 5, 1, fn c -> Qx.x(c, 1) end)
-      end
-    end
-
-    test "c_if raises error for invalid value" do
-      qc = Qx.create_circuit(2, 2)
-
-      assert_raise ArgumentError, fn ->
-        Qx.c_if(qc, 0, 2, fn c -> Qx.x(c, 1) end)
-      end
-    end
+    # c_if error-handling tests moved to
+    # test/qx/operations_typed_errors_test.exs in 0.8.0 —
+    # Qx.c_if now raises Qx.ClassicalBitError / Qx.ConditionalError,
+    # not ArgumentError.
 
     test "c_if captures multiple gates in conditional block" do
       qc =
@@ -348,14 +337,8 @@ defmodule QxTest do
       assert result.counts[[1, 1, 0]] == 100
     end
 
-    test "nested conditionals raise error" do
-      qc = Qx.create_circuit(3, 3)
-
-      assert_raise ArgumentError, ~r/Nested conditionals/, fn ->
-        Qx.c_if(qc, 0, 1, fn c ->
-          Qx.c_if(c, 1, 1, fn c2 -> Qx.x(c2, 2) end)
-        end)
-      end
-    end
+    # Nested-conditional test moved to
+    # test/qx/operations_typed_errors_test.exs in 0.8.0 —
+    # nested c_if now raises Qx.ConditionalError, not ArgumentError.
   end
 end

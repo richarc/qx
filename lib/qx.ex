@@ -71,7 +71,7 @@ defmodule Qx do
 
   ## Raises
 
-    * `FunctionClauseError` - If num_qubits <= 0 or num_classical_bits < 0
+    * `FunctionClauseError` - If `num_qubits <= 0` or `num_classical_bits < 0` (guard-only; struct construction predates `Qx.Validation`)
   """
   @spec create_circuit(pos_integer(), non_neg_integer()) :: circuit()
   defdelegate create_circuit(num_qubits, num_classical_bits), to: QuantumCircuit, as: :new
@@ -92,7 +92,7 @@ defmodule Qx do
 
   ## Raises
 
-    * `FunctionClauseError` - If num_qubits <= 0
+    * `FunctionClauseError` - If `num_qubits <= 0` (guard-only; struct construction predates `Qx.Validation`)
   """
   @spec create_circuit(pos_integer()) :: circuit()
   defdelegate create_circuit(num_qubits), to: QuantumCircuit, as: :new
@@ -114,7 +114,7 @@ defmodule Qx do
 
   ## Raises
 
-    * `FunctionClauseError` - If qubit index is out of range
+    * `Qx.QubitIndexError` - If qubit index is out of range
   """
   @spec h(circuit(), non_neg_integer()) :: circuit()
   defdelegate h(circuit, qubit), to: Operations
@@ -136,7 +136,7 @@ defmodule Qx do
 
   ## Raises
 
-    * `FunctionClauseError` - If qubit index is out of range
+    * `Qx.QubitIndexError` - If qubit index is out of range
   """
   @spec x(circuit(), non_neg_integer()) :: circuit()
   defdelegate x(circuit, qubit), to: Operations
@@ -158,7 +158,7 @@ defmodule Qx do
 
   ## Raises
 
-    * `FunctionClauseError` - If qubit index is out of range
+    * `Qx.QubitIndexError` - If qubit index is out of range
   """
   @spec y(circuit(), non_neg_integer()) :: circuit()
   defdelegate y(circuit, qubit), to: Operations
@@ -180,7 +180,7 @@ defmodule Qx do
 
   ## Raises
 
-    * `FunctionClauseError` - If qubit index is out of range
+    * `Qx.QubitIndexError` - If qubit index is out of range
   """
   @spec z(circuit(), non_neg_integer()) :: circuit()
   defdelegate z(circuit, qubit), to: Operations
@@ -203,7 +203,7 @@ defmodule Qx do
 
   ## Raises
 
-    * `FunctionClauseError` - If qubit indices are out of range or equal
+    * `Qx.QubitIndexError` - If qubit indices are out of range or equal
   """
   @spec cx(circuit(), non_neg_integer(), non_neg_integer()) :: circuit()
   defdelegate cx(circuit, control_qubit, target_qubit), to: Operations
@@ -246,7 +246,7 @@ defmodule Qx do
 
   ## Raises
 
-    * `FunctionClauseError` - If qubit indices are out of range or equal
+    * `Qx.QubitIndexError` - If qubit indices are out of range or equal
   """
   @spec swap(circuit(), non_neg_integer(), non_neg_integer()) :: circuit()
   defdelegate swap(circuit, qubit_a, qubit_b), to: Operations
@@ -271,7 +271,7 @@ defmodule Qx do
 
   ## Raises
 
-    * `FunctionClauseError` - If qubit indices are out of range or equal
+    * `Qx.QubitIndexError` - If qubit indices are out of range or equal
   """
   @spec iswap(circuit(), non_neg_integer(), non_neg_integer()) :: circuit()
   defdelegate iswap(circuit, qubit_a, qubit_b), to: Operations
@@ -296,7 +296,7 @@ defmodule Qx do
 
   ## Raises
 
-    * `FunctionClauseError` - If qubit indices are out of range or equal
+    * `Qx.QubitIndexError` - If qubit indices are out of range or equal
     * `ArgumentError` - If theta is not a number
   """
   @spec cp(circuit(), non_neg_integer(), non_neg_integer(), number()) :: circuit()
@@ -343,7 +343,7 @@ defmodule Qx do
 
   ## Raises
 
-    * `ArgumentError` - If any two qubit indices are equal or any index is out of range
+    * `Qx.QubitIndexError` - If any two qubit indices are equal or any index is out of range
   """
   @spec cswap(circuit(), non_neg_integer(), non_neg_integer(), non_neg_integer()) :: circuit()
   defdelegate cswap(circuit, control, target_a, target_b), to: Operations
@@ -496,7 +496,7 @@ defmodule Qx do
   ## Raises
 
     * `ArgumentError` - If theta, phi, or lambda is not a number
-    * `FunctionClauseError` - If qubit index is out of range
+    * `Qx.QubitIndexError` - If qubit index is out of range
   """
   @spec u(circuit(), non_neg_integer(), number(), number(), number()) :: circuit()
   defdelegate u(circuit, qubit, theta, phi, lambda), to: Operations
@@ -517,7 +517,8 @@ defmodule Qx do
 
   ## Raises
 
-    * `FunctionClauseError` - If qubit or classical_bit index is out of range
+    * `Qx.QubitIndexError` - If qubit index is out of range
+    * `Qx.ClassicalBitError` - If classical_bit index is out of range
   """
   @spec measure(circuit(), non_neg_integer(), non_neg_integer()) :: circuit()
   defdelegate measure(circuit, qubit, classical_bit), to: Operations

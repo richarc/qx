@@ -35,7 +35,14 @@ defmodule Qx.QubitIndexError do
   defexception [:qubit, :max, :message]
 
   @impl true
-  def exception({qubit, max}) do
+  def exception({:duplicate, qubits}) when is_list(qubits) do
+    %__MODULE__{
+      qubit: qubits,
+      message: "Qubit indices must be distinct, got: #{inspect(qubits)}"
+    }
+  end
+
+  def exception({qubit, max}) when is_integer(qubit) and is_integer(max) do
     %__MODULE__{
       qubit: qubit,
       max: max,
@@ -67,6 +74,29 @@ defmodule Qx.StateNormalizationError do
 
   def exception(total) when is_number(total) do
     exception({total, 1.0e-6})
+  end
+
+  def exception(message) when is_binary(message) do
+    %__MODULE__{message: message}
+  end
+end
+
+defmodule Qx.StateShapeError do
+  @moduledoc """
+  Raised when a state vector's shape does not match the expected size
+  for the target quantum circuit.
+
+  A circuit with `n` qubits requires a state vector of length `2^n`.
+  """
+  defexception [:actual, :expected, :message]
+
+  @impl true
+  def exception({actual, expected}) when is_integer(actual) and is_integer(expected) do
+    %__MODULE__{
+      actual: actual,
+      expected: expected,
+      message: "State vector size mismatch: expected #{expected}, got #{actual}"
+    }
   end
 
   def exception(message) when is_binary(message) do

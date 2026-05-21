@@ -96,22 +96,9 @@ defmodule Qx.CswapGateTest do
     end
   end
 
-  describe "cswap gate error handling" do
-    test "raises ArgumentError for equal control and target_a indices" do
-      qc = Qx.create_circuit(3)
-      assert_raise ArgumentError, fn -> Qx.cswap(qc, 0, 0, 2) end
-    end
-
-    test "raises ArgumentError for equal target_a and target_b indices" do
-      qc = Qx.create_circuit(3)
-      assert_raise ArgumentError, fn -> Qx.cswap(qc, 0, 1, 1) end
-    end
-
-    test "raises ArgumentError for out-of-range qubit index" do
-      qc = Qx.create_circuit(3)
-      assert_raise ArgumentError, fn -> Qx.cswap(qc, 0, 1, 5) end
-    end
-  end
+  # Error-handling tests moved to test/qx/quantum_circuit_typed_errors_test.exs
+  # in 0.8.0 — Qx.cswap (via add_three_qubit_gate) now raises
+  # Qx.QubitIndexError, not ArgumentError.
 
   describe "cswap gate OpenQASM export" do
     test "exports cswap gate as cswap q[c], q[a], q[b];" do

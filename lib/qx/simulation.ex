@@ -332,7 +332,7 @@ defmodule Qx.Simulation do
         # Handle 0-qubit gates like :barrier
         case gate_name do
           :barrier -> state
-          _ -> raise "Unsupported 0-qubit gate: #{gate_name}"
+          _ -> raise Qx.GateError, {:unsupported_gate, gate_name}
         end
 
       1 ->
@@ -345,7 +345,7 @@ defmodule Qx.Simulation do
         apply_three_qubit_op(gate_name, qubits, params, state, num_qubits)
 
       _ ->
-        raise "Unsupported gate: #{gate_name} with #{length(qubits)} qubits"
+        raise Qx.GateError, {:unsupported_gate, gate_name}
     end
   end
 
@@ -384,7 +384,7 @@ defmodule Qx.Simulation do
         state
 
       _ ->
-        raise "Unsupported single-qubit gate: #{gate_name}"
+        raise Qx.GateError, {:unsupported_gate, gate_name}
     end
   end
 
@@ -412,7 +412,7 @@ defmodule Qx.Simulation do
         state
 
       _ ->
-        raise "Unsupported two-qubit gate: #{gate_name}"
+        raise Qx.GateError, {:unsupported_gate, gate_name}
     end
   end
 
@@ -424,8 +424,8 @@ defmodule Qx.Simulation do
     Calc.apply_cswap(state, c, ta, tb, num_qubits)
   end
 
-  defp apply_three_qubit_op(gate_name, qubits, _params, _state, _num_qubits) do
-    raise "Unsupported three-qubit gate: #{gate_name} with qubits #{inspect(qubits)}"
+  defp apply_three_qubit_op(gate_name, _qubits, _params, _state, _num_qubits) do
+    raise Qx.GateError, {:unsupported_gate, gate_name}
   end
 
   defp perform_measurements(%QuantumCircuit{} = circuit, final_state, shots) do

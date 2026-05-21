@@ -97,7 +97,8 @@ defmodule Qx.QuantumCircuit do
       1
   """
   def add_gate(%__MODULE__{} = circuit, gate_name, qubit, params \\ [])
-      when is_atom(gate_name) and is_integer(qubit) and qubit >= 0 and qubit < circuit.num_qubits do
+      when is_atom(gate_name) and is_integer(qubit) do
+    Qx.Validation.validate_qubit_index!(qubit, circuit.num_qubits)
     instruction = {gate_name, [qubit], params}
 
     %{circuit | instructions: circuit.instructions ++ [instruction]}
@@ -127,10 +128,14 @@ defmodule Qx.QuantumCircuit do
         target_qubit,
         params \\ []
       )
-      when is_atom(gate_name) and is_integer(control_qubit) and is_integer(target_qubit) and
-             control_qubit >= 0 and control_qubit < circuit.num_qubits and
-             target_qubit >= 0 and target_qubit < circuit.num_qubits and
-             control_qubit != target_qubit do
+      when is_atom(gate_name) and is_integer(control_qubit) and is_integer(target_qubit) do
+    Qx.Validation.validate_qubit_index!(control_qubit, circuit.num_qubits)
+    Qx.Validation.validate_qubit_index!(target_qubit, circuit.num_qubits)
+
+    if control_qubit == target_qubit do
+      raise Qx.QubitIndexError, {:duplicate, [control_qubit, target_qubit]}
+    end
+
     instruction = {gate_name, [control_qubit, target_qubit], params}
 
     %{circuit | instructions: circuit.instructions ++ [instruction]}
@@ -172,27 +177,20 @@ defmodule Qx.QuantumCircuit do
 
   defp validate_three_qubit_args!(circuit, c1, c2, t) do
     validate_indices_integers!(c1, c2, t)
-    validate_indices_bounds!(circuit, c1, c2, t)
+    Qx.Validation.validate_qubit_indices!([c1, c2, t], circuit.num_qubits)
     validate_indices_distinct!(c1, c2, t)
   end
 
   defp validate_indices_integers!(c1, c2, t) do
     unless is_integer(c1) and is_integer(c2) and is_integer(t) do
-      raise ArgumentError, "Qubit indices must be integers"
-    end
-  end
-
-  defp validate_indices_bounds!(circuit, c1, c2, t) do
-    unless c1 >= 0 and c1 < circuit.num_qubits and
-             c2 >= 0 and c2 < circuit.num_qubits and
-             t >= 0 and t < circuit.num_qubits do
-      raise ArgumentError, "Qubit indices out of bounds"
+      raise Qx.QubitIndexError,
+            "Qubit indices must be integers, got: #{inspect([c1, c2, t])}"
     end
   end
 
   defp validate_indices_distinct!(c1, c2, t) do
     if c1 == c2 or c1 == t or c2 == t do
-      raise ArgumentError, "Control and target qubits must be different"
+      raise Qx.QubitIndexError, {:duplicate, [c1, c2, t]}
     end
   end
 
@@ -212,9 +210,10 @@ defmodule Qx.QuantumCircuit do
       1
   """
   def add_measurement(%__MODULE__{} = circuit, qubit, classical_bit)
-      when is_integer(qubit) and is_integer(classical_bit) and
-             qubit >= 0 and qubit < circuit.num_qubits and
-             classical_bit >= 0 and classical_bit < circuit.num_classical_bits do
+      when is_integer(qubit) and is_integer(classical_bit) do
+    Qx.Validation.validate_qubit_index!(qubit, circuit.num_qubits)
+    Qx.Validation.validate_classical_bit!(classical_bit, circuit.num_classical_bits)
+
     measurement = {qubit, classical_bit}
     measured_qubits = MapSet.put(circuit.measured_qubits, qubit)
 
@@ -268,9 +267,12 @@ defmodule Qx.QuantumCircuit do
       {^expected_size} ->
         %{circuit | state: state}
 
-      _ ->
-        raise ArgumentError,
-              "State vector size must be #{expected_size} for #{circuit.num_qubits} qubits"
+      {actual_size} ->
+        raise Qx.StateShapeError, {actual_size, expected_size}
+
+      shape ->
+        raise Qx.StateShapeError,
+              "State vector must be 1-D with length #{expected_size}, got shape #{inspect(shape)}"
     end
   end
 

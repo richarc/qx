@@ -99,17 +99,8 @@ defmodule Qx.SwapGateTest do
     end
   end
 
-  describe "swap gate error handling" do
-    test "raises FunctionClauseError for equal qubit indices" do
-      qc = Qx.create_circuit(2)
-      assert_raise FunctionClauseError, fn -> Qx.swap(qc, 0, 0) end
-    end
-
-    test "raises FunctionClauseError for out-of-range qubit index" do
-      qc = Qx.create_circuit(2)
-      assert_raise FunctionClauseError, fn -> Qx.swap(qc, 0, 5) end
-    end
-  end
+  # Error-handling tests moved to test/qx/quantum_circuit_typed_errors_test.exs
+  # in 0.8.0 — Qx.swap now raises Qx.QubitIndexError, not FunctionClauseError.
 
   describe "swap gate OpenQASM export" do
     test "exports swap gate as swap q[a], q[b];" do

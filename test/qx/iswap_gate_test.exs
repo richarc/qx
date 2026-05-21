@@ -84,17 +84,8 @@ defmodule Qx.IswapGateTest do
     end
   end
 
-  describe "iswap gate error handling" do
-    test "raises FunctionClauseError for equal qubit indices" do
-      qc = Qx.create_circuit(2)
-      assert_raise FunctionClauseError, fn -> Qx.iswap(qc, 0, 0) end
-    end
-
-    test "raises FunctionClauseError for out-of-range qubit index" do
-      qc = Qx.create_circuit(2)
-      assert_raise FunctionClauseError, fn -> Qx.iswap(qc, 0, 5) end
-    end
-  end
+  # Error-handling tests moved to test/qx/quantum_circuit_typed_errors_test.exs
+  # in 0.8.0 — Qx.iswap now raises Qx.QubitIndexError, not FunctionClauseError.
 
   describe "iswap gate OpenQASM export" do
     test "exports iswap gate as iswap q[a], q[b];" do

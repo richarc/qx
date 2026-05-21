@@ -4,7 +4,7 @@ defmodule Qx.MixProject do
   def project do
     [
       app: :qx,
-      version: "0.7.1",
+      version: "0.8.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -101,6 +101,7 @@ defmodule Qx.MixProject do
           Qx.OptionError,
           Qx.QubitIndexError,
           Qx.StateNormalizationError,
+          Qx.StateShapeError,
           Qx.MeasurementError,
           Qx.ConditionalError,
           Qx.ClassicalBitError,

@@ -160,7 +160,7 @@ defmodule Qx.Operations do
       {:cswap, [0, 1, 2]}
 
   ## Raises
-    * `ArgumentError` - If any two qubit indices are equal or any index is out of range
+    * `Qx.QubitIndexError` - If any two qubit indices are equal or any index is out of range
   """
   def cswap(%QuantumCircuit{} = circuit, control, target_a, target_b) do
     QuantumCircuit.add_three_qubit_gate(circuit, :cswap, control, target_a, target_b)
@@ -389,7 +389,7 @@ defmodule Qx.Operations do
 
   ## Raises
 
-    * `FunctionClauseError` - If qubit indices are out of range or equal
+    * `Qx.QubitIndexError` - If qubit indices are out of range or equal
   """
   def swap(%QuantumCircuit{} = circuit, qubit_a, qubit_b) do
     QuantumCircuit.add_two_qubit_gate(circuit, :swap, qubit_a, qubit_b)
@@ -414,7 +414,7 @@ defmodule Qx.Operations do
 
   ## Raises
 
-    * `FunctionClauseError` - If qubit indices are out of range or equal
+    * `Qx.QubitIndexError` - If qubit indices are out of range or equal
   """
   def iswap(%QuantumCircuit{} = circuit, qubit_a, qubit_b) do
     QuantumCircuit.add_two_qubit_gate(circuit, :iswap, qubit_a, qubit_b)
@@ -442,7 +442,7 @@ defmodule Qx.Operations do
 
   ## Raises
 
-    * `FunctionClauseError` - If qubit indices are out of range or equal
+    * `Qx.QubitIndexError` - If qubit indices are out of range or equal
     * `ArgumentError` - If theta is not a number
   """
   def cp(%QuantumCircuit{} = circuit, control_qubit, target_qubit, theta) do
@@ -469,12 +469,7 @@ defmodule Qx.Operations do
       {:barrier, [0, 1, 2]}
   """
   def barrier(%QuantumCircuit{} = circuit, qubits) when is_list(qubits) do
-    # Validate all qubit indices
-    Enum.each(qubits, fn qubit ->
-      if qubit < 0 or qubit >= circuit.num_qubits do
-        raise ArgumentError, "Invalid qubit index #{qubit} for barrier"
-      end
-    end)
+    Validation.validate_qubit_indices!(qubits, circuit.num_qubits)
 
     instruction = {:barrier, qubits, []}
     %{circuit | instructions: circuit.instructions ++ [instruction]}
@@ -553,16 +548,16 @@ defmodule Qx.Operations do
   def c_if(%QuantumCircuit{} = circuit, classical_bit, _value, _gate_fn)
       when is_integer(classical_bit) and
              (classical_bit < 0 or classical_bit >= circuit.num_classical_bits) do
-    raise ArgumentError,
-          "Classical bit index #{classical_bit} out of range (circuit has #{circuit.num_classical_bits} classical bits)"
+    raise Qx.ClassicalBitError, {classical_bit, circuit.num_classical_bits}
   end
 
   def c_if(_circuit, _classical_bit, value, _gate_fn) when value not in [0, 1] do
-    raise ArgumentError, "Conditional value must be 0 or 1, got: #{inspect(value)}"
+    raise Qx.ConditionalError,
+          "Conditional value must be 0 or 1, got: #{inspect(value)}"
   end
 
   def c_if(_circuit, _classical_bit, _value, gate_fn) when not is_function(gate_fn, 1) do
-    raise ArgumentError, "Gate function must be a function with arity 1"
+    raise Qx.ConditionalError, "Gate function must be a function with arity 1"
   end
 
   # Private helper to validate conditional block
@@ -570,15 +565,13 @@ defmodule Qx.Operations do
     Enum.each(instructions, fn instruction ->
       case instruction do
         {:c_if, _, _} ->
-          raise ArgumentError, "Nested conditionals are not supported in this version"
+          raise Qx.ConditionalError, :nested_conditionals
 
         _ ->
           :ok
       end
     end)
 
-    # Check if any measurements exist in the conditional block
-    # Measurements are stored separately, so we mainly need to check for nested c_if
     :ok
   end
 
