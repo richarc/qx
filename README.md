@@ -31,7 +31,7 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.6.0"}
+    {:qx_sim, "~> 0.8.0"}
   ]
 end
 ```
@@ -611,7 +611,7 @@ EXLA provides significant speedup through XLA's LLVM optimizations.
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.6.0"},
+    {:qx_sim, "~> 0.8.0"},
     {:exla, "~> 0.10"}  # Add this line
   ]
 end
@@ -705,7 +705,7 @@ config :nx, :default_backend, {EXLA.Backend, client: :rocm}
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.6.0"},
+    {:qx_sim, "~> 0.8.0"},
     {:emlx, github: "elixir-nx/emlx", branch: "main"}  # Add this line
   ]
 end
