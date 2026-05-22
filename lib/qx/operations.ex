@@ -3,8 +3,13 @@ defmodule Qx.Operations do
   Quantum gate operations for quantum circuits.
 
   This module provides functions for applying quantum gates to quantum circuits,
-  including single-qubit gates (H, X, Y, Z), two-qubit gates (CNOT), and
-  three-qubit gates (CCNOT/Toffoli).
+  including single-qubit gates (H, X, Y, Z, S, S†, T, Rx, Ry, Rz, phase, U),
+  basis-explicit measurement (`measure_x/3`, `measure_y/3`, `measure_z/3`),
+  two-qubit gates (CNOT, CY, CZ, CP, CRx, CRy, CRz, SWAP, iSWAP), and
+  three-qubit gates (CCNOT/Toffoli, CSWAP/Fredkin).
+
+  For composite "apply to every qubit" / "CNOT chain" patterns, see
+  `Qx.Patterns`.
   """
 
   alias Qx.{QuantumCircuit, Validation}

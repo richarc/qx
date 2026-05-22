@@ -18,8 +18,9 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 - **Statevector Simulation**: Uses statevector method for accurate quantum state representation
 - **Optional Acceleration**: Add EXLA or EMLX backends for speedup (CPU/GPU)
 - **Visualization**: Built-in plotting capabilities with SVG and VegaLite support, plus circuit diagram generation
-- **Growing Range of Gates**: Supports H, X, Y, Z, S, S†, T, RX, RY, RZ, CNOT, CZ, CP, SWAP, iSWAP, U (general single-qubit unitary), CSWAP (Fredkin), and Toffoli gates
-- **Measurements**: Quantum measurements with classical bit storage
+- **Growing Range of Gates**: Supports H, X, Y, Z, S, S†, T, RX, RY, RZ, CNOT, CY, CZ, CP, CRX, CRY, CRZ, SWAP, iSWAP, U (general single-qubit unitary), CSWAP (Fredkin), and Toffoli gates
+- **Composite Patterns** (`Qx.Patterns`): Whole-circuit and sub-register helpers (`h_all`, `x_all`, `y_all`, `z_all`, `measure_all`, `barrier_all`, `cx_chain`). Each `_all` helper accepts an optional list or range — e.g. `Qx.h_all(qc, 0..2)` — to operate on a sub-register
+- **Measurements**: Quantum measurements with classical bit storage; basis-explicit `Qx.measure_x/3`, `Qx.measure_y/3`, `Qx.measure_z/3` for X/Y/Z-basis measurement
 - **Conditional Operations**: Mid-circuit measurement with classical feedback for quantum processes like teleportation and error correction
 - **OpenQASM 3.0 Round-Trip**: Export Qx circuits to OpenQASM 3.0 and import OpenQASM 3.0 source produced by Qx, Qiskit, or IBM Quantum (`Qx.Export.OpenQASM.to_qasm/1` and `from_qasm/1`)
 - **Remote Execution**: Run circuits on real quantum hardware via QxServer, a standalone backend service supporting IBM Quantum and other providers
@@ -292,6 +293,20 @@ result = Qx.bell_state() |> Qx.run(1000)
 IO.inspect(result.counts)
 # => %{"00" => ~500, "11" => ~500}
 Qx.draw_counts(result)
+```
+
+### GHZ-3 State (using `Qx.Patterns`)
+
+```elixir
+# Linear CNOT cascade + bulk measurement using Qx.Patterns helpers
+qc = Qx.create_circuit(3, 3)
+     |> Qx.h(0)                    # Put qubit 0 in superposition
+     |> Qx.cx_chain([0, 1, 2])     # CX(0,1) ; CX(1,2)
+     |> Qx.measure_all()           # Measure every qubit into its bit
+
+result = Qx.run(qc, 1000)
+IO.inspect(result.counts)
+# => %{[0, 0, 0] => ~500, [1, 1, 1] => ~500}
 ```
 
 ### Quantum Teleportation
