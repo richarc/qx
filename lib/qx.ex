@@ -25,8 +25,12 @@ defmodule Qx do
   - `Qx` - Main API (this module)
   - `Qx.Qubit` - Functions for qubit creation and manipulation
   - `Qx.QuantumCircuit` - Quantum circuit creation and management
-  - `Qx.Operations` - Quantum gate operations
-  - `Qx.Patterns` - Composite circuit-building patterns (`h_all`, `measure_all`, `cx_chain`, …)
+  - `Qx.Operations` - Quantum gate operations, including basis-explicit
+    measurement (`measure_x`/`measure_y`/`measure_z`) and controlled
+    rotations (`cy`, `crx`, `cry`, `crz`)
+  - `Qx.Patterns` - Composite circuit-building patterns. Each `_all` helper
+    accepts either no second arg (whole-circuit) or a list/range of qubit
+    indices (sub-register) — e.g. `Qx.h_all(qc, 0..2)`.
   - `Qx.Simulation` - Circuit execution and simulation
   - `Qx.Draw` - Visualization of results
   - `Qx.Math` - Core mathematical functions for quantum mechanics
@@ -304,6 +308,73 @@ defmodule Qx do
   defdelegate cp(circuit, control_qubit, target_qubit, theta), to: Operations
 
   @doc """
+  Applies a controlled-Y (CY) gate. See `Qx.Operations.cy/3`.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(2) |> Qx.cy(0, 1)
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      1
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit indices are out of range or equal
+  """
+  @spec cy(circuit(), non_neg_integer(), non_neg_integer()) :: circuit()
+  defdelegate cy(circuit, control_qubit, target_qubit), to: Operations
+
+  @doc """
+  Applies a controlled rotation about the X-axis. See `Qx.Operations.crx/4`.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(2) |> Qx.crx(0, 1, :math.pi() / 2)
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      1
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit indices are out of range or equal
+    * `ArgumentError` - If `theta` is not a number
+  """
+  @spec crx(circuit(), non_neg_integer(), non_neg_integer(), number()) :: circuit()
+  defdelegate crx(circuit, control_qubit, target_qubit, theta), to: Operations
+
+  @doc """
+  Applies a controlled rotation about the Y-axis. See `Qx.Operations.cry/4`.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(2) |> Qx.cry(0, 1, :math.pi() / 2)
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      1
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit indices are out of range or equal
+    * `ArgumentError` - If `theta` is not a number
+  """
+  @spec cry(circuit(), non_neg_integer(), non_neg_integer(), number()) :: circuit()
+  defdelegate cry(circuit, control_qubit, target_qubit, theta), to: Operations
+
+  @doc """
+  Applies a controlled rotation about the Z-axis. See `Qx.Operations.crz/4`.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(2) |> Qx.crz(0, 1, :math.pi() / 2)
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      1
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit indices are out of range or equal
+    * `ArgumentError` - If `theta` is not a number
+  """
+  @spec crz(circuit(), non_neg_integer(), non_neg_integer(), number()) :: circuit()
+  defdelegate crz(circuit, control_qubit, target_qubit, theta), to: Operations
+
+  @doc """
   Applies a controlled-controlled-X (CCNOT/Toffoli) gate.
 
   Flips target qubit if and only if both control qubits are |1⟩
@@ -525,6 +596,53 @@ defmodule Qx do
   defdelegate measure(circuit, qubit, classical_bit), to: Operations
 
   @doc """
+  Performs a Z-basis (computational) measurement. Alias of `measure/3` for
+  symmetry with `measure_x/3` and `measure_y/3`. See `Qx.Operations.measure_z/3`.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(1, 1) |> Qx.measure_z(0, 0)
+      iex> length(Qx.QuantumCircuit.get_measurements(qc))
+      1
+  """
+  @spec measure_z(circuit(), non_neg_integer(), non_neg_integer()) :: circuit()
+  defdelegate measure_z(circuit, qubit, classical_bit), to: Operations
+
+  @doc """
+  Performs an X-basis measurement. See `Qx.Operations.measure_x/3`.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(1, 1) |> Qx.measure_x(0, 0)
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      2
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit index is out of range
+    * `Qx.ClassicalBitError` - If classical bit index is out of range
+  """
+  @spec measure_x(circuit(), non_neg_integer(), non_neg_integer()) :: circuit()
+  defdelegate measure_x(circuit, qubit, classical_bit), to: Operations
+
+  @doc """
+  Performs a Y-basis measurement. See `Qx.Operations.measure_y/3`.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(1, 1) |> Qx.measure_y(0, 0)
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      3
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit index is out of range
+    * `Qx.ClassicalBitError` - If classical bit index is out of range
+  """
+  @spec measure_y(circuit(), non_neg_integer(), non_neg_integer()) :: circuit()
+  defdelegate measure_y(circuit, qubit, classical_bit), to: Operations
+
+  @doc """
   Applies a Hadamard gate to every qubit in the circuit.
 
   Convenience for the recurring `Enum.reduce(0..(n - 1), qc, &Qx.h(&2, &1))`
@@ -541,6 +659,19 @@ defmodule Qx do
   defdelegate h_all(circuit), to: Patterns
 
   @doc """
+  Applies a Hadamard gate to every qubit in the given list or range.
+  See `Qx.Patterns.h_all/2`.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(5) |> Qx.h_all(0..2)
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      3
+  """
+  @spec h_all(circuit(), Patterns.qubits()) :: circuit()
+  defdelegate h_all(circuit, qubits), to: Patterns
+
+  @doc """
   Applies a Pauli-X gate to every qubit in the circuit.
 
   ## Examples
@@ -551,6 +682,13 @@ defmodule Qx do
   """
   @spec x_all(circuit()) :: circuit()
   defdelegate x_all(circuit), to: Patterns
+
+  @doc """
+  Applies a Pauli-X gate to every qubit in the given list or range.
+  See `Qx.Patterns.x_all/2`.
+  """
+  @spec x_all(circuit(), Patterns.qubits()) :: circuit()
+  defdelegate x_all(circuit, qubits), to: Patterns
 
   @doc """
   Applies a Pauli-Y gate to every qubit in the circuit.
@@ -565,6 +703,13 @@ defmodule Qx do
   defdelegate y_all(circuit), to: Patterns
 
   @doc """
+  Applies a Pauli-Y gate to every qubit in the given list or range.
+  See `Qx.Patterns.y_all/2`.
+  """
+  @spec y_all(circuit(), Patterns.qubits()) :: circuit()
+  defdelegate y_all(circuit, qubits), to: Patterns
+
+  @doc """
   Applies a Pauli-Z gate to every qubit in the circuit.
 
   ## Examples
@@ -575,6 +720,13 @@ defmodule Qx do
   """
   @spec z_all(circuit()) :: circuit()
   defdelegate z_all(circuit), to: Patterns
+
+  @doc """
+  Applies a Pauli-Z gate to every qubit in the given list or range.
+  See `Qx.Patterns.z_all/2`.
+  """
+  @spec z_all(circuit(), Patterns.qubits()) :: circuit()
+  defdelegate z_all(circuit, qubits), to: Patterns
 
   @doc """
   Measures every qubit into its same-index classical bit.
@@ -596,6 +748,18 @@ defmodule Qx do
   defdelegate measure_all(circuit), to: Patterns
 
   @doc """
+  Measures every qubit in the given list or range into its same-index
+  classical bit. See `Qx.Patterns.measure_all/2`.
+
+  ## Raises
+
+    * `Qx.ClassicalBitError` - If any listed qubit has no corresponding
+      classical bit
+  """
+  @spec measure_all(circuit(), Patterns.qubits()) :: circuit()
+  defdelegate measure_all(circuit, qubits), to: Patterns
+
+  @doc """
   Adds a single barrier instruction spanning every qubit.
 
   ## Examples
@@ -606,6 +770,13 @@ defmodule Qx do
   """
   @spec barrier_all(circuit()) :: circuit()
   defdelegate barrier_all(circuit), to: Patterns
+
+  @doc """
+  Adds a single barrier spanning the given list or range of qubits.
+  See `Qx.Patterns.barrier_all/2`. Empty list/range is a no-op.
+  """
+  @spec barrier_all(circuit(), Patterns.qubits()) :: circuit()
+  defdelegate barrier_all(circuit, qubits), to: Patterns
 
   @doc """
   Applies a linear cascade of CNOTs along `qubits`.

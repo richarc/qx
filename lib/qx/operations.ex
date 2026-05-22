@@ -451,6 +451,128 @@ defmodule Qx.Operations do
   end
 
   @doc """
+  Applies a controlled-Y (CY) gate.
+
+  The CY gate applies a Pauli-Y operation to the target qubit if and only if
+  the control qubit is |1⟩. Maps directly to QAAL `CY q, t` and OpenQASM 3
+  `cy q[c], q[t];`.
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `control_qubit` - Control qubit index
+    * `target_qubit` - Target qubit index
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(2, 0)
+      iex> qc = Qx.Operations.cy(qc, 0, 1)
+      iex> [{gate, qubits, _params}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> {gate, qubits}
+      {:cy, [0, 1]}
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit indices are out of range or equal
+  """
+  def cy(%QuantumCircuit{} = circuit, control_qubit, target_qubit) do
+    QuantumCircuit.add_two_qubit_gate(circuit, :cy, control_qubit, target_qubit)
+  end
+
+  @doc """
+  Applies a controlled rotation about the X-axis (CRx) gate.
+
+  Applies `Rx(theta)` to the target qubit if and only if the control qubit
+  is |1⟩. Maps directly to QAAL `CRx(α) q, t` and OpenQASM 3 `crx(θ) q[c], q[t];`.
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `control_qubit` - Control qubit index
+    * `target_qubit` - Target qubit index
+    * `theta` - Rotation angle in radians
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(2, 0)
+      iex> qc = Qx.Operations.crx(qc, 0, 1, :math.pi() / 2)
+      iex> [{gate, qubits, params}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> {gate, qubits, length(params)}
+      {:crx, [0, 1], 1}
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit indices are out of range or equal
+    * `ArgumentError` - If `theta` is not a number
+  """
+  def crx(%QuantumCircuit{} = circuit, control_qubit, target_qubit, theta) do
+    Validation.validate_parameter!(theta)
+    QuantumCircuit.add_two_qubit_gate(circuit, :crx, control_qubit, target_qubit, [theta])
+  end
+
+  @doc """
+  Applies a controlled rotation about the Y-axis (CRy) gate.
+
+  Applies `Ry(theta)` to the target qubit if and only if the control qubit
+  is |1⟩. Maps directly to QAAL `CRy(α) q, t` and OpenQASM 3 `cry(θ) q[c], q[t];`.
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `control_qubit` - Control qubit index
+    * `target_qubit` - Target qubit index
+    * `theta` - Rotation angle in radians
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(2, 0)
+      iex> qc = Qx.Operations.cry(qc, 0, 1, :math.pi() / 2)
+      iex> [{gate, qubits, params}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> {gate, qubits, length(params)}
+      {:cry, [0, 1], 1}
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit indices are out of range or equal
+    * `ArgumentError` - If `theta` is not a number
+  """
+  def cry(%QuantumCircuit{} = circuit, control_qubit, target_qubit, theta) do
+    Validation.validate_parameter!(theta)
+    QuantumCircuit.add_two_qubit_gate(circuit, :cry, control_qubit, target_qubit, [theta])
+  end
+
+  @doc """
+  Applies a controlled rotation about the Z-axis (CRz) gate.
+
+  Applies `Rz(theta)` to the target qubit if and only if the control qubit
+  is |1⟩. Maps directly to QAAL `CRz(α) q, t` and OpenQASM 3 `crz(θ) q[c], q[t];`.
+
+  Note that `Qx.Operations.cp/4` (controlled-phase) is a closely-related
+  gate that differs from `crz/4` by a global phase on the controlled
+  subspace — they are not interchangeable for arbitrary `theta`.
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `control_qubit` - Control qubit index
+    * `target_qubit` - Target qubit index
+    * `theta` - Rotation angle in radians
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(2, 0)
+      iex> qc = Qx.Operations.crz(qc, 0, 1, :math.pi() / 2)
+      iex> [{gate, qubits, params}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> {gate, qubits, length(params)}
+      {:crz, [0, 1], 1}
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit indices are out of range or equal
+    * `ArgumentError` - If `theta` is not a number
+  """
+  def crz(%QuantumCircuit{} = circuit, control_qubit, target_qubit, theta) do
+    Validation.validate_parameter!(theta)
+    QuantumCircuit.add_two_qubit_gate(circuit, :crz, control_qubit, target_qubit, [theta])
+  end
+
+  @doc """
   Adds a barrier to the circuit for visualization purposes.
 
   Barriers are used to group operations and improve circuit readability.
@@ -493,6 +615,90 @@ defmodule Qx.Operations do
   """
   def measure(%QuantumCircuit{} = circuit, qubit, classical_bit) do
     QuantumCircuit.add_measurement(circuit, qubit, classical_bit)
+  end
+
+  @doc """
+  Performs a Z-basis (computational basis) measurement of `qubit`, storing
+  the outcome in `classical_bit`.
+
+  This is an alias of `measure/3` provided for symmetry with `measure_x/3`
+  and `measure_y/3`. Maps directly to QAAL `Mz q -> r`.
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(1, 1) |> Qx.Operations.measure_z(0, 0)
+      iex> Qx.QuantumCircuit.get_measurements(qc)
+      [{0, 0}]
+  """
+  def measure_z(%QuantumCircuit{} = circuit, qubit, classical_bit) do
+    QuantumCircuit.add_measurement(circuit, qubit, classical_bit)
+  end
+
+  @doc """
+  Performs an X-basis measurement of `qubit`, storing the outcome in
+  `classical_bit` (`0` ↔ `|+⟩`, `1` ↔ `|−⟩`).
+
+  Lowers to `H q ; Mz q -> r`. The classical outcome matches QAAL
+  `Mx q -> r`, but note Qx's simulator samples in the computational
+  basis at end-of-circuit, so the post-measurement quantum state stays
+  *Z-basis-aligned* (i.e. `|0⟩` if the classical outcome was `0`, `|1⟩`
+  if `1`) — it is not rotated back into the X-basis eigenstate. For
+  algorithmic transcription of QAAL programs this is observationally
+  indistinguishable as long as `q` is not used after the X-basis
+  measurement (the common case).
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `qubit` - Qubit index to measure
+    * `classical_bit` - Classical bit index to store the result
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(1, 1) |> Qx.Operations.measure_x(0, 0)
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      2
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit index is out of range
+    * `Qx.ClassicalBitError` - If classical bit index is out of range
+  """
+  def measure_x(%QuantumCircuit{} = circuit, qubit, classical_bit) do
+    circuit
+    |> h(qubit)
+    |> measure(qubit, classical_bit)
+  end
+
+  @doc """
+  Performs a Y-basis measurement of `qubit`, storing the outcome in
+  `classical_bit` (`0` ↔ `|+i⟩`, `1` ↔ `|−i⟩`).
+
+  Lowers to `Sdg q ; H q ; Mz q -> r`. Same deferred-sample caveat as
+  `measure_x/3`: the post-measurement state is `|0⟩`/`|1⟩` aligned, not
+  rotated back into the Y-basis eigenstate. The classical outcome is
+  what QAAL `My q -> r` produces.
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `qubit` - Qubit index to measure
+    * `classical_bit` - Classical bit index to store the result
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(1, 1) |> Qx.Operations.measure_y(0, 0)
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      3
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit index is out of range
+    * `Qx.ClassicalBitError` - If classical bit index is out of range
+  """
+  def measure_y(%QuantumCircuit{} = circuit, qubit, classical_bit) do
+    circuit
+    |> sdg(qubit)
+    |> h(qubit)
+    |> measure(qubit, classical_bit)
   end
 
   @doc """

@@ -51,13 +51,17 @@ defmodule Qx.Export.OpenQASM.Lowering do
     "iswap" => {:iswap, 2, 0},
     "cp" => {:cp, 2, 1},
     "cphase" => {:cp, 2, 1},
+    "cy" => {:cy, 2, 0},
+    "crx" => {:crx, 2, 1},
+    "cry" => {:cry, 2, 1},
+    "crz" => {:crz, 2, 1},
     # Three-qubit
     "ccx" => {:ccx, 3, 0},
     "cswap" => {:cswap, 3, 0}
   }
 
   # Gate names from stdgates.inc that Qx cannot represent today.
-  @unsupported_stdgates MapSet.new(~w(cy ch crx cry crz cu rxx ryy rzz rzx))
+  @unsupported_stdgates MapSet.new(~w(ch cu rxx ryy rzz rzx))
 
   @doc """
   Lowers a parsed AST into a `%QuantumCircuit{}`.

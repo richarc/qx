@@ -61,16 +61,17 @@ defmodule Qx.Export.OpenQASMImportTest do
     end
 
     test "returns {:error, %QasmUnsupportedError{}} on unsupported gate" do
+      # `ch` (controlled-H) is in stdgates.inc but not yet supported by Qx.
       src = """
       OPENQASM 3.0;
       qubit[2] q;
-      cy q[0], q[1];
+      ch q[0], q[1];
       """
 
       assert {:error, %Qx.QasmUnsupportedError{feature: feature, line: line}} =
                OpenQASM.from_qasm(src)
 
-      assert feature =~ "cy"
+      assert feature =~ "ch"
       assert line == 3
     end
 

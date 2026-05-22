@@ -405,15 +405,29 @@ defmodule Qx.Simulation do
       :iswap ->
         Nx.dot(Gates.iswap(c, t, num_qubits), state)
 
-      :cp ->
-        Nx.dot(Gates.controlled_gate(Gates.phase(hd(params)), c, t, num_qubits), state)
-
       :measure ->
         state
 
       _ ->
-        raise Qx.GateError, {:unsupported_gate, gate_name}
+        apply_controlled_target_op(gate_name, c, t, params, state, num_qubits)
     end
+  end
+
+  # Lifts a single-qubit gate matrix (parameterised by `gate_name` and
+  # `params`) into the controlled two-qubit gate `|0⟩⟨0|⊗I + |1⟩⟨1|⊗U`,
+  # then applies it to `state`. Covers `cp`, `cy`, `crx`, `cry`, `crz`.
+  defp apply_controlled_target_op(gate_name, c, t, params, state, num_qubits) do
+    target_gate =
+      case gate_name do
+        :cp -> Gates.phase(hd(params))
+        :cy -> Gates.pauli_y()
+        :crx -> Gates.rx(hd(params))
+        :cry -> Gates.ry(hd(params))
+        :crz -> Gates.rz(hd(params))
+        _ -> raise Qx.GateError, {:unsupported_gate, gate_name}
+      end
+
+    Nx.dot(Gates.controlled_gate(target_gate, c, t, num_qubits), state)
   end
 
   defp apply_three_qubit_op(:ccx, [c1, c2, t], _params, state, num_qubits) do

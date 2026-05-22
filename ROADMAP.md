@@ -54,6 +54,7 @@ hardware items was rescoped into v0.8.1 / v0.8.2 (see below).
 - [x] Typed errors at public API boundaries (Iron Law #7) — resolves arch-review C1/C2/C3 + `set_state/2`; bumps 0.8.0 (plan: iron-law-7-critical)
 - [ ] Rename is_* private helpers to *? per Elixir naming convention (qx-mbv)
 - [x] Circuit-building convenience helpers — `h_all/x_all/y_all/z_all`, `measure_all`, `barrier_all`, `cx_chain` in a new `Qx.Patterns` module (plan: circuit-helpers)
+- [x] QAAL parity helpers — controlled rotations (`cy`, `crx`, `cry`, `crz`), basis-explicit measurement (`measure_x`, `measure_y`, `measure_z`), and `Qx.Patterns` list/range overload (`h_all/2` etc.) (plan: qaal-parity)
 - [ ] ~~Stable remote execution contract — QxServer protocol versioned~~ — superseded by direct IBM execution in v0.7 (qx_server path retired)
 
 ---
@@ -70,6 +71,7 @@ documentation for the bit-manipulation hot paths.
 - [ ] Add error path tests for CalcFast edge cases and invalid inputs (qx-eb1)
 - [ ] Add @spec to all defp functions in CalcFast and Simulation (qx-atv)
 - [ ] Add WHY comments to bit-manipulation logic in CalcFast Nx.Defn blocks (qx-8gf)
+- [ ] Iron Law #7 follow-on: route `Qx.Validation.validate_parameter!/1` through a typed `Qx.*Error` instead of raw `ArgumentError`. Affects every rotation gate (`rx`/`ry`/`rz`/`cp`/`crx`/`cry`/`crz`) — currently a visible inconsistency in the new QAAL-parity gates' `## Raises` sections.
 
 ---
 
@@ -92,6 +94,7 @@ Bloch sphere renderer, and broaden hardware support beyond IBM.
 - [ ] Noise models for simulating real-hardware decoherence (bit-flip, phase-flip, depolarising)
 - [ ] Density matrix simulation as an alternative to statevector
 - [ ] Circuit optimisation / gate cancellation pass
+- [ ] Mid-circuit reset operation `Qx.reset/2` — QAAL `MzReset q` parity; first-class in OpenQASM 3 / IBM hardware. Needs new `:reset` instruction handler in `Qx.Simulation` (projection-and-relabel) (plan: tbd, see qaal-analysis A3)
 
 ---
 
@@ -124,6 +127,12 @@ These have no commitment and no scheduled version. They may move up, move down, 
 - Cirq circuit import adapter (Qiskit/IBM Quantum import already covered by OpenQASM 3.0)
 - Multi-register `Qx.QuantumCircuit` (current model is a single quantum + single classical
   register; OpenQASM import currently rejects multi-register programs)
+- Named circuit-mode register views — bind a name to a contiguous (or arbitrary)
+  qubit-index list so `Qx.h_all(qc, alice)` reads like QAAL `H alice`. Stashed
+  from `qaal-analysis` plan (A4). Naming collides with the existing calc-mode
+  `Qx.Register` struct; large API design surface; B1 (list/range overload of
+  `Qx.Patterns`, shipped in v0.8) covers ~80% of the value. Revisit when
+  multi-register tutorials (Shor / QPE) start feeling unmanageable.
 - `else` branches on `c_if` conditionals (currently raises on import; rewrite as two ifs)
 - WASM / browser-side simulation for LiveBook embedding
 

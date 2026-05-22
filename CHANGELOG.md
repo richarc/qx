@@ -59,6 +59,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   CNOT with `control == target`, Toffoli with repeated qubits).
   Message: `"Qubit indices must be distinct, got: [...]"`.
 
+- **Controlled rotations: `Qx.cy/3`, `Qx.crx/4`, `Qx.cry/4`, `Qx.crz/4`
+  (plan: qaal-parity).** Standard controlled-Pauli-Y and controlled
+  rotation gates, mapping directly to QAAL `CY`/`CRx`/`CRy`/`CRz` and
+  OpenQASM 3 `cy`/`crx`/`cry`/`crz`. Simulation handlers reuse the
+  existing two-qubit `controlled_gate/4` contraction. The OpenQASM
+  importer (`Qx.Export.OpenQASM.from_qasm/1`) now also recognises these
+  gates — previously they were in the unsupported-stdgates set.
+
+- **Basis-explicit measurement: `Qx.measure_x/3`, `Qx.measure_y/3`,
+  `Qx.measure_z/3` (plan: qaal-parity).** Match QAAL `Mx`/`My`/`Mz`
+  classical-outcome semantics: `measure_x` lowers to `H ; Mz`,
+  `measure_y` lowers to `Sdg ; H ; Mz`, `measure_z` is an alias of
+  `measure/3` for symmetry. Note: Qx's simulator samples in the
+  computational basis at end-of-circuit, so the post-measurement
+  *quantum state* stays Z-basis-aligned (not rotated back into the
+  X-/Y-basis eigenstate) — the **classical outcome** is what tutorials
+  care about and matches QAAL.
+
+- **`Qx.Patterns` sub-register overload (`/2` arity)
+  (plan: qaal-parity).** `h_all/2`, `x_all/2`, `y_all/2`, `z_all/2`,
+  `measure_all/2`, `barrier_all/2` accept a list or `Range` of qubit
+  indices in addition to the existing whole-circuit `/1` form. Lets
+  tutorials operate on a sub-register without re-deriving qubit ranges
+  by hand: `Qx.h_all(qc, 0..2)`, `Qx.measure_all(qc, [0, 2])`. Empty
+  list/range is a no-op.
+
 - **`Qx.Patterns` — composite circuit-building helpers.** New module
   providing seven thin wrappers over `Qx.Operations` for the recurring
   "apply to every qubit" / "CNOT chain" motifs that appear in tutorials

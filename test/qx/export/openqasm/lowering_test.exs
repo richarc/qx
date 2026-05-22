@@ -223,12 +223,12 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
   end
 
   describe "unsupported stdgates" do
-    for unsupported <- ~w(cy ch crx cry crz cu rxx ryy rzz rzx) do
+    for unsupported <- ~w(ch cu rxx ryy rzz rzx) do
       test "#{unsupported} raises QasmUnsupportedError" do
         gate = unquote(unsupported)
         # Pick correct call pattern based on whether it takes a param.
         call =
-          if gate in ~w(crx cry crz cu rxx ryy rzz rzx) do
+          if gate in ~w(cu rxx ryy rzz rzx) do
             "#{gate}(0.5) q[0], q[1];"
           else
             "#{gate} q[0], q[1];"

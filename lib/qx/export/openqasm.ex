@@ -35,7 +35,7 @@ defmodule Qx.Export.OpenQASM do
   Multi-register programs, gate modifiers (`inv`/`pow`/`ctrl`/`negctrl`),
   `else` branches, complex boolean conditions, classical types beyond
   `bit`, `def`, `for`, `while`, `switch`, `defcal`, `let`, `pragma`,
-  `extern`, `box`, `delay`, `reset`, the stdgates `cy/ch/crx/cry/crz/cu`,
+  `extern`, `box`, `delay`, `reset`, the stdgates `ch/cu/rxx/ryy/rzz/rzx`,
   and the Qiskit extensions `rxx/ryy/rzz/rzx`.
 
   ## Exporting
@@ -290,6 +290,18 @@ defmodule Qx.Export.OpenQASM do
 
       {:cp, [c, t], [theta]} ->
         "cp(#{theta}) q[#{c}], q[#{t}];"
+
+      {:cy, [c, t], []} ->
+        "cy q[#{c}], q[#{t}];"
+
+      {:crx, [c, t], [theta]} ->
+        "crx(#{theta}) q[#{c}], q[#{t}];"
+
+      {:cry, [c, t], [theta]} ->
+        "cry(#{theta}) q[#{c}], q[#{t}];"
+
+      {:crz, [c, t], [theta]} ->
+        "crz(#{theta}) q[#{c}], q[#{t}];"
 
       {:ccx, [c1, c2, target], []} ->
         "ccx q[#{c1}], q[#{c2}], q[#{target}];"
