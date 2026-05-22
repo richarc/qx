@@ -1,10 +1,10 @@
 defmodule Qx.Gates do
-  @moduledoc """
-  Quantum gate matrix definitions with proper complex number support.
+  @moduledoc false
 
-  This module provides the fundamental gate matrices used in quantum computing,
-  properly implemented with complex numbers where required.
-  """
+  # Internal: quantum gate matrix definitions used by `Qx.Calc`, `Qx.CalcFast`,
+  # and `Qx.Simulation`. Users should call `Qx.h(qc, 0)` etc. — these matrix
+  # factories are not part of the documented API surface. Kept callable for
+  # advanced users who need to inspect a gate's matrix form.
 
   alias Complex, as: C
   alias Qx.Math

@@ -148,47 +148,25 @@ defmodule Qx.Math do
     C.new(real, imag)
   end
 
-  @doc """
-  Converts a complex number to an Nx tensor with [real, imag] representation.
-
-  ## Examples
-
-      iex> c = Complex.new(1.0, 2.0)
-      iex> Qx.Math.complex_to_tensor(c)
-      #Nx.Tensor<
-        f32[2]
-        [1.0, 2.0]
-      >
-  """
+  # Converts a `Complex.t()` to an Nx tensor [re, im]. Internal converter
+  # used by gate-matrix builders.
+  @doc false
   def complex_to_tensor(%C{} = c) do
     Nx.tensor([c.re, c.im])
   end
 
-  @doc """
-  Converts an Nx tensor with [real, imag] representation to a complex number.
-
-  ## Examples
-
-      iex> tensor = Nx.tensor([1.0, 2.0])
-      iex> c = Qx.Math.tensor_to_complex(tensor)
-      iex> Complex.real(c)
-      1.0
-      iex> Complex.imag(c)
-      2.0
-  """
+  # Inverse of complex_to_tensor/1: extracts [re, im] from a 2-element Nx
+  # tensor into a `Complex.t()`. Internal.
+  @doc false
   def tensor_to_complex(tensor) do
     [re, im] = Nx.to_flat_list(tensor)
     C.new(re, im)
   end
 
-  @doc """
-  Creates a complex matrix for quantum gates using c64 tensors.
-
-  ## Examples
-
-      iex> # Pauli-Y gate matrix
-      iex> Qx.Math.complex_matrix([[0, Complex.new(0, -1)], [Complex.new(0, 1), 0]])
-  """
+  # Builds a c64 complex matrix tensor from a list-of-lists. Accepts plain
+  # numbers (treated as real) or `Complex.t()` cells. Used internally by
+  # `Qx.Gates` matrix factories.
+  @doc false
   def complex_matrix(matrix) when is_list(matrix) do
     matrix
     |> Enum.map(fn row ->
@@ -219,6 +197,11 @@ defmodule Qx.Math do
   @doc """
   Creates the identity matrix of given size.
 
+  Returns a generic `n × n` real-valued identity tensor (delegates to
+  `Nx.eye/1`). Not gate-shaped: the 2×2 c64 single-qubit identity
+  matrix used by gate factories is internal and is not exposed at the
+  public surface.
+
   ## Examples
 
       iex> Qx.Math.identity(2)
@@ -234,23 +217,11 @@ defmodule Qx.Math do
     Nx.eye(n)
   end
 
-  @doc """
-  Creates a computational basis state |n⟩ in a Hilbert space of given dimension.
-
-  ## Examples
-
-      iex> Qx.Math.basis_state(0, 2)  # |0⟩ state
-      #Nx.Tensor<
-        f32[2]
-        [1.0, 0.0]
-      >
-
-      iex> Qx.Math.basis_state(1, 2)  # |1⟩ state
-      #Nx.Tensor<
-        f32[2]
-        [0.0, 1.0]
-      >
-  """
+  # Deprecated: use `Qx.StateInit.basis_state/3` — it returns c64 (complex)
+  # matching the rest of the quantum-state surface; this f32 (real) version
+  # is kept callable for the 0.8.x deprecation window only.
+  @deprecated "Use Qx.StateInit.basis_state/3"
+  @doc false
   def basis_state(index, dimension) do
     state = Nx.broadcast(0.0, {dimension})
     Nx.put_slice(state, [index], Nx.tensor([1.0]))

@@ -110,4 +110,40 @@ defmodule Qx.QuantumCircuitTypedErrorsTest do
       end
     end
   end
+
+  describe "new/1 and new/2 qubit-count enforcement (Iron Law #7)" do
+    test "new/1 with > 20 qubits raises Qx.QubitCountError" do
+      assert_raise Qx.QubitCountError, ~r/must be between 1 and 20/, fn ->
+        QuantumCircuit.new(25)
+      end
+    end
+
+    test "new/2 with > 20 qubits raises Qx.QubitCountError" do
+      assert_raise Qx.QubitCountError, ~r/must be between 1 and 20/, fn ->
+        QuantumCircuit.new(25, 25)
+      end
+    end
+
+    test "new/1 with 20 qubits succeeds (boundary)" do
+      qc = QuantumCircuit.new(20)
+      assert qc.num_qubits == 20
+    end
+
+    test "new/2 with 1 qubit succeeds (boundary)" do
+      qc = QuantumCircuit.new(1, 0)
+      assert qc.num_qubits == 1
+    end
+
+    test "new/1 with 0 qubits raises Qx.QubitCountError (Iron Law #7 lower bound)" do
+      assert_raise Qx.QubitCountError, ~r/must be between 1 and 20/, fn ->
+        QuantumCircuit.new(0)
+      end
+    end
+
+    test "new/1 with negative qubits raises Qx.QubitCountError" do
+      assert_raise Qx.QubitCountError, ~r/must be between 1 and 20/, fn ->
+        QuantumCircuit.new(-5)
+      end
+    end
+  end
 end

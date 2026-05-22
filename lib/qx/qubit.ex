@@ -151,9 +151,7 @@ defmodule Qx.Qubit do
   ⚠️ This is a terminal operation that returns an SVG string or VegaLite struct, not a qubit.
   For pipeline-friendly state inspection, use `tap_state/2`.
   """
-  def draw_bloch(qubit, options \\ []) do
-    Qx.Draw.bloch_sphere(qubit, options)
-  end
+  defdelegate draw_bloch(qubit, options \\ []), to: Qx.Draw, as: :bloch_sphere
 
   # ============================================================================
   # STATE CREATION

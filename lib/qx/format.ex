@@ -1,31 +1,9 @@
 defmodule Qx.Format do
-  @moduledoc """
-  Shared formatting utilities for quantum states and complex numbers.
+  @moduledoc false
 
-  This module provides consistent formatting across the Qx library for:
-  - Complex numbers in "a+bi" notation
-  - Basis state labels in ket notation (|00⟩, |01⟩, etc.)
-  - Dirac notation for quantum state representation
-
-  ## Examples
-
-      # Format complex numbers
-      iex> Qx.Format.complex(Complex.new(0.707, 0.5))
-      "0.707+0.500i"
-
-      # Format basis states
-      iex> Qx.Format.basis_state(3, 2)
-      "|11⟩"
-
-      # Build Dirac notation
-      iex> amplitudes = [
-      ...>   {"|00⟩", Complex.new(0.707, 0.0), 0.5},
-      ...>   {"|01⟩", Complex.new(0.0, 0.0), 0.0},
-      ...>   {"|10⟩", Complex.new(0.707, 0.0), 0.5}
-      ...> ]
-      iex> Qx.Format.dirac_notation(amplitudes)
-      "0.707|00⟩ + 0.707|10⟩"
-  """
+  # Internal: shared formatting utilities for quantum states and complex
+  # numbers. Used by `Qx.Draw`, `Qx.Draw.Tables`, `Qx.Draw.VegaLite`, and
+  # `Qx.Register.show_state`. Not part of the public API.
 
   alias Complex, as: C
 

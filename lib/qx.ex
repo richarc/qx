@@ -1131,6 +1131,12 @@ defmodule Qx do
       iex> bell_circuit = Qx.bell_state(:psi_minus)
       iex> bell_circuit.num_qubits
       2
+
+  ## See Also
+
+    * `Qx.StateInit.bell_state/2` — returns a **state vector** (Nx tensor)
+      rather than a circuit recipe. Use that when you want the
+      mathematical state directly, this when you want a circuit to run.
   """
   @type bell_state_type :: :phi_plus | :phi_minus | :psi_plus | :psi_minus
   @spec bell_state(bell_state_type()) :: circuit()
@@ -1174,6 +1180,12 @@ defmodule Qx do
       iex> ghz_circuit = Qx.ghz_state()
       iex> ghz_circuit.num_qubits
       3
+
+  ## See Also
+
+    * `Qx.StateInit.ghz_state/2` — returns an **n-qubit state vector**
+      (Nx tensor) directly, with selectable qubit count and type. This
+      function is hardcoded to a 3-qubit circuit recipe.
   """
   @spec ghz_state() :: circuit()
   def ghz_state do

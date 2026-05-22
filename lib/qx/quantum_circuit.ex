@@ -46,7 +46,13 @@ defmodule Qx.QuantumCircuit do
       iex> qc.num_classical_bits
       2
   """
-  def new(num_qubits, num_classical_bits) when num_qubits > 0 and num_classical_bits >= 0 do
+  def new(num_qubits, num_classical_bits)
+      when is_integer(num_qubits) and is_integer(num_classical_bits) and num_classical_bits >= 0 do
+    # Enforce the documented 1..20 qubit cap (Iron Law #7) — raises
+    # `Qx.QubitCountError` at both bounds (was previously a typed error only
+    # at the upper bound; the lower bound fell through to FunctionClauseError).
+    Qx.Validation.validate_num_qubits!(num_qubits)
+
     # Initialize all qubits in |0⟩ state with complex representation
     # For n qubits, we need a 2^n dimensional state vector with complex components
     state_size = trunc(:math.pow(2, num_qubits))
@@ -76,26 +82,14 @@ defmodule Qx.QuantumCircuit do
       iex> qc.num_classical_bits
       0
   """
-  def new(num_qubits) when num_qubits > 0 do
+  def new(num_qubits) when is_integer(num_qubits) do
     new(num_qubits, 0)
   end
 
-  @doc """
-  Adds a single-qubit gate instruction to the circuit.
-
-  ## Parameters
-    * `circuit` - The quantum circuit
-    * `gate_name` - Name of the gate (e.g., :h, :x, :y, :z)
-    * `qubit` - Target qubit index
-    * `params` - Optional gate parameters (default: [])
-
-  ## Examples
-
-      iex> qc = Qx.QuantumCircuit.new(2, 0)
-      iex> qc = Qx.QuantumCircuit.add_gate(qc, :h, 0)
-      iex> length(qc.instructions)
-      1
-  """
+  # Adds a single-qubit gate instruction to the circuit. Internal helper used
+  # by `Qx.Operations` and `Qx.Patterns`; users should call `Qx.h(qc, 0)` etc.
+  # gate_name: atom (e.g. :h, :x). qubit: target index. params: optional list.
+  @doc false
   def add_gate(%__MODULE__{} = circuit, gate_name, qubit, params \\ [])
       when is_atom(gate_name) and is_integer(qubit) do
     Qx.Validation.validate_qubit_index!(qubit, circuit.num_qubits)
@@ -104,23 +98,10 @@ defmodule Qx.QuantumCircuit do
     %{circuit | instructions: circuit.instructions ++ [instruction]}
   end
 
-  @doc """
-  Adds a two-qubit gate instruction to the circuit.
-
-  ## Parameters
-    * `circuit` - The quantum circuit
-    * `gate_name` - Name of the gate (e.g., :cx, :cz)
-    * `control_qubit` - Control qubit index
-    * `target_qubit` - Target qubit index
-    * `params` - Optional gate parameters (default: [])
-
-  ## Examples
-
-      iex> qc = Qx.QuantumCircuit.new(2, 0)
-      iex> qc = Qx.QuantumCircuit.add_two_qubit_gate(qc, :cx, 0, 1)
-      iex> length(qc.instructions)
-      1
-  """
+  # Adds a two-qubit gate instruction to the circuit. Internal helper used
+  # by `Qx.Operations`; users should call `Qx.cx(qc, 0, 1)` etc.
+  # gate_name: atom (e.g. :cx, :cz). Distinct qubits enforced.
+  @doc false
   def add_two_qubit_gate(
         %__MODULE__{} = circuit,
         gate_name,
@@ -141,24 +122,10 @@ defmodule Qx.QuantumCircuit do
     %{circuit | instructions: circuit.instructions ++ [instruction]}
   end
 
-  @doc """
-  Adds a three-qubit gate instruction to the circuit.
-
-  ## Parameters
-    * `circuit` - The quantum circuit
-    * `gate_name` - Name of the gate (e.g., :ccx)
-    * `control1` - First control qubit index
-    * `control2` - Second control qubit index
-    * `target` - Target qubit index
-    * `params` - Optional gate parameters (default: [])
-
-  ## Examples
-
-      iex> qc = Qx.QuantumCircuit.new(3, 0)
-      iex> qc = Qx.QuantumCircuit.add_three_qubit_gate(qc, :ccx, 0, 1, 2)
-      iex> length(qc.instructions)
-      1
-  """
+  # Adds a three-qubit gate instruction. Internal helper used by `Qx.Operations`;
+  # users should call `Qx.ccx(qc, 0, 1, 2)` etc. gate_name: atom (e.g. :ccx).
+  # Indices must be distinct.
+  @doc false
   def add_three_qubit_gate(
         %__MODULE__{} = circuit,
         gate_name,
@@ -194,21 +161,11 @@ defmodule Qx.QuantumCircuit do
     end
   end
 
-  @doc """
-  Adds a measurement instruction to the circuit.
-
-  ## Parameters
-    * `circuit` - The quantum circuit
-    * `qubit` - Qubit index to measure
-    * `classical_bit` - Classical bit index to store the result
-
-  ## Examples
-
-      iex> qc = Qx.QuantumCircuit.new(2, 2)
-      iex> qc = Qx.QuantumCircuit.add_measurement(qc, 0, 0)
-      iex> length(qc.measurements)
-      1
-  """
+  # Adds a measurement instruction. Internal helper used by `Qx.Operations` and
+  # `Qx.Patterns`; users should call `Qx.measure(qc, 0, 0)`. Records the
+  # measurement both as an instruction (for timeline ordering) and in the
+  # `measurements` list (for end-of-circuit sampling).
+  @doc false
   def add_measurement(%__MODULE__{} = circuit, qubit, classical_bit)
       when is_integer(qubit) and is_integer(classical_bit) do
     Qx.Validation.validate_qubit_index!(qubit, circuit.num_qubits)
@@ -281,13 +238,10 @@ defmodule Qx.QuantumCircuit do
 
   ## Examples
 
-      iex> qc = Qx.QuantumCircuit.new(2, 0)
-      iex> qc = Qx.QuantumCircuit.add_gate(qc, :h, 0)
-      iex> [{gate_name, qubits, params}] = Qx.QuantumCircuit.get_instructions(qc)
-      iex> gate_name
-      :h
-      iex> qubits
-      [0]
+      iex> qc = Qx.create_circuit(2) |> Qx.h(0)
+      iex> [{gate_name, qubits, _params}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> {gate_name, qubits}
+      {:h, [0]}
   """
   def get_instructions(%__MODULE__{} = circuit) do
     circuit.instructions
@@ -298,13 +252,10 @@ defmodule Qx.QuantumCircuit do
 
   ## Examples
 
-      iex> qc = Qx.QuantumCircuit.new(2, 2)
-      iex> qc = Qx.QuantumCircuit.add_measurement(qc, 0, 0)
+      iex> qc = Qx.create_circuit(2, 2) |> Qx.measure(0, 0)
       iex> [{qubit, classical_bit}] = Qx.QuantumCircuit.get_measurements(qc)
-      iex> qubit
-      0
-      iex> classical_bit
-      0
+      iex> {qubit, classical_bit}
+      {0, 0}
   """
   def get_measurements(%__MODULE__{} = circuit) do
     circuit.measurements
@@ -315,8 +266,7 @@ defmodule Qx.QuantumCircuit do
 
   ## Examples
 
-      iex> qc = Qx.QuantumCircuit.new(2, 2)
-      iex> qc = Qx.QuantumCircuit.add_measurement(qc, 0, 0)
+      iex> qc = Qx.create_circuit(2, 2) |> Qx.measure(0, 0)
       iex> Qx.QuantumCircuit.measured?(qc, 0)
       true
       iex> Qx.QuantumCircuit.measured?(qc, 1)
@@ -332,8 +282,7 @@ defmodule Qx.QuantumCircuit do
 
   ## Examples
 
-      iex> qc = Qx.QuantumCircuit.new(2, 0)
-      iex> qc = qc |> Qx.QuantumCircuit.add_gate(:h, 0) |> Qx.QuantumCircuit.add_gate(:x, 1)
+      iex> qc = Qx.create_circuit(2) |> Qx.h(0) |> Qx.x(1)
       iex> Qx.QuantumCircuit.depth(qc)
       2
   """
@@ -344,10 +293,14 @@ defmodule Qx.QuantumCircuit do
   @doc """
   Resets the circuit to its initial state, clearing all instructions and measurements.
 
+  Note: this clears the entire circuit (instructions + measurements + state),
+  *not* a single qubit. A future mid-circuit qubit reset (ROADMAP v0.9) will
+  add a distinct operation; this function may be renamed to `clear/1` at
+  that point to disambiguate.
+
   ## Examples
 
-      iex> qc = Qx.QuantumCircuit.new(2, 2)
-      iex> qc = qc |> Qx.QuantumCircuit.add_gate(:h, 0) |> Qx.QuantumCircuit.add_measurement(0, 0)
+      iex> qc = Qx.create_circuit(2, 2) |> Qx.h(0) |> Qx.measure(0, 0)
       iex> qc_reset = Qx.QuantumCircuit.reset(qc)
       iex> length(qc_reset.instructions)
       0

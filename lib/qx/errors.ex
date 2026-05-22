@@ -1,6 +1,29 @@
 defmodule Qx.Error do
   @moduledoc """
-  Base exception for Qx library errors.
+  Placeholder base exception for Qx library errors. **Not currently raised
+  by any Qx function.**
+
+  Elixir exceptions do not inherit, so a `rescue Qx.Error` clause will
+  **not** catch the typed exceptions Qx actually raises
+  (`Qx.QubitIndexError`, `Qx.GateError`, `Qx.ClassicalBitError`,
+  `Qx.QubitCountError`, `Qx.StateNormalizationError`,
+  `Qx.StateShapeError`, `Qx.MeasurementError`, `Qx.ConditionalError`,
+  `Qx.OptionError`, `Qx.QasmParseError`, `Qx.QasmUnsupportedError`,
+  `Qx.Hardware.ConfigError`, `Qx.Hardware.ExecutionError`,
+  `Qx.Hardware.NoMeasurementsError`). To rescue any of those, list them
+  explicitly:
+
+      try do
+        Qx.run(qc)
+      rescue
+        e in [Qx.QubitIndexError, Qx.GateError, Qx.ClassicalBitError] ->
+          # handle
+      end
+
+  This module is retained for forward compatibility — a future major
+  version may introduce a rescue-all mechanism that raises `Qx.Error`
+  as well as the typed exception. Until then, expect *zero* exceptions
+  to match this type.
   """
   defexception [:message]
 end

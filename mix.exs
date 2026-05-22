@@ -94,8 +94,7 @@ defmodule Qx.MixProject do
           Qx.Hardware,
           Qx.Hardware.Config,
           Qx.Hardware.Ibm,
-          Qx.Hardware.Portal,
-          Qx.ResultBuilder
+          Qx.Hardware.Portal
         ],
         "Error Handling": [
           Qx.Error,
@@ -116,12 +115,7 @@ defmodule Qx.MixProject do
         "Validation & Utilities": [
           Qx.Validation,
           Qx.Math,
-          Qx.Format,
           Qx.StateInit
-        ],
-        "Low-Level Operations": [
-          Qx.Calc,
-          Qx.Gates
         ],
         Behaviours: [
           Qx.Behaviours.QuantumState

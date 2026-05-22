@@ -1,21 +1,11 @@
 defmodule Qx.Calc do
-  @moduledoc """
-  Shared calculation engine for quantum gate operations.
+  @moduledoc false
 
-  This module provides the core logic for applying quantum gates to state vectors,
-  used by both `Qx.Qubit` (single-qubit calculation mode) and `Qx.Register`
-  (multi-qubit calculation mode).
-
-  ## Design
-
-  The module handles:
-  - Single-qubit gate application (direct matrix multiplication)
-  - Multi-qubit gate application (tensor product expansion)
-  - State vector transformations
-
-  This centralizes the gate application logic in one place, making it easier to
-  optimize and maintain.
-  """
+  # Internal: shared calculation engine for quantum gate operations. Used by
+  # `Qx.Qubit`, `Qx.Register`, and `Qx.Simulation` to apply single-qubit and
+  # multi-qubit gates to state vectors. Centralises gate-application logic.
+  # Not part of the public API; advanced users wanting low-level access can
+  # still call these functions.
 
   @doc """
   Applies a single-qubit gate to a state vector.

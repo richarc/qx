@@ -84,21 +84,10 @@ defmodule Qx.Validation do
     end
   end
 
-  @doc """
-  Validates normalization of a state vector.
-
-  Raises `Qx.StateNormalizationError` if not normalized within tolerance.
-
-  ## Examples
-
-      iex> state = Qx.Qubit.new()
-      iex> Qx.Validation.validate_normalized!(state)
-      :ok
-
-      iex> invalid = Nx.tensor([Complex.new(1.0, 0.0), Complex.new(1.0, 0.0)], type: :c64)
-      iex> Qx.Validation.validate_normalized!(invalid)
-      ** (Qx.StateNormalizationError) State not normalized: total probability = 2.0 (expected 1.0 ± 1.0e-6)
-  """
+  # Validates normalization of a state vector. Raises Qx.StateNormalizationError
+  # if total probability is not 1.0 within `tolerance` (default 1.0e-6).
+  # Internal contract used by `Qx.Simulation` norm-drift guard.
+  @doc false
   def validate_normalized!(state, tolerance \\ 1.0e-6) do
     probs = Qx.Math.probabilities(state)
     total = Nx.sum(probs) |> Nx.to_number()
@@ -110,27 +99,9 @@ defmodule Qx.Validation do
     :ok
   end
 
-  @doc """
-  Validates a qubit index is within valid range for the system.
-
-  ## Parameters
-  - `index` - Qubit index to validate (0-based)
-  - `num_qubits` - Total number of qubits in the system
-
-  ## Examples
-
-      iex> Qx.Validation.validate_qubit_index!(0, 3)
-      :ok
-
-      iex> Qx.Validation.validate_qubit_index!(2, 3)
-      :ok
-
-      iex> Qx.Validation.validate_qubit_index!(5, 3)
-      ** (Qx.QubitIndexError) Qubit index 5 out of range (0..2)
-
-      iex> Qx.Validation.validate_qubit_index!(-1, 3)
-      ** (Qx.QubitIndexError) Qubit index -1 out of range (0..2)
-  """
+  # Validates a qubit index is in 0..(num_qubits-1). Raises Qx.QubitIndexError
+  # on out-of-range or negative index. Internal Iron Law #7 contract.
+  @doc false
   def validate_qubit_index!(index, num_qubits)
       when is_integer(index) and is_integer(num_qubits) do
     if index < 0 or index >= num_qubits do
@@ -140,33 +111,17 @@ defmodule Qx.Validation do
     :ok
   end
 
-  @doc """
-  Validates multiple qubit indices are all within valid range.
-
-  ## Examples
-
-      iex> Qx.Validation.validate_qubit_indices!([0, 1], 3)
-      :ok
-
-      iex> Qx.Validation.validate_qubit_indices!([0, 5], 3)
-      ** (Qx.QubitIndexError) Qubit index 5 out of range (0..2)
-  """
+  # Validates every qubit index in `indices` is in range. Raises Qx.QubitIndexError
+  # on the first offender.
+  @doc false
   def validate_qubit_indices!(indices, num_qubits) when is_list(indices) do
     Enum.each(indices, &validate_qubit_index!(&1, num_qubits))
     :ok
   end
 
-  @doc """
-  Validates all qubit indices in a list are different.
-
-  ## Examples
-
-      iex> Qx.Validation.validate_qubits_different!([0, 1, 2])
-      :ok
-
-      iex> Qx.Validation.validate_qubits_different!([0, 1, 0])
-      ** (ArgumentError) All qubit indices must be different: [0, 1, 0]
-  """
+  # Validates all qubit indices in a list are distinct. Raises ArgumentError
+  # with the duplicate-containing list on violation.
+  @doc false
   def validate_qubits_different!(qubits) when is_list(qubits) do
     if length(Enum.uniq(qubits)) != length(qubits) do
       raise ArgumentError,
@@ -176,17 +131,9 @@ defmodule Qx.Validation do
     :ok
   end
 
-  @doc """
-  Validates a classical bit index.
-
-  ## Examples
-
-      iex> Qx.Validation.validate_classical_bit!(0, 5)
-      :ok
-
-      iex> Qx.Validation.validate_classical_bit!(10, 5)
-      ** (Qx.ClassicalBitError) Classical bit index 10 out of range (0..4)
-  """
+  # Validates a classical bit index is in 0..(num_bits-1). Raises
+  # Qx.ClassicalBitError on out-of-range.
+  @doc false
   def validate_classical_bit!(index, num_bits) when is_integer(index) and is_integer(num_bits) do
     if index < 0 or index >= num_bits do
       raise Qx.ClassicalBitError, {index, num_bits}
@@ -195,19 +142,9 @@ defmodule Qx.Validation do
     :ok
   end
 
-  @doc """
-  Validates state vector shape matches expected size.
-
-  ## Examples
-
-      iex> state = Qx.Qubit.new()
-      iex> Qx.Validation.validate_state_shape!(state, 2)
-      :ok
-
-      iex> state = Qx.Qubit.new()
-      iex> Qx.Validation.validate_state_shape!(state, 4)
-      ** (ArgumentError) Invalid state shape: expected {4}, got {2}
-  """
+  # Validates state vector shape matches `expected_size`. Raises ArgumentError
+  # on mismatch. (Iron Law #7 follow-on: route through Qx.StateShapeError.)
+  @doc false
   def validate_state_shape!(state, expected_size) do
     actual_size = Nx.axis_size(state, 0)
 
@@ -219,34 +156,22 @@ defmodule Qx.Validation do
     :ok
   end
 
-  @doc """
-  Validates that an angle/parameter is a number.
-
-  ## Examples
-
-      iex> Qx.Validation.validate_parameter!(:math.pi())
-      :ok
-
-      iex> Qx.Validation.validate_parameter!("not a number")
-      ** (ArgumentError) Parameter must be a number, got: "not a number"
-  """
+  # Validates angle/parameter is a number. Raises ArgumentError on non-number.
+  # (Iron Law #7 follow-on: typed error.)
+  @doc false
   def validate_parameter!(param) when is_number(param), do: :ok
 
   def validate_parameter!(param) do
     raise ArgumentError, "Parameter must be a number, got: #{inspect(param)}"
   end
 
-  @doc """
-  Validates gate name is a known gate.
-
-  ## Examples
-
-      iex> Qx.Validation.validate_gate_name!(:h)
-      :ok
-
-      iex> Qx.Validation.validate_gate_name!(:not_a_gate)
-      ** (Qx.GateError) Unsupported gate: :not_a_gate
-  """
+  # Validates gate name against a static known-gates list. Raises Qx.GateError
+  # on unsupported. NOTE: this function is not currently called from any lib/
+  # path (gate dispatch is done by Qx.Simulation's case statement); it's a
+  # leftover utility. The known-gates list is also stale (missing cy/crx/cry/
+  # crz/cp added in qaal-parity). Audit finding — kept for now to avoid
+  # breaking validation_test.exs assertions.
+  @doc false
   def validate_gate_name!(gate_name) do
     known_gates = [
       :h,
@@ -278,20 +203,11 @@ defmodule Qx.Validation do
     :ok
   end
 
-  @doc """
-  Validates number of qubits is within supported range (1-20).
-
-  ## Examples
-
-      iex> Qx.Validation.validate_num_qubits!(5)
-      :ok
-
-      iex> Qx.Validation.validate_num_qubits!(0)
-      ** (Qx.QubitCountError) Invalid qubit count: 0 (must be between 1 and 20)
-
-      iex> Qx.Validation.validate_num_qubits!(25)
-      ** (Qx.QubitCountError) Invalid qubit count: 25 (must be between 1 and 20)
-  """
+  # Validates qubit count is in 1..20 (the documented Qx limit). Raises
+  # Qx.QubitCountError on violation. Called from `Qx.Register.new/1` and
+  # `Qx.QuantumCircuit.new/1,2` (the latter wired in Phase A — see plan
+  # `api-cleanup-phase-a`).
+  @doc false
   def validate_num_qubits!(num_qubits) when is_integer(num_qubits) do
     if num_qubits < 1 or num_qubits > 20 do
       raise Qx.QubitCountError, {num_qubits, 1, 20}
@@ -300,31 +216,10 @@ defmodule Qx.Validation do
     :ok
   end
 
-  @doc """
-  Validates the `:renormalize` option for `Qx.Simulation.run/2`.
-
-  Accepts `false`, `true`, or a positive integer; returns the value
-  unchanged on success. Raises `Qx.OptionError` on anything else
-  (negative/zero integers, floats, atoms, …) so misuse surfaces as a
-  typed Qx error rather than a downstream `FunctionClauseError`.
-
-  ## Examples
-
-      iex> Qx.Validation.validate_renormalize!(false)
-      false
-
-      iex> Qx.Validation.validate_renormalize!(true)
-      true
-
-      iex> Qx.Validation.validate_renormalize!(10)
-      10
-
-      iex> Qx.Validation.validate_renormalize!(-1)
-      ** (Qx.OptionError) Invalid value for option :renormalize: -1. Expected false, true, or a positive integer.
-
-      iex> Qx.Validation.validate_renormalize!(:bad)
-      ** (Qx.OptionError) Invalid value for option :renormalize: :bad. Expected false, true, or a positive integer.
-  """
+  # Validates the `:renormalize` option for `Qx.Simulation.run/2`. Accepts
+  # `false`, `true`, or a positive integer; returns the value unchanged.
+  # Raises Qx.OptionError on anything else.
+  @doc false
   @spec validate_renormalize!(term()) :: false | true | pos_integer()
   def validate_renormalize!(false), do: false
   def validate_renormalize!(true), do: true

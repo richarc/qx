@@ -1,24 +1,10 @@
 defmodule Qx.CalcFast do
-  @moduledoc """
-  Optimized quantum gate operations using direct statevector manipulation.
+  @moduledoc false
 
-  This module provides high-performance implementations that apply gates
-  directly to statevectors without building full 2^n x 2^n gate matrices.
-  All functions are compiled with Nx.Defn for GPU/CPU acceleration.
-
-  ## Performance
-
-  Compared to the original matrix-based approach:
-  - Memory: O(2^n) instead of O(2^(2n))
-  - Speed: 10-1000x faster depending on circuit size
-  - GPU-friendly: All operations use Nx primitives that compile to XLA
-
-  ## Implementation Notes
-
-  These implementations follow the approach used by production quantum
-  simulators like Qiskit-Aer and Cirq, manipulating statevector amplitudes
-  directly rather than constructing and multiplying large matrices.
-  """
+  # Internal: high-performance gate operations using direct statevector
+  # manipulation (no 2^n × 2^n matrices). Compiled via Nx.Defn for CPU/GPU
+  # acceleration. Same algorithmic role as `Qx.Calc` but optimised.
+  # Not part of the public API.
 
   import Nx.Defn
 

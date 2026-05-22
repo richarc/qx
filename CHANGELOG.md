@@ -9,6 +9,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.8.0] - 2026-05-21
 
+### Changed
+
+- **Internal-only functions hidden from documentation
+  (plan: api-cleanup-phase-a).** A public-API audit found that several
+  modules labelled "Low-Level Operations" or "Validation & Utilities"
+  in `mix.exs` were exporting `def` functions that are used only inside
+  the library. The following are now `@moduledoc false` or
+  per-function `@doc false`:
+
+  - **Qx.Gates, Qx.Calc, Qx.CalcFast, Qx.Format, Qx.ResultBuilder** —
+    entire modules tagged `@moduledoc false`. Removed from `mix.exs`
+    `groups_for_modules`. Functions remain callable for advanced users;
+    they just no longer appear in ExDoc or IDE auto-complete.
+  - **Qx.QuantumCircuit.add_gate, add_two_qubit_gate,
+    add_three_qubit_gate, add_measurement** — `@doc false`. The
+    user-facing API is `Qx.h(qc, 0)` etc.; these are internal helpers.
+  - **Qx.Validation `validate_*!` family (10 functions)** — `@doc false`.
+    Internal Iron Law #7 contracts. The user-facing predicates
+    `Qx.Validation.valid_qubit?/2` and `valid_register?/2` remain
+    public.
+  - **Qx.Math.complex_to_tensor, tensor_to_complex, complex_matrix** —
+    `@doc false`. The rest of `Qx.Math` (`complex/2`, `identity/1`,
+    `unitary?/1`, `probabilities/1`) stays public.
+
+  No call site breaks. Existing tests pass unchanged.
+
+- **`Qx.Qubit.draw_bloch/2`** converted from a `def` wrapper to a
+  `defdelegate`. Behaviour unchanged.
+
+- **`Qx.Error` `@moduledoc` rewritten to be accurate.** The previous
+  text described it as a "base exception" Qx users could rescue to
+  catch any Qx error. Elixir exceptions do not inherit, so
+  `rescue Qx.Error` catches *nothing* today — the docstring now says
+  so explicitly and lists every typed exception users actually need
+  to rescue.
+
+### Deprecated
+
+- **Qx.Math.basis_state/2 is deprecated** — use
+  `Qx.StateInit.basis_state/3` instead. The two functions returned
+  different types (Math was f32, StateInit is c64), and the StateInit
+  form is the canonical one. The deprecated function emits a
+  compile-time warning and is hidden from ExDoc; it will be removed
+  in v1.0.
+
+### Fixed
+
+- **Qx.QuantumCircuit.new now enforces the documented 1..20-qubit cap
+  at both bounds (plan: api-cleanup-phase-a, finding D3).** Previously:
+  `new(25)` silently created an over-cap circuit (upper bound unchecked
+  on this path); `new(0)` raised `FunctionClauseError` via a guard
+  (lower bound untyped). Both paths now raise `Qx.QubitCountError`
+  consistently — the function calls the internal `validate_num_qubits!`
+  validator on every input. Closes Iron Law #7 holes at both bounds,
+  surfaced by `.claude/plans/public-api-audit/plan.md`.
+
 ### BREAKING
 
 - **Typed errors at public API boundaries (Iron Law #7).** Out-of-range

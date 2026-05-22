@@ -1,42 +1,13 @@
 defmodule Qx.ResultBuilder do
-  @moduledoc """
-  Builds `Qx.SimulationResult` structs from counts data.
+  @moduledoc false
 
-  Used by `Qx.Hardware` to reconstruct results from IBM Quantum's
-  shot-based response, and by provider adapters when converting
-  hardware results.
+  # Internal: builds `Qx.SimulationResult` structs from counts data. Used by
+  # `Qx.Hardware` and provider adapters to convert hardware shot-based
+  # responses (e.g. IBM Quantum) into the unified `SimulationResult` shape.
+  # The `state` field is set to a zero-vector placeholder since hardware
+  # backends don't return statevectors — use `counts`/`probabilities` only.
 
-  > #### Statevector placeholder {: .warning}
-  >
-  > Hardware backends do not return statevectors. The `state` field in
-  > the resulting `Qx.SimulationResult` is set to a zero-vector placeholder.
-  > Functions that depend on the statevector (e.g. state visualization) will
-  > not produce meaningful output for hardware results. Use `counts` and
-  > `probabilities` instead.
-  """
-
-  @doc """
-  Builds a `Qx.SimulationResult` from a counts map, shot count, and
-  number of classical bits.
-
-  ## Parameters
-
-    * `counts` - Map of binary string outcomes to frequencies, e.g. `%{"00" => 520, "11" => 480}`
-    * `shots` - Total number of shots executed
-    * `num_bits` - Number of classical bits in the circuit
-
-  The `state` field will be a zero-vector placeholder since hardware backends
-  do not return statevectors.
-
-  ## Examples
-
-      result = Qx.ResultBuilder.from_counts(%{"00" => 500, "11" => 500}, 1000, 2)
-      result.shots
-      #=> 1000
-      result.counts
-      #=> %{"00" => 500, "11" => 500}
-
-  """
+  @doc false
   @spec from_counts(map(), pos_integer(), pos_integer()) :: Qx.SimulationResult.t()
   def from_counts(counts, shots, num_bits)
       when is_map(counts) and is_integer(shots) and is_integer(num_bits) do

@@ -260,6 +260,13 @@ defmodule Qx.StateInit do
       iex> probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
       iex> abs(Enum.at(probs, 1) - 0.5) < 0.01 and abs(Enum.at(probs, 2) - 0.5) < 0.01
       true
+
+  ## See Also
+
+    * `Qx.bell_state/1` — returns a **circuit recipe** (`%Qx.QuantumCircuit{}`)
+      that *prepares* the Bell state when run, rather than the state vector
+      directly. Use that when you want a circuit to execute, this when you
+      want the mathematical state.
   """
   def bell_state(which \\ :phi_plus, type \\ :c64)
 
@@ -324,6 +331,12 @@ defmodule Qx.StateInit do
       iex> probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
       iex> Enum.sum(Enum.slice(probs, 1..6))
       0.0
+
+  ## See Also
+
+    * `Qx.ghz_state/0` — returns a **circuit recipe** (hardcoded 3-qubit)
+      rather than the state vector. Use that for a runnable circuit; this
+      for the mathematical state at any qubit count.
   """
   def ghz_state(num_qubits, type \\ :c64) when is_integer(num_qubits) and num_qubits >= 2 do
     dimension = trunc(:math.pow(2, num_qubits))

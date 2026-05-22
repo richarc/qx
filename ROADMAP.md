@@ -52,7 +52,6 @@ hardware items was rescoped into v0.8.1 / v0.8.2 (see below).
 - [x] Add explicit matrix-equality tests for CSWAP and iSWAP gates (qx-uos)
 - [x] Add norm-drift guard and configurable renormalization in CalcFast (qx-53v)
 - [x] Typed errors at public API boundaries (Iron Law #7) — resolves arch-review C1/C2/C3 + `set_state/2`; bumps 0.8.0 (plan: iron-law-7-critical)
-- [ ] Rename is_* private helpers to *? per Elixir naming convention (qx-mbv)
 - [x] Circuit-building convenience helpers — `h_all/x_all/y_all/z_all`, `measure_all`, `barrier_all`, `cx_chain` in a new `Qx.Patterns` module (plan: circuit-helpers)
 - [x] QAAL parity helpers — controlled rotations (`cy`, `crx`, `cry`, `crz`), basis-explicit measurement (`measure_x`, `measure_y`, `measure_z`), and `Qx.Patterns` list/range overload (`h_all/2` etc.) (plan: qaal-parity)
 - [ ] ~~Stable remote execution contract — QxServer protocol versioned~~ — superseded by direct IBM execution in v0.7 (qx_server path retired)
@@ -71,6 +70,7 @@ documentation for the bit-manipulation hot paths.
 - [ ] Add error path tests for CalcFast edge cases and invalid inputs (qx-eb1)
 - [ ] Add @spec to all defp functions in CalcFast and Simulation (qx-atv)
 - [ ] Add WHY comments to bit-manipulation logic in CalcFast Nx.Defn blocks (qx-8gf)
+- [ ] Rename is_* private helpers to *? per Elixir naming convention (qx-mbv)
 - [ ] Iron Law #7 follow-on: route `Qx.Validation.validate_parameter!/1` through a typed `Qx.*Error` instead of raw `ArgumentError`. Affects every rotation gate (`rx`/`ry`/`rz`/`cp`/`crx`/`cry`/`crz`) — currently a visible inconsistency in the new QAAL-parity gates' `## Raises` sections.
 
 ---
