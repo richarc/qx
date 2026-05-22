@@ -9,7 +9,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.8.0] - 2026-05-21
 
+### Added
+
+- **Full calc-mode gate parity on Qx.Register
+  (plan: api-cleanup-phase-b).** Eight gates that previously existed
+  only in circuit mode are now available on `Qx.Register` as direct
+  state-vector evolutions:
+
+    - `Qx.Register.cy/3` — controlled-Y
+    - `Qx.Register.crx/4`, `cry/4`, `crz/4` — controlled rotations
+    - `Qx.Register.cp/4` — controlled-phase
+    - `Qx.Register.swap/3`, `iswap/3` — two-qubit swaps
+    - `Qx.Register.cswap/4` — Fredkin (controlled-SWAP)
+    - `Qx.Register.u/5` — general single-qubit unitary
+
+  All five controlled-target gates (`cy`, `crx`, `cry`, `crz`, `cp`)
+  share an `apply_controlled_target/4` internal helper that lifts a
+  2×2 gate matrix into the full controlled two-qubit unitary via the
+  internal Qx.Gates.controlled_gate factory and applies it to
+  `register.state`.
+
+- **Basis-explicit measurement on Qx.Qubit
+  (plan: api-cleanup-phase-b).** `Qx.Qubit.measure_x/1`, `measure_y/1`,
+  and `measure_z/1` return the probability distribution in the X, Y,
+  and Z bases respectively (the Z form is an alias of the existing
+  `measure_probabilities/1` for symmetry). Maps directly to QAAL `Mx`,
+  `My`, `Mz`. Implementation reuses the existing single-qubit gate
+  pipeline (`H` for X-basis, `Sdg ; H` for Y-basis).
+
+- **Named circuit recipes consolidated under Qx.Patterns
+  (plan: api-cleanup-phase-b).** New helpers
+  `Qx.Patterns.bell_state_circuit/1`, `ghz_state_circuit/1`, and
+  `superposition_circuit/1`. The top-level `Qx.bell_state`,
+  `Qx.ghz_state`, and `Qx.superposition` now delegate to these
+  helpers (no break — old call sites continue to work). Two of the
+  three got new optional arguments: `Qx.ghz_state(num_qubits \\ 3)`
+  and `Qx.superposition(num_qubits \\ 1)` — previously hardcoded to
+  3 and 1 qubits respectively.
+
 ### Changed
+
+- **Qx.Behaviours.QuantumState now has callbacks (and an
+  implementor).** Previously a dead behaviour that no module
+  implemented — `Qx.Register` now declares `@behaviour
+  Qx.Behaviours.QuantumState` and provides every required callback.
+  The callback list grew to cover the full Phase B gate surface
+  (`sdg`, `u`, `cy`, `swap`, `iswap`, `cp`, `crx`, `cry`, `crz`,
+  `ccx`, `cswap`); the new callbacks are listed under
+  `@optional_callbacks` so future implementors with smaller surfaces
+  (e.g. a 2-qubit-only subset) don't need to provide them. Going
+  forward, adding a gate to the multi-qubit calc-mode surface is
+  compile-time-enforced to update both the behaviour and `Qx.Register`.
+
+  Single-qubit `Qx.Qubit` is **not** an implementor: its functions
+  take `(state)` rather than `(state, qubit_index)`, so the
+  signature is structurally incompatible. Unifying both paradigms
+  under one behaviour is a v1.0 redesign and is documented in the
+  behaviour's `@moduledoc`.
+
+- **Qx.Validation.validate_gate_name!/1 removed.** It was dead code
+  (called only from its own tests) with a stale known-gates list
+  (missing CY/CRx/CRy/CRz/CP added in qaal-parity). The
+  corresponding test block is removed from `validation_test.exs`.
+
+- **Qx.Validation removed from `mix.exs` `groups_for_modules`.**
+  After Phase A's `@doc false` sweep, only `valid_qubit?/2` and
+  `valid_register?/2` remain visible — too thin to warrant a top-level
+  group. The module page itself is still reachable; the renamed
+  "Utilities" group lists `Qx.Math` and `Qx.StateInit`.
 
 - **Internal-only functions hidden from documentation
   (plan: api-cleanup-phase-a).** A public-API audit found that several

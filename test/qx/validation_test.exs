@@ -255,38 +255,6 @@ defmodule Qx.ValidationTest do
     end
   end
 
-  describe "validate_gate_name!/1" do
-    test "accepts known single-qubit gates" do
-      assert Validation.validate_gate_name!(:h) == :ok
-      assert Validation.validate_gate_name!(:x) == :ok
-      assert Validation.validate_gate_name!(:y) == :ok
-      assert Validation.validate_gate_name!(:z) == :ok
-      assert Validation.validate_gate_name!(:s) == :ok
-      assert Validation.validate_gate_name!(:t) == :ok
-    end
-
-    test "accepts known parameterized gates" do
-      assert Validation.validate_gate_name!(:rx) == :ok
-      assert Validation.validate_gate_name!(:ry) == :ok
-      assert Validation.validate_gate_name!(:rz) == :ok
-      assert Validation.validate_gate_name!(:phase) == :ok
-    end
-
-    test "accepts known multi-qubit gates" do
-      assert Validation.validate_gate_name!(:cx) == :ok
-      assert Validation.validate_gate_name!(:cnot) == :ok
-      assert Validation.validate_gate_name!(:cz) == :ok
-      assert Validation.validate_gate_name!(:ccx) == :ok
-      assert Validation.validate_gate_name!(:toffoli) == :ok
-    end
-
-    test "rejects unknown gate" do
-      assert_raise Qx.GateError, ~r/Unsupported gate: :not_a_gate/, fn ->
-        Validation.validate_gate_name!(:not_a_gate)
-      end
-    end
-  end
-
   describe "validate_num_qubits!/1" do
     test "accepts valid qubit counts" do
       assert Validation.validate_num_qubits!(1) == :ok

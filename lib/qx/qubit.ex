@@ -598,6 +598,64 @@ defmodule Qx.Qubit do
   end
 
   @doc """
+  Returns the probability of measuring `|0⟩` and `|1⟩` — alias of
+  `measure_probabilities/1` for symmetry with `measure_x/1` and
+  `measure_y/1`. Maps directly to QAAL `Mz`.
+
+  ## Examples
+
+      iex> qubit = Qx.Qubit.plus()
+      iex> probs = Qx.Qubit.measure_z(qubit) |> Nx.to_flat_list()
+      iex> Enum.map(probs, &Float.round(&1, 5))
+      [0.5, 0.5]
+  """
+  @spec measure_z(Nx.Tensor.t()) :: Nx.Tensor.t()
+  def measure_z(qubit) do
+    measure_probabilities(qubit)
+  end
+
+  @doc """
+  Returns the X-basis measurement probabilities of a qubit — the
+  probability of finding the qubit in `|+⟩` (index 0) and `|−⟩`
+  (index 1). Implemented by applying `H` and then sampling in the
+  computational basis. Maps directly to QAAL `Mx`.
+
+  ## Examples
+
+      # |+⟩ is the +1 eigenvector of X; probability concentrated at index 0
+      iex> probs = Qx.Qubit.plus() |> Qx.Qubit.measure_x() |> Nx.to_flat_list()
+      iex> [Float.round(Enum.at(probs, 0), 5), Float.round(Enum.at(probs, 1), 5)]
+      [1.0, 0.0]
+
+      # |−⟩ is the −1 eigenvector of X; probability concentrated at index 1
+      iex> probs = Qx.Qubit.minus() |> Qx.Qubit.measure_x() |> Nx.to_flat_list()
+      iex> [Float.round(Enum.at(probs, 0), 5), Float.round(Enum.at(probs, 1), 5)]
+      [0.0, 1.0]
+  """
+  @spec measure_x(Nx.Tensor.t()) :: Nx.Tensor.t()
+  def measure_x(qubit) do
+    qubit |> h() |> measure_probabilities()
+  end
+
+  @doc """
+  Returns the Y-basis measurement probabilities of a qubit — the
+  probability of finding the qubit in `|+i⟩` (index 0) and `|−i⟩`
+  (index 1). Implemented by applying `S†` then `H` and sampling in the
+  computational basis. Maps directly to QAAL `My`.
+
+  ## Examples
+
+      # |+i⟩ = S|+⟩; probability concentrated at index 0
+      iex> probs = Qx.Qubit.plus() |> Qx.Qubit.s() |> Qx.Qubit.measure_y() |> Nx.to_flat_list()
+      iex> [Float.round(Enum.at(probs, 0), 5), Float.round(Enum.at(probs, 1), 5)]
+      [1.0, 0.0]
+  """
+  @spec measure_y(Nx.Tensor.t()) :: Nx.Tensor.t()
+  def measure_y(qubit) do
+    qubit |> sdg() |> h() |> measure_probabilities()
+  end
+
+  @doc """
   Returns a map containing formatted state information.
 
   This function returns a map with human-readable representations of the qubit

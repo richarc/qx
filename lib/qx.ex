@@ -1103,28 +1103,19 @@ defmodule Qx do
   # Convenience functions for creating common quantum states and circuits
 
   @doc """
-  Creates one of the four Bell state circuits (maximally entangled two-qubit states).
+  Creates one of the four Bell-state circuits (maximally entangled
+  two-qubit states). See `Qx.Patterns.bell_state_circuit/1`.
 
-  Accepts an optional atom to select which Bell state to prepare:
-
-  | Atom          | State                                     |
-  | ------------- | ----------------------------------------- |
-  | `:phi_plus`   | `\|Φ+⟩ = (\|00⟩ + \|11⟩)/√2` (default)  |
-  | `:phi_minus`  | `\|Φ-⟩ = (\|00⟩ - \|11⟩)/√2`            |
-  | `:psi_plus`   | `\|Ψ+⟩ = (\|01⟩ + \|10⟩)/√2`            |
-  | `:psi_minus`  | `\|Ψ-⟩ = (\|01⟩ - \|10⟩)/√2`            |
+  | Atom          | State                                  |
+  | ------------- | -------------------------------------- |
+  | `:phi_plus`   | `\|Φ+⟩ = (\|00⟩ + \|11⟩)/√2` (default) |
+  | `:phi_minus`  | `\|Φ-⟩ = (\|00⟩ - \|11⟩)/√2`           |
+  | `:psi_plus`   | `\|Ψ+⟩ = (\|01⟩ + \|10⟩)/√2`           |
+  | `:psi_minus`  | `\|Ψ-⟩ = (\|01⟩ - \|10⟩)/√2`           |
 
   ## Examples
 
       iex> bell_circuit = Qx.bell_state()
-      iex> bell_circuit.num_qubits
-      2
-
-      iex> bell_circuit = Qx.bell_state(:phi_minus)
-      iex> bell_circuit.num_qubits
-      2
-
-      iex> bell_circuit = Qx.bell_state(:psi_plus)
       iex> bell_circuit.num_qubits
       2
 
@@ -1134,46 +1125,17 @@ defmodule Qx do
 
   ## See Also
 
-    * `Qx.StateInit.bell_state/2` — returns a **state vector** (Nx tensor)
-      rather than a circuit recipe. Use that when you want the
-      mathematical state directly, this when you want a circuit to run.
+    * `Qx.StateInit.bell_state/2` — returns a state vector, not a circuit.
   """
-  @type bell_state_type :: :phi_plus | :phi_minus | :psi_plus | :psi_minus
+  @type bell_state_type :: Patterns.bell_state_type()
   @spec bell_state(bell_state_type()) :: circuit()
-  def bell_state(which \\ :phi_plus)
-
-  def bell_state(:phi_plus) do
-    create_circuit(2)
-    |> h(0)
-    |> cx(0, 1)
-  end
-
-  def bell_state(:phi_minus) do
-    create_circuit(2)
-    |> x(0)
-    |> h(0)
-    |> cx(0, 1)
-  end
-
-  def bell_state(:psi_plus) do
-    create_circuit(2)
-    |> x(1)
-    |> h(0)
-    |> cx(0, 1)
-  end
-
-  def bell_state(:psi_minus) do
-    create_circuit(2)
-    |> x(0)
-    |> x(1)
-    |> h(0)
-    |> cx(0, 1)
-  end
+  defdelegate bell_state(which \\ :phi_plus), to: Patterns, as: :bell_state_circuit
 
   @doc """
-  Creates a GHZ state circuit (three-qubit entangled state).
+  Creates an `n`-qubit GHZ-state preparation circuit. Default is 3 qubits.
 
-  Returns a circuit that prepares |GHZ⟩ = (|000⟩ + |111⟩)/√2.
+  Returns a circuit that prepares `|GHZ⟩ = (|0…0⟩ + |1…1⟩)/√2` on a
+  `|0…0⟩` input. See `Qx.Patterns.ghz_state_circuit/1`.
 
   ## Examples
 
@@ -1181,35 +1143,33 @@ defmodule Qx do
       iex> ghz_circuit.num_qubits
       3
 
+      iex> ghz_circuit = Qx.ghz_state(5)
+      iex> ghz_circuit.num_qubits
+      5
+
   ## See Also
 
-    * `Qx.StateInit.ghz_state/2` — returns an **n-qubit state vector**
-      (Nx tensor) directly, with selectable qubit count and type. This
-      function is hardcoded to a 3-qubit circuit recipe.
+    * `Qx.StateInit.ghz_state/2` — returns a state vector, not a circuit.
   """
-  @spec ghz_state() :: circuit()
-  def ghz_state do
-    create_circuit(3)
-    |> h(0)
-    |> cx(0, 1)
-    |> cx(1, 2)
-  end
+  @spec ghz_state(pos_integer()) :: circuit()
+  defdelegate ghz_state(num_qubits \\ 3), to: Patterns, as: :ghz_state_circuit
 
   @doc """
-  Creates a superposition state on a single qubit.
-
-  Returns a circuit with a Hadamard gate applied to qubit 0.
+  Creates an `n`-qubit equal-superposition circuit (Hadamard on every
+  qubit). Default is 1 qubit. See `Qx.Patterns.superposition_circuit/1`.
 
   ## Examples
 
       iex> sup_circuit = Qx.superposition()
       iex> sup_circuit.num_qubits
       1
+
+      iex> sup_circuit = Qx.superposition(3)
+      iex> length(Qx.QuantumCircuit.get_instructions(sup_circuit))
+      3
   """
-  @spec superposition() :: circuit()
-  def superposition do
-    create_circuit(1) |> h(0)
-  end
+  @spec superposition(pos_integer()) :: circuit()
+  defdelegate superposition(num_qubits \\ 1), to: Patterns, as: :superposition_circuit
 
   @doc """
   Returns version information for the Qx library.

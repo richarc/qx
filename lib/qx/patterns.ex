@@ -288,6 +288,116 @@ defmodule Qx.Patterns do
     |> Enum.reduce(circuit, fn [c, t], acc -> Operations.cx(acc, c, t) end)
   end
 
+  @typedoc """
+  Selector for which of the four Bell states a recipe builds.
+  """
+  @type bell_state_type :: :phi_plus | :phi_minus | :psi_plus | :psi_minus
+
+  @doc """
+  Builds a two-qubit circuit recipe that prepares one of the four Bell
+  states. Selector defaults to `:phi_plus`.
+
+  | Atom         | State                                  |
+  | ------------ | -------------------------------------- |
+  | `:phi_plus`  | `|Φ+⟩ = (|00⟩ + |11⟩)/√2` (default)    |
+  | `:phi_minus` | `|Φ-⟩ = (|00⟩ - |11⟩)/√2`              |
+  | `:psi_plus`  | `|Ψ+⟩ = (|01⟩ + |10⟩)/√2`              |
+  | `:psi_minus` | `|Ψ-⟩ = (|01⟩ - |10⟩)/√2`              |
+
+  ## Examples
+
+      iex> qc = Qx.Patterns.bell_state_circuit()
+      iex> qc.num_qubits
+      2
+
+      iex> qc = Qx.Patterns.bell_state_circuit(:psi_minus)
+      iex> qc.num_qubits
+      2
+
+  ## See Also
+
+    * `Qx.StateInit.bell_state/2` — returns the **state vector** directly
+      (no circuit recipe).
+  """
+  @spec bell_state_circuit(bell_state_type()) :: QuantumCircuit.t()
+  def bell_state_circuit(which \\ :phi_plus)
+
+  def bell_state_circuit(:phi_plus) do
+    QuantumCircuit.new(2)
+    |> Operations.h(0)
+    |> Operations.cx(0, 1)
+  end
+
+  def bell_state_circuit(:phi_minus) do
+    QuantumCircuit.new(2)
+    |> Operations.x(0)
+    |> Operations.h(0)
+    |> Operations.cx(0, 1)
+  end
+
+  def bell_state_circuit(:psi_plus) do
+    QuantumCircuit.new(2)
+    |> Operations.x(1)
+    |> Operations.h(0)
+    |> Operations.cx(0, 1)
+  end
+
+  def bell_state_circuit(:psi_minus) do
+    QuantumCircuit.new(2)
+    |> Operations.x(0)
+    |> Operations.x(1)
+    |> Operations.h(0)
+    |> Operations.cx(0, 1)
+  end
+
+  @doc """
+  Builds an `n`-qubit GHZ-state preparation circuit: `H(0)` followed by
+  a linear `cx_chain([0, 1, …, n-1])`. Final state on `|0…0⟩` input is
+  `(|0…0⟩ + |1…1⟩)/√2`. Default is 3 qubits.
+
+  ## Examples
+
+      iex> qc = Qx.Patterns.ghz_state_circuit()
+      iex> qc.num_qubits
+      3
+
+      iex> qc = Qx.Patterns.ghz_state_circuit(5)
+      iex> qc.num_qubits
+      5
+
+  ## See Also
+
+    * `Qx.StateInit.ghz_state/2` — returns the **state vector** directly.
+  """
+  @spec ghz_state_circuit(pos_integer()) :: QuantumCircuit.t()
+  def ghz_state_circuit(num_qubits \\ 3) when is_integer(num_qubits) and num_qubits >= 2 do
+    QuantumCircuit.new(num_qubits)
+    |> Operations.h(0)
+    |> cx_chain(Enum.to_list(0..(num_qubits - 1)))
+  end
+
+  @doc """
+  Builds an `n`-qubit equal-superposition circuit: `H` applied to every
+  qubit, on a `|0…0⟩` input the result is the uniform superposition.
+  Default is 1 qubit.
+
+  ## Examples
+
+      iex> qc = Qx.Patterns.superposition_circuit()
+      iex> qc.num_qubits
+      1
+
+      iex> qc = Qx.Patterns.superposition_circuit(3)
+      iex> length(Qx.QuantumCircuit.get_instructions(qc))
+      3
+  """
+  @spec superposition_circuit(pos_integer()) :: QuantumCircuit.t()
+  def superposition_circuit(num_qubits \\ 1) when is_integer(num_qubits) and num_qubits >= 1 do
+    num_qubits
+    |> QuantumCircuit.new()
+    |> h_all()
+  end
+
   # Internal: normalise `qubits` (list or Range) to a list, then reduce the
   # circuit by applying `op_fn.(acc, qubit)` for each qubit in iteration
   # order. Empty input is a deliberate no-op.

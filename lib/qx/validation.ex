@@ -165,44 +165,6 @@ defmodule Qx.Validation do
     raise ArgumentError, "Parameter must be a number, got: #{inspect(param)}"
   end
 
-  # Validates gate name against a static known-gates list. Raises Qx.GateError
-  # on unsupported. NOTE: this function is not currently called from any lib/
-  # path (gate dispatch is done by Qx.Simulation's case statement); it's a
-  # leftover utility. The known-gates list is also stale (missing cy/crx/cry/
-  # crz/cp added in qaal-parity). Audit finding — kept for now to avoid
-  # breaking validation_test.exs assertions.
-  @doc false
-  def validate_gate_name!(gate_name) do
-    known_gates = [
-      :h,
-      :x,
-      :y,
-      :z,
-      :s,
-      :sdg,
-      :t,
-      :rx,
-      :ry,
-      :rz,
-      :phase,
-      :cx,
-      :cnot,
-      :cz,
-      :swap,
-      :iswap,
-      :u,
-      :ccx,
-      :cswap,
-      :toffoli
-    ]
-
-    if gate_name not in known_gates do
-      raise Qx.GateError, {:unsupported_gate, gate_name}
-    end
-
-    :ok
-  end
-
   # Validates qubit count is in 1..20 (the documented Qx limit). Raises
   # Qx.QubitCountError on violation. Called from `Qx.Register.new/1` and
   # `Qx.QuantumCircuit.new/1,2` (the latter wired in Phase A — see plan

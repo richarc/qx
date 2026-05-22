@@ -112,8 +112,7 @@ defmodule Qx.MixProject do
           Qx.QasmParseError,
           Qx.QasmUnsupportedError
         ],
-        "Validation & Utilities": [
-          Qx.Validation,
+        Utilities: [
           Qx.Math,
           Qx.StateInit
         ],

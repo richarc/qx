@@ -44,6 +44,8 @@ defmodule Qx.Register do
   - `Qx.QuantumCircuit` - Circuit mode for building quantum circuits
   """
 
+  @behaviour Qx.Behaviours.QuantumState
+
   defstruct [:num_qubits, :state]
 
   @type t :: %__MODULE__{
@@ -569,6 +571,185 @@ defmodule Qx.Register do
 
     new_state =
       Qx.Calc.apply_toffoli(register.state, control1, control2, target, register.num_qubits)
+
+    %{register | state: new_state}
+  end
+
+  @doc """
+  Applies a controlled-Y (CY) gate.
+
+  ## Examples
+
+      iex> reg = Qx.Register.new(2) |> Qx.Register.cy(0, 1)
+      iex> Qx.Register.valid?(reg)
+      true
+  """
+  def cy(%__MODULE__{} = register, control_qubit, target_qubit) do
+    apply_controlled_target(register, control_qubit, target_qubit, Qx.Gates.pauli_y())
+  end
+
+  @doc """
+  Applies a controlled rotation about the X-axis (CRx) gate.
+
+  ## Examples
+
+      iex> reg = Qx.Register.new(2) |> Qx.Register.crx(0, 1, :math.pi() / 2)
+      iex> Qx.Register.valid?(reg)
+      true
+  """
+  def crx(%__MODULE__{} = register, control_qubit, target_qubit, theta) do
+    apply_controlled_target(register, control_qubit, target_qubit, Qx.Gates.rx(theta))
+  end
+
+  @doc """
+  Applies a controlled rotation about the Y-axis (CRy) gate.
+
+  ## Examples
+
+      iex> reg = Qx.Register.new(2) |> Qx.Register.cry(0, 1, :math.pi() / 2)
+      iex> Qx.Register.valid?(reg)
+      true
+  """
+  def cry(%__MODULE__{} = register, control_qubit, target_qubit, theta) do
+    apply_controlled_target(register, control_qubit, target_qubit, Qx.Gates.ry(theta))
+  end
+
+  @doc """
+  Applies a controlled rotation about the Z-axis (CRz) gate.
+
+  ## Examples
+
+      iex> reg = Qx.Register.new(2) |> Qx.Register.crz(0, 1, :math.pi() / 2)
+      iex> Qx.Register.valid?(reg)
+      true
+  """
+  def crz(%__MODULE__{} = register, control_qubit, target_qubit, theta) do
+    apply_controlled_target(register, control_qubit, target_qubit, Qx.Gates.rz(theta))
+  end
+
+  @doc """
+  Applies a controlled-phase (CP) gate.
+
+  ## Examples
+
+      iex> reg = Qx.Register.new(2) |> Qx.Register.cp(0, 1, :math.pi() / 4)
+      iex> Qx.Register.valid?(reg)
+      true
+  """
+  def cp(%__MODULE__{} = register, control_qubit, target_qubit, theta) do
+    apply_controlled_target(register, control_qubit, target_qubit, Qx.Gates.phase(theta))
+  end
+
+  @doc """
+  Applies a SWAP gate, exchanging the states of two qubits.
+
+  ## Examples
+
+      iex> reg = Qx.Register.new(2) |> Qx.Register.swap(0, 1)
+      iex> Qx.Register.valid?(reg)
+      true
+  """
+  def swap(%__MODULE__{} = register, qubit_a, qubit_b) do
+    validate_qubit_index!(register, qubit_a)
+    validate_qubit_index!(register, qubit_b)
+
+    if qubit_a == qubit_b do
+      raise ArgumentError, "SWAP requires two distinct qubits"
+    end
+
+    swap_matrix = Qx.Gates.swap(qubit_a, qubit_b, register.num_qubits)
+    new_state = Nx.dot(swap_matrix, register.state)
+
+    %{register | state: new_state}
+  end
+
+  @doc """
+  Applies an iSWAP gate.
+
+  ## Examples
+
+      iex> reg = Qx.Register.new(2) |> Qx.Register.iswap(0, 1)
+      iex> Qx.Register.valid?(reg)
+      true
+  """
+  def iswap(%__MODULE__{} = register, qubit_a, qubit_b) do
+    validate_qubit_index!(register, qubit_a)
+    validate_qubit_index!(register, qubit_b)
+
+    if qubit_a == qubit_b do
+      raise ArgumentError, "iSWAP requires two distinct qubits"
+    end
+
+    iswap_matrix = Qx.Gates.iswap(qubit_a, qubit_b, register.num_qubits)
+    new_state = Nx.dot(iswap_matrix, register.state)
+
+    %{register | state: new_state}
+  end
+
+  @doc """
+  Applies a controlled-SWAP (Fredkin) gate.
+
+  ## Examples
+
+      iex> reg = Qx.Register.new(3) |> Qx.Register.cswap(0, 1, 2)
+      iex> Qx.Register.valid?(reg)
+      true
+  """
+  def cswap(%__MODULE__{} = register, control, target_a, target_b) do
+    validate_qubit_index!(register, control)
+    validate_qubit_index!(register, target_a)
+    validate_qubit_index!(register, target_b)
+
+    if control == target_a or control == target_b or target_a == target_b do
+      raise ArgumentError, "All qubit indices must be different"
+    end
+
+    new_state =
+      Qx.Calc.apply_cswap(register.state, control, target_a, target_b, register.num_qubits)
+
+    %{register | state: new_state}
+  end
+
+  @doc """
+  Applies the general single-qubit U(θ, φ, λ) unitary.
+
+  ## Examples
+
+      iex> reg = Qx.Register.new(1)
+      ...>   |> Qx.Register.u(0, :math.pi() / 2, 0.0, :math.pi())
+      iex> Qx.Register.valid?(reg)
+      true
+  """
+  def u(%__MODULE__{} = register, qubit_index, theta, phi, lambda) do
+    validate_qubit_index!(register, qubit_index)
+
+    new_state =
+      Qx.Calc.apply_single_qubit_gate(
+        register.state,
+        Qx.Gates.u(theta, phi, lambda),
+        qubit_index,
+        register.num_qubits
+      )
+
+    %{register | state: new_state}
+  end
+
+  # Lifts a 2×2 single-qubit gate matrix into the controlled-on-`c`
+  # two-qubit unitary and applies it to `register.state`. Shared by
+  # cy/3, crx/4, cry/4, crz/4, cp/4 to avoid repeating the
+  # validate-distinct-controlled-gate boilerplate.
+  defp apply_controlled_target(%__MODULE__{} = register, control_qubit, target_qubit, gate_matrix) do
+    validate_qubit_index!(register, control_qubit)
+    validate_qubit_index!(register, target_qubit)
+
+    if control_qubit == target_qubit do
+      raise ArgumentError, "Control and target qubits must be different"
+    end
+
+    controlled_matrix =
+      Qx.Gates.controlled_gate(gate_matrix, control_qubit, target_qubit, register.num_qubits)
+
+    new_state = Nx.dot(controlled_matrix, register.state)
 
     %{register | state: new_state}
   end

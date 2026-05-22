@@ -1,5 +1,5 @@
 defmodule Qx.RegisterTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   doctest Qx.Register
 
   alias Qx.Register
@@ -502,6 +502,238 @@ defmodule Qx.RegisterTest do
 
       final_reg = Enum.reduce(gates, reg, fn gate, r -> gate.(r) end)
       assert Register.valid?(final_reg)
+    end
+  end
+
+  describe "cy/3 — controlled-Y" do
+    test "control=|1⟩ flips target with phase, probability |11⟩ = 1" do
+      probs =
+        Register.new(2)
+        |> Register.x(0)
+        |> Register.cy(0, 1)
+        |> Register.get_probabilities()
+        |> Nx.to_flat_list()
+
+      assert_in_delta Enum.at(probs, 3), 1.0, 1.0e-5
+    end
+
+    test "control=|0⟩ leaves target unchanged" do
+      probs =
+        Register.new(2)
+        |> Register.cy(0, 1)
+        |> Register.get_probabilities()
+        |> Nx.to_flat_list()
+
+      assert_in_delta Enum.at(probs, 0), 1.0, 1.0e-5
+    end
+
+    test "duplicate control/target raises" do
+      assert_raise ArgumentError, fn -> Register.cy(Register.new(2), 0, 0) end
+    end
+  end
+
+  describe "crx/4, cry/4, crz/4 — controlled rotations" do
+    test "CRx(π) on |10⟩ flips target to |11⟩" do
+      probs =
+        Register.new(2)
+        |> Register.x(0)
+        |> Register.crx(0, 1, :math.pi())
+        |> Register.get_probabilities()
+        |> Nx.to_flat_list()
+
+      assert_in_delta Enum.at(probs, 3), 1.0, 1.0e-5
+    end
+
+    test "CRy(π/2) on |10⟩ creates equal superposition on target" do
+      probs =
+        Register.new(2)
+        |> Register.x(0)
+        |> Register.cry(0, 1, :math.pi() / 2)
+        |> Register.get_probabilities()
+        |> Nx.to_flat_list()
+
+      assert_in_delta Enum.at(probs, 2), 0.5, 1.0e-5
+      assert_in_delta Enum.at(probs, 3), 0.5, 1.0e-5
+    end
+
+    test "CRz only changes phase, not probabilities" do
+      probs =
+        Register.new(2)
+        |> Register.h(0)
+        |> Register.h(1)
+        |> Register.crz(0, 1, :math.pi() / 3)
+        |> Register.get_probabilities()
+        |> Nx.to_flat_list()
+
+      Enum.each(0..3, fn i ->
+        assert_in_delta Enum.at(probs, i), 0.25, 1.0e-5
+      end)
+    end
+
+    test "control=|0⟩ leaves target unchanged for CRx" do
+      probs =
+        Register.new(2)
+        |> Register.crx(0, 1, :math.pi())
+        |> Register.get_probabilities()
+        |> Nx.to_flat_list()
+
+      assert_in_delta Enum.at(probs, 0), 1.0, 1.0e-5
+    end
+
+    test "control=|0⟩ leaves target unchanged for CRy" do
+      probs =
+        Register.new(2)
+        |> Register.cry(0, 1, :math.pi())
+        |> Register.get_probabilities()
+        |> Nx.to_flat_list()
+
+      assert_in_delta Enum.at(probs, 0), 1.0, 1.0e-5
+    end
+
+    test "CRz(π) phase is observable via H ; CRz(π) ; H interference" do
+      # Phase-sensitive: a wrong (or no-op) CRz would leave |10⟩ at index 2.
+      # Correct CRz(π) sandwiched between H gates routes amplitude to |11⟩.
+      probs =
+        Register.new(2)
+        |> Register.x(0)
+        |> Register.h(1)
+        |> Register.crz(0, 1, :math.pi())
+        |> Register.h(1)
+        |> Register.get_probabilities()
+        |> Nx.to_flat_list()
+
+      assert_in_delta Enum.at(probs, 3), 1.0, 1.0e-5
+      assert_in_delta Enum.at(probs, 2), 0.0, 1.0e-5
+    end
+  end
+
+  describe "cp/4 — controlled-phase" do
+    test "diagonal: no probability change" do
+      probs =
+        Register.new(2)
+        |> Register.h(0)
+        |> Register.h(1)
+        |> Register.cp(0, 1, :math.pi() / 3)
+        |> Register.get_probabilities()
+        |> Nx.to_flat_list()
+
+      Enum.each(0..3, fn i ->
+        assert_in_delta Enum.at(probs, i), 0.25, 1.0e-5
+      end)
+    end
+
+    test "CP(π) phase is observable via H ; CP(π) ; H interference" do
+      # Phase-sensitive check on the |11⟩ branch only.
+      # CP(π) ≡ CZ up to a known phase; H-sandwich on target reveals it.
+      probs =
+        Register.new(2)
+        |> Register.x(0)
+        |> Register.h(1)
+        |> Register.cp(0, 1, :math.pi())
+        |> Register.h(1)
+        |> Register.get_probabilities()
+        |> Nx.to_flat_list()
+
+      # Without phase: stays |10⟩ (index 2). With correct CP(π) sandwich: |11⟩.
+      assert_in_delta Enum.at(probs, 3), 1.0, 1.0e-5
+    end
+  end
+
+  describe "swap/3, iswap/3" do
+    test "SWAP on |10⟩ produces |01⟩" do
+      probs =
+        Register.new(2)
+        |> Register.x(0)
+        |> Register.swap(0, 1)
+        |> Register.get_probabilities()
+        |> Nx.to_flat_list()
+
+      assert_in_delta Enum.at(probs, 1), 1.0, 1.0e-5
+    end
+
+    test "iSWAP on |10⟩ also routes amplitude to |01⟩ (phase aside)" do
+      probs =
+        Register.new(2)
+        |> Register.x(0)
+        |> Register.iswap(0, 1)
+        |> Register.get_probabilities()
+        |> Nx.to_flat_list()
+
+      assert_in_delta Enum.at(probs, 1), 1.0, 1.0e-5
+    end
+
+    test "swap/iswap duplicate-qubit raises" do
+      assert_raise ArgumentError, fn -> Register.swap(Register.new(2), 0, 0) end
+      assert_raise ArgumentError, fn -> Register.iswap(Register.new(2), 0, 0) end
+    end
+  end
+
+  describe "cswap/4 — Fredkin" do
+    test "CSWAP with control=|1⟩ swaps targets" do
+      # Prep |1, 1, 0⟩ -> CSWAP(0,1,2) should give |1, 0, 1⟩
+      probs =
+        Register.new(3)
+        |> Register.x(0)
+        |> Register.x(1)
+        |> Register.cswap(0, 1, 2)
+        |> Register.get_probabilities()
+        |> Nx.to_flat_list()
+
+      # |101⟩ at index 5
+      assert_in_delta Enum.at(probs, 5), 1.0, 1.0e-5
+    end
+
+    test "CSWAP with control=|0⟩ leaves targets unchanged" do
+      probs =
+        Register.new(3)
+        |> Register.x(1)
+        |> Register.cswap(0, 1, 2)
+        |> Register.get_probabilities()
+        |> Nx.to_flat_list()
+
+      # |010⟩ at index 2
+      assert_in_delta Enum.at(probs, 2), 1.0, 1.0e-5
+    end
+
+    test "CSWAP asymmetric: |1,0,1⟩ → |1,1,0⟩ (target_a/target_b distinguishable)" do
+      # Prep |1, 0, 1⟩ (index 5) -> CSWAP(0,1,2) -> |1, 1, 0⟩ (index 6).
+      # A target-index swap bug (target_a ↔ target_b) would yield the same
+      # result here, but if the bug were to apply the swap incorrectly
+      # (e.g. swap qubits 0 and 1 instead of 1 and 2), it would change the
+      # output. This test exercises the asymmetric input the symmetric
+      # |1,1,0⟩→|1,0,1⟩ test couldn't distinguish.
+      probs =
+        Register.new(3)
+        |> Register.x(0)
+        |> Register.x(2)
+        |> Register.cswap(0, 1, 2)
+        |> Register.get_probabilities()
+        |> Nx.to_flat_list()
+
+      # |110⟩ at index 6 (MSB convention: qubit 0 leftmost)
+      assert_in_delta Enum.at(probs, 6), 1.0, 1.0e-5
+    end
+  end
+
+  describe "u/5 — general single-qubit unitary" do
+    test "U(π, 0, π) ≡ X up to global phase" do
+      probs =
+        Register.new(1)
+        |> Register.u(0, :math.pi(), 0.0, :math.pi())
+        |> Register.get_probabilities()
+        |> Nx.to_flat_list()
+
+      assert_in_delta Enum.at(probs, 1), 1.0, 1.0e-5
+    end
+
+    test "U(0, 0, 0) is identity" do
+      probs =
+        Register.new(1)
+        |> Register.u(0, 0.0, 0.0, 0.0)
+        |> Register.get_probabilities()
+        |> Nx.to_flat_list()
+
+      assert_in_delta Enum.at(probs, 0), 1.0, 1.0e-5
     end
   end
 end
