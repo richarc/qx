@@ -5,7 +5,12 @@ defmodule Qx.Export.OpenQASM.RoundTripTest do
   alias Qx.QuantumCircuit
   alias Qx.Simulation
 
-  @tolerance 1.0e-10
+  # Iron Law #8: :c64 ε ≈ 1.2e-7. Comparison is `max(abs(a - b)) <
+  # @tolerance`, so 1.0e-6 leaves ~one decade of head-room above ε.
+  # The previous 1.0e-10 passed only because both sides ran the same
+  # float32 ops, yielding bit-identical results — a property the
+  # v0.8.2 kernel rewrite will break.
+  @tolerance 1.0e-6
   @fixture_dir Path.expand("../../../fixtures/qasm", __DIR__)
 
   defp drop_measurements(%QuantumCircuit{} = circuit) do

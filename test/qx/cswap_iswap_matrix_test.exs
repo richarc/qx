@@ -19,10 +19,14 @@ defmodule Qx.CswapIswapMatrixTest do
     * iSWAP — `[[1,0,0,0],[0,0,i,0],[0,i,0,0],[0,0,0,1]]`: a **+i**
       (not −i) phase on the swapped |01⟩↔|10⟩ amplitudes.
 
-  Equality is asserted **exactly** (entrywise, delta `1.0e-12`), NOT
-  up to a global phase: these are fixed canonical matrices with no free
-  global phase, and exactness is what catches sign / control-qubit
-  errors.
+  Equality is asserted entrywise to `:c64` precision (delta `1.0e-6`,
+  comfortably above the float32 epsilon of ~1.2e-7), NOT up to a global
+  phase: these are fixed canonical matrices with no free global phase,
+  and tight entrywise equality is what catches sign / control-qubit
+  errors. The previous `1.0e-12` tolerance passed only because every
+  entry happens to be exactly representable in float32 (0, 1, ±i) —
+  any reformulation of the kernel (e.g. v0.8.2 reshape+contract) would
+  silently break that bit-identity.
   """
 
   use ExUnit.Case, async: true
@@ -30,7 +34,9 @@ defmodule Qx.CswapIswapMatrixTest do
   alias Qx.Gates
   alias Qx.Math
 
-  @delta 1.0e-12
+  # Iron Law #8: :c64 ε ≈ 1.2e-7; 1.0e-6 is the tightest sound bound
+  # for entrywise equality of float32-complex tensors.
+  @delta 1.0e-6
 
   # Exact entrywise equality of two :c64 tensors. Shape is checked
   # first so a representation regression fails loudly rather than

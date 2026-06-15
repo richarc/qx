@@ -21,6 +21,12 @@ defmodule Qx.UGateConventionTest do
 
   alias Qx.Gates
 
+  # Iron Law #8 boundary: :c64 ε ≈ 1.2e-7. 1.0e-6 sits right at the
+  # tightest sound bound for float32-complex; do NOT tighten further
+  # — the parametric tests below compute cumulative products of
+  # cos/sin/multiply on irrational angles, where float32 error can
+  # reach ~5e-7 before falling below this threshold. Loosening it
+  # would defeat the convention-lock purpose of this file.
   @delta 1.0e-6
   @pi :math.pi()
 
