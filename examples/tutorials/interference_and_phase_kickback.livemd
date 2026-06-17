@@ -1,0 +1,206 @@
+# Interference and Phase Kickback
+
+```elixir
+Mix.install([
+  {:qx, "~> 0.8.0", hex: :qx_sim},
+  {:kino, "~> 0.12"},
+  {:vega_lite, "~> 0.1.11"},
+  {:kino_vega_lite, "~> 0.1.11"}
+])
+
+alias Qx.Register
+```
+
+## Learning objectives
+
+By the end of this tutorial you will be able to:
+
+* Explain why relative phase, invisible to a Z-basis measurement, becomes a measurable outcome once a Hadamard follows it
+* Use a phase plus a Hadamard to make unwanted amplitudes cancel and steer probability onto the answer you want
+* Describe phase kickback and show how a controlled gate with its target in an eigenstate imprints a phase on the control
+* Assemble the superposition → oracle → interference pattern that every quantum algorithm in this series relies on
+
+## Introduction
+
+This is the fifth tutorial in the series, following **Systems of Qubits and Entanglement**. We can now build superposition and entangle qubits, but neither of those, on its own, is where quantum algorithms get their advantage. That advantage comes from **interference**: amplitudes carry signs, and when they recombine the wrong answers can cancel while the right ones reinforce.
+
+Two ideas make interference useful. The first is interference itself, turning a phase into a measurement outcome. The second is **phase kickback**, the mechanism a quantum algorithm uses to write a phase into a register in the first place. Together they are the engine inside Bernstein–Vazirani, Grover's search, phase estimation, and Shor's algorithm. This is a short, focused tutorial whose only job is to make that engine click before you meet a full algorithm.
+
+We work in **circuit mode** (`Qx.create_circuit` and the top-level `Qx.*` functions), dropping into **calculation mode** (`Qx.Register`) only to inspect the phases on a state vector before they get measured.
+
+**Prerequisites:** the first four tutorials in this series. You should be comfortable with the $X$, $H$, and $Z$ gates, relative phase and how $\ket{+}$ and $\ket{-}$ differ, the $\ket{0}/\ket{1}$ measurement convention, and CNOT acting on two qubits.
+
+## Phase becomes outcome
+
+From the earlier tutorials you know that relative phase hides from a Z-basis measurement. The states $\ket{+}$ and $\ket{-}$ differ only by the sign on their $\ket{1}$ amplitude, yet both give a 50/50 coin when you measure them. A phase you cannot measure looks useless. The trick is that a Hadamard converts phase into amplitude, and amplitude is exactly what a measurement reads.
+
+Trace a $Z$ sandwiched between two Hadamards, starting from $\ket{0}$:
+
+$$
+\ket{0} \xrightarrow{H} \ket{+} \xrightarrow{Z} \ket{-} \xrightarrow{H} \ket{1}
+$$
+
+The middle $Z$ only flipped a phase, something a measurement at that point could not have seen. But the second Hadamard turned that phase into the difference between $\ket{0}$ and $\ket{1}$. The whole sequence equals an $X$ gate.
+
+**Predict first:** the circuit on the left applies two Hadamards and nothing else; the one on the right slips a $Z$ between them. Which outcome does each produce? Then run it:
+
+```elixir
+no_phase =
+  Qx.create_circuit(1, 1)
+  |> Qx.h(0)
+  |> Qx.h(0)
+  |> Qx.measure(0, 0)
+
+with_phase =
+  Qx.create_circuit(1, 1)
+  |> Qx.h(0)
+  |> Qx.z(0)
+  |> Qx.h(0)
+  |> Qx.measure(0, 0)
+
+Kino.Layout.grid(
+  [
+    Qx.draw_counts(Qx.run(no_phase, shots: 1024), title: "H · H — back to |0⟩"),
+    Qx.draw_counts(Qx.run(with_phase, shots: 1024), title: "H · Z · H — flipped to |1⟩")
+  ],
+  columns: 2
+)
+```
+
+Same two Hadamards, opposite answers. The lone $Z$ in the middle, invisible on its own, decides the entire outcome once interference brings the amplitudes back together. That sensitivity to phase is the lever every quantum algorithm pulls.
+
+## Cancellation across a register
+
+With one qubit, interference flips an answer. With a register, it can make most outcomes vanish. Put two qubits into a uniform superposition and every basis state carries equal amplitude. Stamp a phase pattern onto them, run the Hadamards again, and the amplitudes add where they agree and cancel where they don't.
+
+Start from the uniform state and apply a $Z$ to qubit 0. That puts a minus sign on every basis state where qubit 0 is $\ket{1}$. Look at the amplitudes before measuring:
+
+```elixir
+# We use calculation mode to see the result in real time
+Register.new(2)
+|> Register.h(0)
+|> Register.h(1)
+|> Register.z(0)
+|> Register.show_state()
+```
+
+Four equal magnitudes, but $\ket{10}$ and $\ket{11}$ now carry a minus sign. That sign is the phase pattern. Now send the register back through Hadamards on both qubits and measure:
+
+**Predict first:** the phase marks the states where qubit 0 is $\ket{1}$. After the second round of Hadamards, what single outcome should the interference leave standing?
+
+```elixir
+# We are back in circuit mode here
+steered =
+  Qx.create_circuit(2, 2)
+  |> Qx.h_all()
+  |> Qx.z(0)
+  |> Qx.h_all()
+  |> Qx.measure_all()
+
+Qx.draw_counts(Qx.run(steered, shots: 1024), title: "Phase on qubit 0, then interfere")
+```
+
+Every shot reads `10`. To see why that one outcome survives, follow the amplitudes through the two steps.
+
+The first round of Hadamards spreads $\ket{00}$ into four equal amplitudes of $\tfrac{1}{2}$. The $Z$ on qubit 0 then flips the sign of every basis state whose qubit 0 is $\ket{1}$, which gives
+
+$$
+\tfrac{1}{2}\bigl(\ket{00} + \ket{01} - \ket{10} - \ket{11}\bigr).
+$$
+
+That sign pattern is not arbitrary: it factors. Grouping the terms by qubit turns the state back into a product,
+
+$$
+\tfrac{1}{2}\bigl(\ket{00} + \ket{01} - \ket{10} - \ket{11}\bigr) = \underbrace{\tfrac{1}{\sqrt{2}}(\ket{0} - \ket{1})}_{\ket{-}\text{ on qubit 0}} \otimes \underbrace{\tfrac{1}{\sqrt{2}}(\ket{0} + \ket{1})}_{\ket{+}\text{ on qubit 1}}.
+$$
+
+The $Z$ turned qubit 0 from $\ket{+}$ into $\ket{-}$ and left qubit 1 alone. The second Hadamard on each qubit now acts on, $H\ket{-} = \ket{1}$ and $H\ket{+} = \ket{0}$, so the register lands on $\ket{1}\ket{0} = \ket{10}$ with certainty.
+
+This is the shape of a quantum algorithm in miniature: spread out, mark with phases, interfere, read the answer. Bernstein–Vazirani is exactly this, one phase mark per secret bit.
+
+## Phase kickback: writing the phase
+
+Section 2 assumed the phase was simply there. Real algorithms have to *write* it, and write it based on data, without a measurement that would collapse the superposition. The mechanism is **phase kickback**, and it turns an ordinary controlled gate into a phase stamp.
+
+The idea rests on eigenstates. The state $\ket{-}$ is an eigenstate of $X$ with eigenvalue $-1$:
+
+$$
+X\ket{-} = \tfrac{1}{\sqrt{2}}\bigl(X\ket{0} - X\ket{1}\bigr) = \tfrac{1}{\sqrt{2}}\bigl(\ket{1} - \ket{0}\bigr) = -\ket{-}
+$$
+
+Now prepare a control in $\ket{+}$ and a target in $\ket{-}$, and apply CNOT, which is a controlled $X$:
+
+$$
+\text{CNOT}\,\ket{+}\ket{-} = \tfrac{1}{\sqrt{2}}\bigl(\ket{0}\ket{-} + \ket{1}\,X\ket{-}\bigr) = \tfrac{1}{\sqrt{2}}\bigl(\ket{0}\ket{-} - \ket{1}\ket{-}\bigr) = \ket{-}\ket{-}
+$$
+
+The target came out untouched, still $\ket{-}$. But the control flipped from $\ket{+}$ to $\ket{-}$: the $-1$ eigenvalue rode back onto the control's $\ket{1}$ amplitude. The phase that CNOT would normally write into the target got *kicked back* onto the control.
+
+We can read that flip out with a Hadamard on the control, the same phase-to-outcome trick from before. With the target in $\ket{-}$ the control ends on $\ket{1}$; with the target in $\ket{+}$ (eigenvalue $+1$) nothing kicks back and the control ends on $\ket{0}$:
+
+```elixir
+# Target in |+⟩ — eigenvalue +1, no kickback
+no_kickback =
+  Qx.create_circuit(2, 1)
+  |> Qx.h(0)
+  |> Qx.h(1)
+  |> Qx.cx(0, 1)
+  |> Qx.h(0)
+  |> Qx.measure(0, 0)
+
+# Target in |−⟩ — eigenvalue −1, the kickback flips the control
+with_kickback =
+  Qx.create_circuit(2, 1)
+  |> Qx.h(0)
+  |> Qx.x(1)
+  |> Qx.h(1)
+  |> Qx.cx(0, 1)
+  |> Qx.h(0)
+  |> Qx.measure(0, 0)
+
+Kino.Layout.grid(
+  [
+    Qx.draw_counts(Qx.run(no_kickback, shots: 1024), title: "Target |+⟩ — control reads 0"),
+    Qx.draw_counts(Qx.run(with_kickback, shots: 1024), title: "Target |−⟩ — control reads 1")
+  ],
+  columns: 2
+)
+```
+
+The two circuits differ only in how the target was prepared, yet the answer shows up on the control. The circuit never measured or even changed the target's value, and still pulled a $\pm 1$ out of it. That is how an oracle stamps $(-1)^{f(x)}$ onto a register without disturbing the data it computed from.
+
+## Putting it together
+
+Stack the two ideas and you have the pattern behind the algorithms ahead:
+
+1. **Superposition.** Hadamard the input register so it holds every basis state at once.
+2. **Oracle.** A controlled operation with its ancilla in $\ket{-}$ kicks back a phase $(-1)^{f(x)}$ onto each $\ket{x}$.
+3. **Interference.** Hadamard again so the marked phases recombine into a definite answer you can measure.
+
+Here is the smallest version that uses all three: a one-bit Bernstein–Vazirani. The hidden function is $f(x) = x$, so the secret bit is $1$. The oracle is a single CNOT from the input qubit into an ancilla held in $\ket{-}$:
+
+```elixir
+one_bit_bv =
+  Qx.create_circuit(2, 1)
+  |> Qx.h(0)        # input → superposition
+  |> Qx.x(1)        # ancilla → |1⟩ ...
+  |> Qx.h(1)        # ... → |−⟩, primed for kickback
+  |> Qx.cx(0, 1)    # oracle: kicks back (−1)^f(x)
+  |> Qx.h(0)        # interfere
+  |> Qx.measure(0, 0)
+
+Qx.draw_counts(Qx.run(one_bit_bv, shots: 1024), title: "One-bit Bernstein–Vazirani — reads the secret: 1")
+```
+
+Every shot returns `1`, the secret bit, in a single query. Superposition exposed every input at once, kickback marked them with the function's output, and interference folded those marks into the answer. Scale this from one bit to $n$ and you have the full Bernstein–Vazirani algorithm.
+
+## Summary
+
+* **Interference makes phase observable.** A Hadamard converts relative phase into amplitude, so a $Z$ between two Hadamards flips $\ket{0}$ to $\ket{1}$: $HZH = X$.
+* **Across a register, phases steer probability.** Marking a uniform superposition with the right phase pattern, then interfering, cancels the unwanted outcomes and leaves the answer standing.
+* **Phase kickback writes the phase.** A controlled gate whose target sits in an eigenstate imprints the eigenvalue on the control, letting an oracle stamp $(-1)^{f(x)}$ without measuring the data.
+* **The algorithmic pattern** is superposition, then an oracle that kicks back phases, then interference that reads the answer.
+
+### What's next
+
+In the next tutorial, **Quantum Algorithms: Bernstein–Vazirani and Grover's Search**, you scale this engine up. Bernstein–Vazirani recovers an $n$-bit secret string in a single query, and Grover's search uses repeated rounds of kickback and interference to amplify a marked item until a measurement almost always returns it.

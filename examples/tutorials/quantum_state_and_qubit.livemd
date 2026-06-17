@@ -2,7 +2,7 @@
 
 ```elixir
 Mix.install([
-  {:qx, "~> 0.6.0", hex: :qx_sim},
+  {:qx, "~> 0.8.0", hex: :qx_sim},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
   {:kino_vega_lite, "~> 0.1.11"}
@@ -10,6 +10,16 @@ Mix.install([
 
 alias Qx.Qubit
 ```
+
+## Learning objectives
+
+By the end of this tutorial you will be able to:
+
+* Describe a qubit state as a normalised vector $\ket{\psi} = \alpha\ket{0} + \beta\ket{1}$ and inspect it in Qx with `show_state/1`, `alpha/1`, and `beta/1`
+* Predict measurement probabilities from amplitudes, then verify your prediction with `measure_probabilities/1`
+* Create custom states with `Qubit.new/2` and explain what automatic normalisation does to your inputs
+* Distinguish $\ket{+}$ from $\ket{-}$ using an X-basis measurement, and explain why a Z-basis measurement cannot
+* Place any single-qubit state on the Bloch sphere from its two angles $\theta$ and $\phi$
 
 ## Introduction
 
@@ -21,15 +31,17 @@ The most basic concept to understand is the **qubit** (short for "quantum bit").
 
 This tutorial covers the foundational concepts of quantum state and the qubit. We use Qx in **calculation mode** throughout, where gates apply immediately and state can be inspected at every step. The next tutorial introduces **circuit mode** along with quantum operations and gates.
 
+Each section pairs a concept with runnable code, and some cells ask you to **predict the output before running it**. Make the prediction. Being wrong and finding out why is where the learning happens.
+
 **Prerequisites:**
 
 * Complex numbers: [Khan Academy](https://www.khanacademy.org/math/algebra-home/alg-complex-numbers)
 * Linear algebra: [3Blue1Brown](https://www.youtube.com/playlist?list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab)
 * Dirac notation: [Bra-Ket Notation](https://www.youtube.com/watch?v=iR7B_Eq_oTo)
 
-When you install Livebook, make sure you go through the ***"Welcome to Livebook"*** starter notebook for an introduction to the basics of Livebook.
+New to Livebook itself? Work through the ***"Welcome to Livebook"*** starter notebook first — it covers running cells, editing code, and everything else you need here.
 
-## State Vectors
+## State vectors
 
 The state of any isolated quantum system is fully described by a **state vector** residing in a complex vector space known as a Hilbert space. For a single qubit, this state vector is a unit vector within a two-dimensional state space.
 
@@ -57,6 +69,39 @@ $$
 
 The top component corresponds to the amplitude of $\ket{0}$, and the bottom component corresponds to the amplitude of $\ket{1}$.
 
+That's enough theory to create our first qubit.
+
+```elixir
+# Create a qubit and inspect its state vector
+q = Qubit.new()
+Qubit.show_state(q)
+```
+
+The default state for new qubits is $\ket{0}$. The `show_state/1` function displays the key information about our qubit: the state vector, probability amplitudes, and measurement probabilities. Here $\alpha = 1$ and $\beta = 0$, so the probability of measuring $\ket{0}$ is 1 and $\ket{1}$ is 0, exactly as we expect for a computational basis state.
+
+```elixir
+# Create a qubit in the |1⟩ state
+Qubit.one() |> Qubit.show_state()
+```
+
+Same idea, opposite pole: $\alpha = 0$, $\beta = 1$, and a 100% chance of measuring $\ket{1}$.
+
+The `show_state/1` function returns a readable representation. For further calculations, Qx provides functions that return structures we can work with directly:
+
+```elixir
+# state_vector/1 returns an Nx tensor for further calculations
+q = Qubit.new()
+Qubit.state_vector(q)
+```
+
+```elixir
+# Get the individual probability amplitudes
+IO.inspect(Qubit.alpha(q), label: "α (amplitude of |0⟩)")
+IO.inspect(Qubit.beta(q), label: "β (amplitude of |1⟩)")
+```
+
+So a qubit in Qx is exactly the mathematical object from the equations above: a 2-component complex vector you can read off at any time.
+
 ## Superposition
 
 While a classical bit is restricted to a definite binary state of either 0 or 1, the vector nature of a qubit allows for a much richer set of possibilities. Because the qubit exists in a complex vector space (Hilbert space), we can add two state vectors together to create a new, valid state vector. This fundamental principle — that any linear combination of quantum states is also a valid quantum state — is known as **superposition**.
@@ -67,21 +112,40 @@ $$
 \ket{\psi} = \alpha\ket{0} + \beta\ket{1}
 $$
 
-Superposition does not mean the qubit is rapidly toggling between 0 and 1 (a spinning coin is sometimes used as an analogy), nor does it mean it is simply "both" at the same time in a classical sense. Rather, the qubit exists in a definite quantum state $\ket{\psi}$ that possesses nonzero probability amplitudes ($\alpha$ and $\beta$) for both outcomes simultaneously.
+A qubit in superposition exists in a single, definite quantum state $\ket{\psi}$ that has nonzero amplitudes ($\alpha$ and $\beta$) for both outcomes. Two popular mental pictures get this wrong: the qubit is *not* rapidly toggling between 0 and 1 (the "spinning coin" analogy), and it is *not* simply "both values at once" in a classical sense.
 
-The power of superposition becomes evident when we scale the system up. While a classical register of $n$ bits can only represent one of $2^n$ possible values at a time, a quantum register of $n$ qubits can exist in a superposition of all $2^n$ computational basis states at once:
+Let's see a superposition in Qx. The `plus/0` function creates the most common one, the $\ket{+}$ state:
+
+$$
+\ket{+} = \frac{1}{\sqrt{2}}(\ket{0} + \ket{1})
+$$
+
+```elixir
+# Create a qubit in the |+⟩ state
+Qubit.plus() |> Qubit.show_state()
+```
+
+The amplitudes reflect the value $\frac{1}{\sqrt{2}} \approx 0.7071$, and the probabilities confirm the normalisation constraint:
+
+$$
+\left|\frac{1}{\sqrt{2}}\right|^2 + \left|\frac{1}{\sqrt{2}}\right|^2 = \frac{1}{2} + \frac{1}{2} = 1
+$$
+
+The displayed probabilities are approximately 0.5, with minor floating-point imprecision that is inherent in computer arithmetic. Qx accounts for this when comparing probabilities.
+
+**Scaling up.** The power of superposition becomes evident in larger systems. While a classical register of $n$ bits holds one of $2^n$ possible values at a time, a quantum register of $n$ qubits can exist in a superposition of all $2^n$ computational basis states at once:
 
 $$
 \ket{\psi} = \sum_{x=0}^{2^n-1} c_x \ket{x}
 $$
 
-Here, the system is defined by $2^n$ complex coefficients ($c_x$). This exponential growth in the state space is one of the key elements that provides quantum computers with their vast computational potential compared to classical systems.
+Here, the system is defined by $2^n$ complex coefficients ($c_x$). One caution before this sounds like magic: a measurement still returns just *one* of those $2^n$ outcomes. Quantum algorithms get their power by choreographing interference between the amplitudes so that wrong answers cancel and right answers reinforce — a theme we develop throughout this series.
 
-## Basis States
+## Basis states
 
 To fully describe a vector within a vector space, we must define a reference frame, or a "basis." Since a qubit resides in a two-dimensional Hilbert space, we require a set of two linearly independent vectors to span the entire space. By convention, we select two specific vectors known as the **computational basis states**.
 
-These states are denoted $\ket{0}$ and $\ket{1}$. They serve as the quantum analogues to the classical bit values 0 and 1. Crucially, these states form an **orthonormal basis**, meaning they satisfy two conditions:
+These states are denoted $\ket{0}$ and $\ket{1}$. They serve as the quantum analogues to the classical bit values 0 and 1. These states form an **orthonormal basis**, meaning they satisfy two conditions:
 
 * **Normalised:** Each has a length of 1.
 * **Orthogonal:** They are perpendicular to each other (their inner product is zero).
@@ -100,7 +164,17 @@ $$
 \ket{\psi} = \alpha\ket{0} + \beta\ket{1} = \alpha \begin{pmatrix} 1 \\ 0 \end{pmatrix} + \beta \begin{pmatrix} 0 \\ 1 \end{pmatrix} = \begin{pmatrix} \alpha \\ 0 \end{pmatrix} + \begin{pmatrix} 0 \\ \beta \end{pmatrix} = \begin{pmatrix} \alpha \\ \beta \end{pmatrix}
 $$
 
-This demonstrates that the complex numbers $\alpha$ and $\beta$ are not just abstract coefficients; they are the explicit components of the state vector relative to the $\ket{0}$ and $\ket{1}$ axes.
+So $\alpha$ and $\beta$ are the explicit components of the state vector along the $\ket{0}$ and $\ket{1}$ axes.
+
+Qx can build basis states directly from the classical bit value:
+
+```elixir
+# from_basis/1 takes the classical bit value 0 or 1
+IO.inspect(Qubit.from_basis(0) |> Qubit.state_vector(), label: "|0⟩")
+IO.inspect(Qubit.from_basis(1) |> Qubit.state_vector(), label: "|1⟩")
+```
+
+Compare the tensors with the column vectors above: $(1, 0)$ and $(0, 1)$, exactly as defined.
 
 ## Normalisation
 
@@ -108,9 +182,7 @@ In the previous sections, we defined the quantum state as a vector in a Hilbert 
 
 Geometrically, this requirement means that $\ket{\psi}$ must be a **unit vector** — a vector with a length (or magnitude) of exactly 1.
 
-The physical justification for this constraint is rooted in the probabilistic nature of quantum mechanics. The coefficients $\alpha$ and $\beta$ are probability amplitudes. When a measurement is performed on the qubit, the probability of observing $\ket{0}$ is $|\alpha|^2$ and the probability of observing $\ket{1}$ is $|\beta|^2$.
-
-Since a measurement must yield some outcome (it must collapse to either $\ket{0}$ or $\ket{1}$), the sum of the probabilities of all mutually exclusive outcomes must equal 1:
+The physical justification for this constraint is rooted in the probabilistic nature of quantum mechanics. The coefficients $\alpha$ and $\beta$ are probability amplitudes. Since a measurement must yield some outcome (it must collapse to either $\ket{0}$ or $\ket{1}$), the sum of the probabilities of all mutually exclusive outcomes must equal 1:
 
 $$
 |\alpha|^2 + |\beta|^2 = 1
@@ -118,90 +190,47 @@ $$
 
 This is the quantum mechanical equivalent of the Pythagorean theorem for a vector of unit length. If a state vector is not normalised (i.e., its length is not 1), it must be divided by its magnitude to become a valid quantum state.
 
-## Working with Qx Qubits
-
-With the fundamentals covered, let us start exploring simulated qubits in Qx. Throughout this tutorial we use **calculation mode**, where gates are applied immediately and the state can be inspected at every step.
+`Qubit.new/2` lets you request any amplitudes you like, and it performs that division for you. Watch what happens when we ask for the *invalid* state $\ket{0} + \ket{1}$, which has length $\sqrt{2}$:
 
 ```elixir
-# Create a qubit and inspect its state vector
-q = Qubit.new()
+# |1|² + |1|² = 2, so this vector is too long — Qx rescales it
+Qubit.new(1, 1) |> Qubit.show_state()
+```
+
+Qx divided both amplitudes by $\sqrt{2}$, landing us on the familiar $\ket{+}$ state. The *ratio* between the amplitudes is preserved; only the overall length changes.
+
+```elixir
+# A 3-4-5 triangle: amplitudes 3 and 4 normalise to 0.6 and 0.8
+q = Qubit.new(3, 4)
 Qubit.show_state(q)
 ```
 
-The default state for new qubits is $\ket{0}$. The `show_state/1` function displays the key information about our qubit: the state vector, probability amplitudes, and measurement probabilities.
-
-In the esample above, the probability of measuring $\ket{0}$ is 1 and $\ket{1}$ is 0, exactly as we expect for a computational basis state.
-
 ```elixir
-# Create a qubit in the |1⟩ state
-q = Qubit.one() |> Qubit.show_state()
-```
-
-As before, $\ket{1}$ is a basis state and perfectly distinguishable, so the probability of measuring it in state $\ket{1}$ is 100%.
-
-The `show_state/1` function returns a readable representation. For further calculations, Qx provides functions that return structures we can work with directly.
-
-```elixir
-# state_vector/1 returns an Nx tensor for further calculations
-q = Qubit.new()
-Qubit.state_vector(q)
-```
-
-```elixir
-# measure_probabilities/1 returns an Nx tensor of probabilities
+# Verify: |0.6|² + |0.8|² = 0.36 + 0.64 = 1.0
 Qubit.measure_probabilities(q)
 ```
 
 ```elixir
-# Get individual probability amplitudes
-IO.inspect(Qubit.alpha(q), label: "α (amplitude of |0⟩)")
-IO.inspect(Qubit.beta(q), label: "β (amplitude of |1⟩)")
+# valid?/1 checks both the shape and the normalisation of a state.
+# random/0 generates a random state — normalised, like every Qx qubit.
+Qubit.random() |> Qubit.valid?()
 ```
 
-So far, we have only looked at qubits in the standard computational basis. Let us now use the $\ket{+}$ state to investigate superposition and probability amplitudes in practice.
+**Try it:** before running the next cell, predict the two probabilities. Work out $|\alpha|^2$ and $|\beta|^2$ *after* normalisation. (Hint: the squared length of the requested vector is $1^2 + 2^2 = 5$.)
 
 ```elixir
-# Create a qubit in the |+⟩ state
-Qubit.plus() |> Qubit.show_state()
+Qubit.new(1, 2) |> Qubit.measure_probabilities()
 ```
 
-The `plus/0` function creates a qubit in the state:
+If you predicted 0.2 and 0.8, the normalisation constraint is yours.
 
-$$
-\ket{+} = \frac{1}{\sqrt{2}}(\ket{0} + \ket{1})
-$$
-
-The amplitudes reflect the value $\frac{1}{\sqrt{2}} \approx 0.7071$, and the probabilities confirm the normalisation constraint:
-
-$$
-\left|\frac{1}{\sqrt{2}}\right|^2 + \left|\frac{1}{\sqrt{2}}\right|^2 = \frac{1}{2} + \frac{1}{2} = 1
-$$
-
-The displayed probabilities are approximately 0.5, with minor floating-point imprecision that is inherent in computer arithmetic. Qx accounts for this when comparing probabilities.
-
-## Custom State Creation
-
-Qx allows you to create qubits with specific amplitudes. The new function normalises the state automatically if needed.
-
-```elixir
-# Create a qubit with custom amplitudes (auto-normalised)
-q = Qubit.new(0.6, 0.8)
-Qubit.show_state(q)
-```
-
-```elixir
-# Verify the normalisation: |0.6|² + |0.8|² = 0.36 + 0.64 = 1.0
-probs = Qubit.measure_probabilities(q)
-IO.inspect(probs, label: "Probabilities")
-```
-
-## The Other Basis States
+## The other basis states
 
 While the computational basis states $\ket{0}$ and $\ket{1}$ form the standard "Z-axis" reference frame for a qubit, they are not the only valid basis. Because a qubit exists in a vector space, we can define other pairs of orthonormal vectors to serve as a basis. This is analogous to rotating a coordinate system in geometry — the vector remains the same, but we describe it in terms of different axes.
 
 Two of the most important alternative bases are the **superposition basis** (X-basis) and the **circular basis** (Y-basis).
 
-### The X-Basis: $\ket{+}$ and $\ket{-}$
+### The X-basis: $\ket{+}$ and $\ket{-}$
 
 The X-basis consists of two states that represent equal superpositions of $\ket{0}$ and $\ket{1}$:
 
@@ -218,7 +247,7 @@ $$
 
 The factor of $\frac{1}{\sqrt{2}}$ ensures normalisation. These two states are orthogonal, making them a valid orthonormal basis. Measuring a qubit in this basis asks: "Is the superposition constructive ($\ket{+}$) or destructive ($\ket{-}$)?"
 
-### The Y-Basis: $\ket{i}$ and $\ket{-i}$
+### The Y-basis: $\ket{i}$ and $\ket{-i}$
 
 The Y-basis introduces complex numbers explicitly into the amplitudes. These states correspond to "circular" polarisation and are sometimes denoted $\ket{R}$ and $\ket{L}$:
 
@@ -230,61 +259,79 @@ $$
 \ket{-i} = \frac{\ket{0} - i\ket{1}}{\sqrt{2}} = \begin{pmatrix} \frac{1}{\sqrt{2}} \\ \frac{-i}{\sqrt{2}} \end{pmatrix}
 $$
 
-### Geometric Interpretation
+### Geometric interpretation
 
 These different bases correspond to the three spatial axes of the Bloch sphere:
 
-1. **Z-Basis:** $\ket{0}$ and $\ket{1}$ are the poles of the Z-axis.
-2. **X-Basis:** $\ket{+}$ and $\ket{-}$ are the poles of the X-axis (on the equator).
-3. **Y-Basis:** $\ket{i}$ and $\ket{-i}$ are the poles of the Y-axis (on the equator).
+1. **Z-basis:** $\ket{0}$ and $\ket{1}$ are the poles of the Z-axis.
+2. **X-basis:** $\ket{+}$ and $\ket{-}$ are the poles of the X-axis (on the equator).
+3. **Y-basis:** $\ket{i}$ and $\ket{-i}$ are the poles of the Y-axis (on the equator).
 
 Just as we can describe $\ket{+}$ as a combination of $\ket{0}$ and $\ket{1}$, we can inversely describe $\ket{0}$ as a superposition of $\ket{+}$ and $\ket{-}$. This symmetry highlights that no single basis is "more real" than the others; the choice depends on which property of the quantum system we intend to measure.
 
-## Working in the X-Basis
+## Understanding phase
 
-```elixir
-# The |+⟩ state
-Qubit.plus() |> Qubit.show_state()
-```
-
-Both $\ket{+}$ and $\ket{-}$ have equal probabilities of measuring $\ket{0}$ or $\ket{1}$ in the computational basis. The crucial difference between them is the **relative phase** — the sign relationship between the amplitudes.
-
-```elixir
-# The |−⟩ state
-Qubit.minus() |> Qubit.show_state()
-```
-
-Notice that the $\ket{-}$ state has the same measurement probabilities as $\ket{+}$ (both 50/50) but a different amplitude for $\ket{1}$: negative instead of positive. This relative phase is invisible to a Z-basis measurement but becomes physically observable when measuring in the X-basis.
-
-## Understanding Phase
-
-To understand what it means to ask if a superposition is "in phase" or "out of phase", consider what differentiates $\ket{+}$ and $\ket{-}$:
+Look again at the X-basis states. The only difference between them is a single sign:
 
 $$
 \ket{+} = \frac{\ket{0} + \ket{1}}{\sqrt{2}} \quad \text{and} \quad \ket{-} = \frac{\ket{0} - \ket{1}}{\sqrt{2}}
 $$
 
-If we measure either state in the Z-basis (checking for 0 or 1), the probability of finding 0 is $|1/\sqrt{2}|^2 = 0.5$, and the probability of finding 1 is also $0.5$. In terms of raw probabilities, these two states appear identical.
+Does that sign matter physically? Let's measure both states in the Z-basis and compare:
+
+```elixir
+IO.inspect(Qubit.plus() |> Qubit.measure_probabilities(), label: "|+⟩, Z-basis")
+IO.inspect(Qubit.minus() |> Qubit.measure_probabilities(), label: "|−⟩, Z-basis")
+```
+
+Identical: 50/50 for both. As far as a Z-basis measurement is concerned, $\ket{+}$ and $\ket{-}$ are the same state. Yet the amplitudes clearly differ:
+
+```elixir
+# The |−⟩ state: same probabilities, but β is negative
+Qubit.minus() |> Qubit.show_state()
+```
 
 The information that distinguishes $\ket{+}$ from $\ket{-}$ is not in the probabilities of the components but in the **relationship** between them. This relationship is the **relative phase**.
 
-**The Wave Analogy:**
+**The wave analogy:**
 
-1. **In Phase ($\ket{+}$):** The plus sign indicates that the two components work in the same direction. This is analogous to constructive interference, where two waves align peak-to-peak.
+1. **In phase ($\ket{+}$):** The plus sign indicates that the two components work in the same direction. This is analogous to constructive interference, where two waves align peak-to-peak.
 
-2. **Out of Phase ($\ket{-}$):** The minus sign indicates that the components oppose each other. This is analogous to destructive interference, where the peak of one wave meets the trough of another.
+2. **Out of phase ($\ket{-}$):** The minus sign indicates that the components oppose each other. This is analogous to destructive interference, where the peak of one wave meets the trough of another.
 
-When we perform a Z-basis measurement, we ask: "Is the state $\ket{0}$ or $\ket{1}$?"
+When we perform a Z-basis measurement, we ask: "Is the state $\ket{0}$ or $\ket{1}$?" When we measure in the X-basis, we ask: "Is the relationship between the components constructive ($\ket{+}$) or destructive ($\ket{-}$)?"
 
-When we measure in the X-basis, we ask: "Is the relationship between the components constructive ($\ket{+}$) or destructive ($\ket{-}$)?"
+Qx provides `measure_x/1` for exactly this. It returns the probability of finding the qubit in $\ket{+}$ (index 0) and $\ket{-}$ (index 1):
 
-This highlights a key feature of quantum mechanics: the sign in a state vector is not merely a mathematical abstraction. It represents a physical difference that can be detected if — and only if — you measure in the correct basis.
+```elixir
+IO.inspect(Qubit.plus() |> Qubit.measure_x(), label: "|+⟩, X-basis")
+IO.inspect(Qubit.minus() |> Qubit.measure_x(), label: "|−⟩, X-basis")
+```
 
-## The Bloch Sphere
+There it is. In the X-basis the two states are perfectly distinguishable: $\ket{+}$ gives $\ket{+}$ with certainty, $\ket{-}$ gives $\ket{-}$ with certainty. The sign in a state vector is a real, physical difference — one you can detect if, and only if, you measure in the right basis.
+
+The same game works for the Y-basis. The state $\ket{i}$ looks like a 50/50 coin to both Z-basis *and* X-basis measurements, and only `measure_y/1` reveals its identity:
+
+```elixir
+# |i⟩ sits on the Y-axis: θ = π/2, φ = π/2 (we meet these angles properly below)
+q_i = Qubit.from_bloch(:math.pi() / 2, :math.pi() / 2)
+
+IO.inspect(Qubit.measure_probabilities(q_i), label: "|i⟩, Z-basis")
+IO.inspect(Qubit.measure_x(q_i), label: "|i⟩, X-basis")
+IO.inspect(Qubit.measure_y(q_i), label: "|i⟩, Y-basis")
+```
+
+**Try it:** build $\ket{-i}$ (hint: $\phi = 3\pi/2$) and confirm that `measure_y/1` returns probability 1 at index 1.
+
+```elixir
+# Your code here
+```
+
+## The Bloch sphere
 
 The Bloch sphere is a geometric visualisation tool that represents the pure state space of a single qubit. It is a unit sphere where every point on the surface corresponds to a unique pure quantum state.
 
-Run the helper function in the cell below so we can then display the bloch sphere.
+Run the helper function in the cell below so we can then display the Bloch sphere.
 
 ```elixir
 # Helper function for rendering Bloch sphere SVGs
@@ -322,56 +369,18 @@ The pointer sits at the equator, pointing to the $\ket{+}$ position. Note the an
 
 **Key aspects of the Bloch sphere:**
 
-* **Basis States:** The north pole represents $\ket{0}$, the south pole represents $\ket{1}$.
+* **Basis states:** The north pole represents $\ket{0}$, the south pole represents $\ket{1}$.
 * **Superposition:** Any point on the surface other than the poles represents a superposition. The closer a point is to the equator, the more equal the superposition.
 * **Phase:** The azimuthal angle $\phi$ captures the relative phase between amplitudes. Rotations around the Z-axis change the relative phase.
-* **Quantum Gates:** Operations on a qubit are visualised as rotations of the state vector around specific axes.
+* **Quantum gates:** Operations on a qubit are visualised as rotations of the state vector around specific axes.
 
-## From Complex Numbers to Real Numbers
+## From complex numbers to real numbers
 
-Discussion of the Bloch sphere is a good point to derive an alternative mathematical description of a qubit. We will show how two real numbers suffice to describe any single-qubit state, a form that aligns naturally with the Bloch sphere visualisation.
-
-Starting from the general state $\ket{\psi} = \alpha\ket{0} + \beta\ket{1}$, where $\alpha$ and $\beta$ are complex numbers:
-
-**Step 1: Express complex numbers in polar form**
-
-Since $\alpha$ and $\beta$ are complex, they can be written as $\alpha = r_\alpha e^{i\gamma_\alpha}$ and $\beta = r_\beta e^{i\gamma_\beta}$, giving:
-
-$$
-\ket{\psi} = r_\alpha e^{i\gamma_\alpha}\ket{0} + r_\beta e^{i\gamma_\beta}\ket{1}
-$$
-
-**Step 2: Apply the normalisation constraint**
-
-The condition $|\alpha|^2 + |\beta|^2 = 1$ becomes $r_\alpha^2 + r_\beta^2 = 1$. Because we need two non-negative real numbers that square-sum to 1, we can parameterise them using trigonometry:
-
-$$
-r_\alpha = \cos\left(\frac{\theta}{2}\right) \quad \text{and} \quad r_\beta = \sin\left(\frac{\theta}{2}\right)
-$$
-
-We use $\theta/2$ rather than $\theta$ so that as $\theta$ ranges from $0$ to $\pi$, both $r_\alpha$ and $r_\beta$ range from 0 to 1 (covering all possible probability distributions). This also means that $\ket{0}$ ($\theta = 0$) and $\ket{1}$ ($\theta = \pi$) are separated by a full $\pi$ radians on the sphere, despite being orthogonal ($\pi/2$) in Hilbert space. More on this below.
-
-The state becomes:
-
-$$
-\ket{\psi} = \cos\left(\frac{\theta}{2}\right)e^{i\gamma_\alpha}\ket{0} + \sin\left(\frac{\theta}{2}\right)e^{i\gamma_\beta}\ket{1}
-$$
-
-**Step 3: Remove the global phase**
-
-In quantum mechanics, a **global phase** (a factor multiplying the entire state) has no observable physical meaning. Factoring out $e^{i\gamma_\alpha}$:
-
-$$
-\ket{\psi} = e^{i\gamma_\alpha} \left( \cos\left(\frac{\theta}{2}\right)\ket{0} + \sin\left(\frac{\theta}{2}\right)e^{i(\gamma_\beta - \gamma_\alpha)}\ket{1} \right)
-$$
-
-Since the global phase $e^{i\gamma_\alpha}$ is unobservable, we discard it. Defining the **relative phase** $\phi = \gamma_\beta - \gamma_\alpha$, we arrive at the canonical form:
+The Bloch sphere suggests something surprising: although $\alpha$ and $\beta$ are 2 complex numbers (4 real values), every point on the sphere is fixed by just 2 angles. And indeed, any single-qubit state can be written in the canonical form:
 
 $$
 \boxed{\ket{\psi} = \cos\left(\frac{\theta}{2}\right)\ket{0} + e^{i\phi}\sin\left(\frac{\theta}{2}\right)\ket{1}}
 $$
-
-### Relation to the Bloch Sphere
 
 The parameters $\theta$ and $\phi$ map directly to spherical coordinates on the Bloch sphere:
 
@@ -389,16 +398,16 @@ The parameters $\theta$ and $\phi$ map directly to spherical coordinates on the 
 | $\ket{i}$  | $\pi/2$  | $\pi/2$  | Positive Y-axis |
 | $\ket{-i}$ | $\pi/2$  | $3\pi/2$ | Negative Y-axis |
 
-### Why $\theta/2$ Instead of $\theta$?
+### Why $\theta/2$ instead of $\theta$?
 
-This is a crucial geometric distinction:
+This geometric distinction trips up nearly everyone at first:
 
 * **In Hilbert space**, $\ket{0}$ and $\ket{1}$ are orthogonal — $90°$ apart.
 * **On the Bloch sphere**, they are antipodal — $180°$ apart (north pole vs south pole).
 
 The factor of $1/2$ in $\cos(\theta/2)$ stretches the $90°$ vector-space separation onto a $180°$ sphere separation. Every pair of orthogonal states maps to diametrically opposite points on the sphere.
 
-### Cartesian Coordinates
+### Cartesian coordinates
 
 To plot the Bloch vector $(x, y, z)$ in 3D space:
 
@@ -406,9 +415,45 @@ $$
 x = \sin\theta\cos\phi, \quad y = \sin\theta\sin\phi, \quad z = \cos\theta
 $$
 
-## Exploring the Bloch Sphere
+### Optional: deriving the canonical form
 
-Let us explore different qubit states and their Bloch sphere representations.
+You can take the boxed formula on trust and skip ahead to the next section. For the curious, here is where it comes from, starting from the general state $\ket{\psi} = \alpha\ket{0} + \beta\ket{1}$ with complex $\alpha$ and $\beta$.
+
+**Step 1: Express complex numbers in polar form**
+
+Since $\alpha$ and $\beta$ are complex, they can be written as $\alpha = r_\alpha e^{i\gamma_\alpha}$ and $\beta = r_\beta e^{i\gamma_\beta}$, giving:
+
+$$
+\ket{\psi} = r_\alpha e^{i\gamma_\alpha}\ket{0} + r_\beta e^{i\gamma_\beta}\ket{1}
+$$
+
+**Step 2: Apply the normalisation constraint**
+
+The condition $|\alpha|^2 + |\beta|^2 = 1$ becomes $r_\alpha^2 + r_\beta^2 = 1$. Because we need two non-negative real numbers that square-sum to 1, we can parameterise them using trigonometry:
+
+$$
+r_\alpha = \cos\left(\frac{\theta}{2}\right) \quad \text{and} \quad r_\beta = \sin\left(\frac{\theta}{2}\right)
+$$
+
+We use $\theta/2$ rather than $\theta$ so that as $\theta$ ranges from $0$ to $\pi$, both $r_\alpha$ and $r_\beta$ range from 0 to 1 (covering all possible probability distributions). The state becomes:
+
+$$
+\ket{\psi} = \cos\left(\frac{\theta}{2}\right)e^{i\gamma_\alpha}\ket{0} + \sin\left(\frac{\theta}{2}\right)e^{i\gamma_\beta}\ket{1}
+$$
+
+**Step 3: Remove the global phase**
+
+In quantum mechanics, a **global phase** (a factor multiplying the entire state) has no observable physical meaning. Factoring out $e^{i\gamma_\alpha}$:
+
+$$
+\ket{\psi} = e^{i\gamma_\alpha} \left( \cos\left(\frac{\theta}{2}\right)\ket{0} + \sin\left(\frac{\theta}{2}\right)e^{i(\gamma_\beta - \gamma_\alpha)}\ket{1} \right)
+$$
+
+Since the global phase $e^{i\gamma_\alpha}$ is unobservable, we discard it. Defining the **relative phase** $\phi = \gamma_\beta - \gamma_\alpha$, we arrive at the canonical form in the box above.
+
+## Exploring the Bloch sphere
+
+We can create qubits directly from their Bloch angles:
 
 ```elixir
 # Create a qubit from Bloch sphere coordinates
@@ -421,12 +466,36 @@ Qubit.show_state(q)
 BlochHelper.render(q)
 ```
 
+Better still, drive the angles yourself. Run the next two cells to get a pair of sliders, then adjust them and re-run the rendering cell to watch the state move around the sphere:
+
 ```elixir
-# Apply a rotation and observe the change
+theta_input = Kino.Input.range("θ — polar angle (0 to π)", min: 0.0, max: 3.14159, step: 0.01, default: 1.5708)
+```
+
+```elixir
+phi_input = Kino.Input.range("φ — azimuthal angle (0 to 2π)", min: 0.0, max: 6.28318, step: 0.01, default: 0.0)
+```
+
+```elixir
+theta = Kino.Input.read(theta_input)
+phi = Kino.Input.read(phi_input)
+
+Qubit.from_bloch(theta, phi)
+|> Qubit.tap_state(label: "θ = #{Float.round(theta, 2)}, φ = #{Float.round(phi, 2)}")
+|> BlochHelper.render()
+```
+
+Some experiments to run with the sliders, using the mapping table above as your answer key:
+
+* Set $\theta = \pi$ (about 3.14). Does $\phi$ make any difference at the south pole?
+* Park the state on the equator ($\theta = \pi/2$) and sweep $\phi$ from 0 to $2\pi$. The measurement probabilities never change — only the phase does.
+* Land on $\ket{-}$ ($\theta = \pi/2$, $\phi = \pi$), then confirm your aim by piping the qubit into `Qubit.measure_x/1` in a new cell.
+
+To close, a preview of the next tutorial. Quantum gates are rotations of the Bloch vector, and the most famous of them, the **Hadamard gate**, rotates $\ket{0}$ from the north pole onto the equator at $\ket{+}$:
+
+```elixir
 # The Hadamard gate (h) transforms |0⟩ → |+⟩
-# We will study gates in detail in the next tutorial
-q = Qubit.new()
-  |> Qubit.h()
+q = Qubit.new() |> Qubit.h()
 
 IO.puts("After applying the Hadamard gate to |0⟩:")
 Qubit.show_state(q)
@@ -436,19 +505,19 @@ Qubit.show_state(q)
 BlochHelper.render(q)
 ```
 
-The pointer now sits at the equator pointing to the $\ket{+}$ position. The Hadamard gate, which we will study in detail in the next tutorial, transforms $\ket{0}$ into $\ket{+}$ — a rotation from the north pole to the equator.
+One gate, and our definite $\ket{0}$ is in an equal superposition. Building computations from such rotations is the subject of the next tutorial.
 
 ## Summary
 
 In this tutorial, we covered the foundational concepts of quantum computing:
 
-* **State Vectors:** A qubit state $\ket{\psi} = \alpha\ket{0} + \beta\ket{1}$ is a vector in a two-dimensional complex Hilbert space.
+* **State vectors:** A qubit state $\ket{\psi} = \alpha\ket{0} + \beta\ket{1}$ is a vector in a two-dimensional complex Hilbert space.
 * **Superposition:** A qubit can exist in a linear combination of basis states, with amplitudes determining measurement probabilities.
-* **Basis States:** The computational basis $\{\ket{0}, \ket{1}\}$ is one of several valid orthonormal bases, alongside the X-basis $\{\ket{+}, \ket{-}\}$ and Y-basis $\{\ket{i}, \ket{-i}\}$.
-* **Normalisation:** Valid quantum states satisfy $|\alpha|^2 + |\beta|^2 = 1$.
-* **Phase:** The relative phase between amplitudes carries physical information that is only observable in the correct measurement basis.
-* **Bloch Sphere:** Any single-qubit pure state can be represented as a point on a unit sphere, parameterised by angles $\theta$ and $\phi$.
+* **Basis states:** The computational basis $\{\ket{0}, \ket{1}\}$ is one of several valid orthonormal bases, alongside the X-basis $\{\ket{+}, \ket{-}\}$ and Y-basis $\{\ket{i}, \ket{-i}\}$.
+* **Normalisation:** Valid quantum states satisfy $|\alpha|^2 + |\beta|^2 = 1$, and `Qubit.new/2` rescales any amplitudes you give it to comply.
+* **Phase:** The relative phase between amplitudes carries physical information — invisible to a Z-basis measurement but laid bare by `measure_x/1` and `measure_y/1`.
+* **Bloch sphere:** Any single-qubit pure state can be represented as a point on a unit sphere, parameterised by angles $\theta$ and $\phi$.
 
-### What's Next
+### What's next
 
 In the next tutorial, **Quantum Operations and Gates**, we introduce circuit mode and explore how quantum gates — including Pauli gates, rotation gates, and multi-qubit gates — transform qubit states.

@@ -1,0 +1,166 @@
+# Quantum Algorithms: Bernstein–Vazirani and Grover's Search
+
+```elixir
+Mix.install([
+  {:qx, "~> 0.8.0", hex: :qx_sim},
+  {:kino, "~> 0.12"},
+  {:vega_lite, "~> 0.1.11"},
+  {:kino_vega_lite, "~> 0.1.11"}
+])
+
+alias Qx.Register
+```
+
+## Learning objectives
+
+By the end of this tutorial you will be able to:
+
+* Recognise the superposition → oracle → interference pattern as the skeleton shared by both algorithms
+* Build a Bernstein–Vazirani circuit that recovers an $n$-bit secret string in a single oracle query
+* Construct a phase oracle and Grover's diffusion operator, and run a complete search on a four-item space
+* Predict the optimal number of Grover iterations and explain amplitude amplification as inversion about the mean
+* Compare quantum and classical query counts, and say where the speed-up actually comes from
+
+## Introduction
+
+This is the sixth tutorial in the series, following **Interference and Phase Kickback**. There we built the engine: superposition spreads a register across every input, phase kickback stamps a data-dependent phase onto each one, and a second layer of Hadamards interferes those phases into an answer. We even ran a one-bit Bernstein–Vazirani to see all three steps fire together.
+
+Now we assemble that engine into two real algorithms. **Bernstein–Vazirani** recovers a hidden bit-string in a single query where any classical method needs one query per bit. **Grover's search** finds a marked item in an unstructured set of $N$ in about $\sqrt{N}$ steps, against the $N/2$ a classical scan averages. Both are the same three-step pattern with different oracles and a different amount of interference.
+
+We work in **circuit mode** throughout, with brief detours into **calculation mode** (`Qx.Register`) to watch amplitudes between steps.
+
+**Prerequisites:** the first five tutorials in this series. You especially need phase kickback, the $\ket{-}$ ancilla trick, interference turning phases into outcomes, and the multi-qubit helpers `Qx.h_all/1`, `Qx.x_all/1`, and `Qx.measure_all/1`.
+
+## The pattern both algorithms share
+
+Strip away the specifics and both algorithms are the same three moves:
+
+1. **Superposition.** Apply $H^{\otimes n}$ so the input register holds all $2^n$ basis states at equal amplitude.
+2. **Oracle.** A black-box circuit marks the inputs you care about by kicking back a phase $(-1)^{f(x)}$ onto each $\ket{x}$, using an ancilla in $\ket{-}$ or a controlled phase gate.
+3. **Interference.** Bring the marked amplitudes back together so the answer concentrates onto the states you can measure.
+
+Bernstein–Vazirani needs one pass through this loop. Grover repeats steps 2 and 3 until the marked state dominates. Everything below is a variation on these three lines.
+
+## Bernstein–Vazirani: one query for the whole string
+
+You are handed a black-box function $f : \{0,1\}^n \to \{0,1\}$ and promised it has the form
+
+$$
+f(x) = s \cdot x = s_0 x_0 \oplus s_1 x_1 \oplus \cdots \oplus s_{n-1} x_{n-1}
+$$
+
+for some hidden bit-string $s$. Your job is to find $s$. Classically each query returns a single parity bit, so you need at least $n$ queries: feed in $x = 100\ldots0$ to read $s_0$, then $010\ldots0$ for $s_1$, and so on. The quantum version reads the whole string in **one** query.
+
+The mechanism is the kickback from the previous tutorial, run on $n$ input qubits at once. Put the input register in a uniform superposition and the ancilla in $\ket{-}$. The oracle, which XORs $s \cdot x$ into the ancilla, kicks back a phase instead:
+
+$$
+U_f\,\ket{x}\,\tfrac{1}{\sqrt{2}}(\ket{0}-\ket{1}) = (-1)^{s\cdot x}\,\ket{x}\,\tfrac{1}{\sqrt{2}}(\ket{0}-\ket{1})
+$$
+
+so the input register becomes $\tfrac{1}{\sqrt{2^n}}\sum_x (-1)^{s\cdot x}\ket{x}$. A second round of Hadamards turns that phase pattern into a single basis state:
+
+$$
+H^{\otimes n}\!\left(\tfrac{1}{\sqrt{2^n}}\sum_x (-1)^{s\cdot x}\ket{x}\right) = \ket{s}
+$$
+
+Measure, and every shot reads $s$. The oracle for $f(x) = s \cdot x$ is built from CNOTs: one from input qubit $i$ into the ancilla for every position where $s_i = 1$. Each CNOT adds $x_i$ to the running XOR in the ancilla, so the ancilla computes exactly $s \cdot x$.
+
+Take $n = 4$ and a hidden string $s = 1011$ (so $s_0 = 1$, $s_1 = 0$, $s_2 = 1$, $s_3 = 1$, with qubit 0 on the left). The ancilla lives on qubit $n$:
+
+```elixir
+n = 4
+secret = [1, 0, 1, 1]
+
+bv =
+  Qx.create_circuit(n + 1, n)
+  |> Qx.x(n)                       # ancilla → |1⟩
+  |> Qx.h_all(0..n)                # inputs → |+⟩, ancilla → |−⟩
+  |> then(fn qc ->
+    secret
+    |> Enum.with_index()
+    |> Enum.reduce(qc, fn
+      {1, i}, acc -> Qx.cx(acc, i, n)   # CNOT from input i into the ancilla
+      {0, _i}, acc -> acc
+    end)
+  end)
+  |> Qx.h_all(0..(n - 1))          # interfere on the input register
+  |> Qx.measure_all(0..(n - 1))    # measure the inputs, not the ancilla
+
+Qx.draw_counts(Qx.run(bv, shots: 1024), title: "Bernstein–Vazirani — every shot reads 1011")
+```
+
+Every shot lands on `1011`, the secret, recovered in a single call to the oracle. The four input qubits each carried a superposition, the oracle phased them all in one pass, and interference snapped them onto $\ket{s}$.
+
+**Try it:** change `secret` to any 4-bit list, for example `[0, 1, 1, 0]`, and rerun. The chart should read your string straight back. The classical approach would have queried the box four times to learn the same thing.
+
+## Grover's search: amplifying the answer
+
+Bernstein–Vazirani won by reading a global property in one shot. Grover's search tackles a harder job: find the one marked item in an unstructured set of $N = 2^n$, where the only tool is an oracle that says "yes" on the target and "no" everywhere else. Classically you can do no better than checking items one by one, $N/2$ on average. Grover finds it in about $\tfrac{\pi}{4}\sqrt{N}$ steps.
+
+A single pass is not enough here, because one phase mark on one of $N$ states barely moves the measurement probabilities. Grover's idea is to repeat two operations that, together, pump amplitude toward the target:
+
+* **The oracle** flips the *phase* of the marked state, leaving the rest alone.
+* **The diffusion operator** reflects every amplitude about their collective mean, which turns the oracle's small phase dent into a real gain in probability.
+
+Work with $n = 2$, so $N = 4$ and we search for the marked state $\ket{11}$. The oracle that phase-flips $\ket{11}$ is just a controlled-$Z$, since $CZ$ multiplies the amplitude by $-1$ exactly when both qubits are $\ket{1}$. Watch it mark the target, in calculation mode:
+
+```elixir
+# Uniform superposition, then the oracle flips the phase of |11⟩
+Register.new(2)
+|> Register.h(0)
+|> Register.h(1)
+|> Register.cz(0, 1)
+|> Register.show_state()
+```
+
+Four equal magnitudes, with $\ket{11}$ now carrying a minus sign. On its own this is invisible to a measurement: all four probabilities are still $0.25$. The diffusion operator is what converts that lone minus sign into a tall bar.
+
+Diffusion reflects each amplitude about the mean of all of them. After the oracle the amplitudes are $\tfrac{1}{2}, \tfrac{1}{2}, \tfrac{1}{2}, -\tfrac{1}{2}$, whose mean is $\tfrac{1}{4}$. Reflecting each value $a$ to $2\bar{a} - a$ sends the three unmarked amplitudes to $2(\tfrac14) - \tfrac12 = 0$ and the marked one to $2(\tfrac14) - (-\tfrac12) = 1$:
+
+$$
+\tfrac{1}{2},\ \tfrac{1}{2},\ \tfrac{1}{2},\ -\tfrac{1}{2} \quad\xrightarrow{\text{reflect about } \bar{a}=\tfrac14}\quad 0,\ 0,\ 0,\ 1
+$$
+
+The marked state absorbs all the probability. Qx has no single "diffusion" gate, so we build it from the standard sandwich $H^{\otimes n} X^{\otimes n}\,CZ\,X^{\otimes n} H^{\otimes n}$, which implements exactly that reflection:
+
+**Predict first:** for $N = 4$ the optimal count is $\tfrac{\pi}{4}\sqrt{4} \approx 1.57$, rounded to one iteration. With a single oracle-plus-diffusion round, what probability should $\ket{11}$ get? Run it:
+
+```elixir
+grover =
+  Qx.create_circuit(2, 2)
+  |> Qx.h_all()          # uniform superposition over 4 states
+  # Oracle: phase-flip the marked state |11⟩
+  |> Qx.cz(0, 1)
+  # Diffusion: reflect about the mean
+  |> Qx.h_all()
+  |> Qx.x_all()
+  |> Qx.cz(0, 1)
+  |> Qx.x_all()
+  |> Qx.h_all()
+  |> Qx.measure_all()
+
+Qx.draw_counts(Qx.run(grover, shots: 1024), title: "Grover — |11⟩ found in one iteration")
+```
+
+Every shot reads `11`. For a four-item search, one Grover iteration is enough to reach the target with certainty. To search for a different item, wrap the oracle's $CZ$ in $X$ gates on the qubits that should read $0$: bracketing qubit 1 with $X$ before and after the $CZ$, for instance, marks $\ket{10}$ instead.
+
+A word of caution that surprises people: more iterations are not better. Grover rotates the state toward the target by a fixed angle each round, so past the optimal count it rotates *past* the answer and the success probability falls again. For large $N$ the optimal number of rounds grows like $\sqrt{N}$, which is the whole speed-up.
+
+## How big is the win
+
+Line the two algorithms up against their classical counterparts and the pattern is clear.
+
+For Bernstein–Vazirani, learning an $n$-bit string by parity queries costs $n$ classical calls and exactly $1$ quantum call. For Grover, finding a marked item among $N$ costs $N/2$ classical checks on average and about $\tfrac{\pi}{4}\sqrt{N}$ quantum iterations: a quadratic speed-up, the kind that turns a million-step search into a thousand-step one.
+
+Both wins come from the same place, and that place is easy to mistake. The register holds $2^n$ states at once, but it does not hand you $2^n$ answers: a measurement still returns a single outcome, as it has since the measurement tutorial. The advantage comes from arranging the phases so that interference cancels the outcomes you do not want before you ever measure. Superposition sets the stage; interference does the work.
+
+## Summary
+
+* **Both algorithms share one skeleton:** superposition with $H^{\otimes n}$, an oracle that kicks back phases, and interference that concentrates the answer onto measurable states.
+* **Bernstein–Vazirani** recovers an $n$-bit secret in a single query by reading the phase pattern $(-1)^{s\cdot x}$ back into the basis state $\ket{s}$ with a second round of Hadamards.
+* **Grover's search** alternates a phase-flip oracle with a diffusion operator that reflects amplitudes about their mean, amplifying the marked state in about $\tfrac{\pi}{4}\sqrt{N}$ rounds.
+* **The speed-up comes from interference.** A measurement still yields a single outcome; the algorithm wins by arranging phases so the wrong answers cancel before you measure.
+
+### What's next
+
+A natural continuation is the **Quantum Fourier Transform** and **phase estimation**, the interference circuit that reads an eigenvalue out of a register and the backbone of Shor's factoring algorithm. The same three moves return there in a richer form, with controlled rotations replacing the plain Hadamards of the interference step.
