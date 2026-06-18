@@ -48,3 +48,6 @@ cover/
 
 # QASM artefacts written to repo root by example scripts
 /*.qasm
+
+# macOS Finder metadata
+.DS_Store

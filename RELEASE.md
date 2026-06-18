@@ -39,7 +39,7 @@ Follow these steps to create a new release:
 
 ### 1. Update Version in mix.exs
 
-Edit `/Users/richarc/Development/qx/mix.exs` and update the version (line 7):
+Edit `mix.exs` and update the version (line 7):
 
 ```elixir
 version: "X.Y.Z"
