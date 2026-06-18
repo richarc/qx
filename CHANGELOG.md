@@ -16,12 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only in circuit mode are now available on `Qx.Register` as direct
   state-vector evolutions:
 
-    - `Qx.Register.cy/3` — controlled-Y
-    - `Qx.Register.crx/4`, `cry/4`, `crz/4` — controlled rotations
-    - `Qx.Register.cp/4` — controlled-phase
-    - `Qx.Register.swap/3`, `iswap/3` — two-qubit swaps
-    - `Qx.Register.cswap/4` — Fredkin (controlled-SWAP)
-    - `Qx.Register.u/5` — general single-qubit unitary
+    - `Qx.Register.cy/3`: controlled-Y
+    - `Qx.Register.crx/4`, `cry/4`, `crz/4`: controlled rotations
+    - `Qx.Register.cp/4`: controlled-phase
+    - `Qx.Register.swap/3`, `iswap/3`: two-qubit swaps
+    - `Qx.Register.cswap/4`: Fredkin (controlled-SWAP)
+    - `Qx.Register.u/5`: general single-qubit unitary
 
   All five controlled-target gates (`cy`, `crx`, `cry`, `crz`, `cp`)
   share an `apply_controlled_target/4` internal helper that lifts a
@@ -42,16 +42,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Qx.Patterns.bell_state_circuit/1`, `ghz_state_circuit/1`, and
   `superposition_circuit/1`. The top-level `Qx.bell_state`,
   `Qx.ghz_state`, and `Qx.superposition` now delegate to these
-  helpers (no break — old call sites continue to work). Two of the
+  helpers (no break: old call sites continue to work). Two of the
   three got new optional arguments: `Qx.ghz_state(num_qubits \\ 3)`
-  and `Qx.superposition(num_qubits \\ 1)` — previously hardcoded to
+  and `Qx.superposition(num_qubits \\ 1)`: previously hardcoded to
   3 and 1 qubits respectively.
 
 ### Changed
 
 - **Qx.Behaviours.QuantumState now has callbacks (and an
   implementor).** Previously a dead behaviour that no module
-  implemented — `Qx.Register` now declares `@behaviour
+  implemented: `Qx.Register` now declares `@behaviour
   Qx.Behaviours.QuantumState` and provides every required callback.
   The callback list grew to cover the full Phase B gate surface
   (`sdg`, `u`, `cy`, `swap`, `iswap`, `cp`, `crx`, `cry`, `crz`,
@@ -74,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Qx.Validation removed from `mix.exs` `groups_for_modules`.**
   After Phase A's `@doc false` sweep, only `valid_qubit?/2` and
-  `valid_register?/2` remain visible — too thin to warrant a top-level
+  `valid_register?/2` remain visible: too thin to warrant a top-level
   group. The module page itself is still reachable; the renamed
   "Utilities" group lists `Qx.Math` and `Qx.StateInit`.
 
@@ -85,18 +85,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the library. The following are now `@moduledoc false` or
   per-function `@doc false`:
 
-  - **Qx.Gates, Qx.Calc, Qx.CalcFast, Qx.Format, Qx.ResultBuilder** —
+  - **Qx.Gates, Qx.Calc, Qx.CalcFast, Qx.Format, Qx.ResultBuilder**:
     entire modules tagged `@moduledoc false`. Removed from `mix.exs`
     `groups_for_modules`. Functions remain callable for advanced users;
     they just no longer appear in ExDoc or IDE auto-complete.
   - **Qx.QuantumCircuit.add_gate, add_two_qubit_gate,
-    add_three_qubit_gate, add_measurement** — `@doc false`. The
+    add_three_qubit_gate, add_measurement**: `@doc false`. The
     user-facing API is `Qx.h(qc, 0)` etc.; these are internal helpers.
-  - **Qx.Validation `validate_*!` family (10 functions)** — `@doc false`.
+  - **Qx.Validation `validate_*!` family (10 functions)**: `@doc false`.
     Internal Iron Law #7 contracts. The user-facing predicates
     `Qx.Validation.valid_qubit?/2` and `valid_register?/2` remain
     public.
-  - **Qx.Math.complex_to_tensor, tensor_to_complex, complex_matrix** —
+  - **Qx.Math.complex_to_tensor, tensor_to_complex, complex_matrix**:
     `@doc false`. The rest of `Qx.Math` (`complex/2`, `identity/1`,
     `unitary?/1`, `probabilities/1`) stays public.
 
@@ -108,13 +108,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`Qx.Error` `@moduledoc` rewritten to be accurate.** The previous
   text described it as a "base exception" Qx users could rescue to
   catch any Qx error. Elixir exceptions do not inherit, so
-  `rescue Qx.Error` catches *nothing* today — the docstring now says
+  `rescue Qx.Error` catches *nothing* today: the docstring now says
   so explicitly and lists every typed exception users actually need
   to rescue.
 
 ### Deprecated
 
-- **Qx.Math.basis_state/2 is deprecated** — use
+- **Qx.Math.basis_state/2 is deprecated**: use
   `Qx.StateInit.basis_state/3` instead. The two functions returned
   different types (Math was f32, StateInit is c64), and the StateInit
   form is the canonical one. The deprecated function emits a
@@ -128,7 +128,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `new(25)` silently created an over-cap circuit (upper bound unchecked
   on this path); `new(0)` raised `FunctionClauseError` via a guard
   (lower bound untyped). Both paths now raise `Qx.QubitCountError`
-  consistently — the function calls the internal `validate_num_qubits!`
+  consistently: the function calls the internal `validate_num_qubits!`
   validator on every input. Closes Iron Law #7 holes at both bounds,
   surfaced by `.claude/plans/public-api-audit/plan.md`.
 
@@ -172,7 +172,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`Qx.StateShapeError`** — new exception type raised by
+- **`Qx.StateShapeError`**: new exception type raised by
   `Qx.QuantumCircuit.set_state/2` when the supplied state vector's
   shape doesn't match `{2^num_qubits}`. Carries `:actual` and
   `:expected` size fields.
@@ -188,7 +188,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   OpenQASM 3 `cy`/`crx`/`cry`/`crz`. Simulation handlers reuse the
   existing two-qubit `controlled_gate/4` contraction. The OpenQASM
   importer (`Qx.Export.OpenQASM.from_qasm/1`) now also recognises these
-  gates — previously they were in the unsupported-stdgates set.
+  gates: previously they were in the unsupported-stdgates set.
 
 - **Basis-explicit measurement: `Qx.measure_x/3`, `Qx.measure_y/3`,
   `Qx.measure_z/3` (plan: qaal-parity).** Match QAAL `Mx`/`My`/`Mz`
@@ -197,7 +197,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `measure/3` for symmetry. Note: Qx's simulator samples in the
   computational basis at end-of-circuit, so the post-measurement
   *quantum state* stays Z-basis-aligned (not rotated back into the
-  X-/Y-basis eigenstate) — the **classical outcome** is what tutorials
+  X-/Y-basis eigenstate): the **classical outcome** is what tutorials
   care about and matches QAAL.
 
 - **`Qx.Patterns` sub-register overload (`/2` arity)
@@ -208,31 +208,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by hand: `Qx.h_all(qc, 0..2)`, `Qx.measure_all(qc, [0, 2])`. Empty
   list/range is a no-op.
 
-- **`Qx.Patterns` — composite circuit-building helpers.** New module
+- **`Qx.Patterns`: composite circuit-building helpers.** New module
   providing seven thin wrappers over `Qx.Operations` for the recurring
   "apply to every qubit" / "CNOT chain" motifs that appear in tutorials
   (Grover diffuser, Bernstein-Vazirani oracle, GHZ preparation):
 
-  - `Qx.Patterns.h_all/1`, `x_all/1`, `y_all/1`, `z_all/1` — apply the
+  - `Qx.Patterns.h_all/1`, `x_all/1`, `y_all/1`, `z_all/1`: apply the
     single-qubit gate to every qubit in the circuit.
-  - `Qx.Patterns.measure_all/1` — measure qubit `i` into classical bit
+  - `Qx.Patterns.measure_all/1`: measure qubit `i` into classical bit
     `i` for all qubits. Raises `Qx.ClassicalBitError` if
-    `num_classical_bits < num_qubits` (caller owns circuit shape — no
+    `num_classical_bits < num_qubits` (caller owns circuit shape: no
     auto-grow).
-  - `Qx.Patterns.barrier_all/1` — single barrier across every qubit.
-  - `Qx.Patterns.cx_chain/2` — linear CNOT cascade
+  - `Qx.Patterns.barrier_all/1`: single barrier across every qubit.
+  - `Qx.Patterns.cx_chain/2`: linear CNOT cascade
     (`cx(q0,q1) → cx(q1,q2) → …`) along the supplied qubit list;
     `[]` and `[q]` are deliberate no-ops.
 
   All seven are also exposed at the top level (`Qx.h_all/1`,
-  `Qx.measure_all/1`, …) via `defdelegate`. Purely additive — no
+  `Qx.measure_all/1`, …) via `defdelegate`. Purely additive: no
   breaking change. Out-of-range qubit indices propagate the existing
   typed `Qx.QubitIndexError` inherited from
   `Qx.QuantumCircuit.add_*` / `Qx.Validation`.
 
 - **Configurable statevector renormalization + dev/test norm-drift
   guard in `Qx.Simulation.run/2` / `Qx.run/2` (qx-53v).** New
-  `:renormalize` option (default `false` — fully backwards compatible,
+  `:renormalize` option (default `false`: fully backwards compatible,
   zero cost when off): `true` renormalizes at measurement-time; a
   positive integer `N` renormalizes every `N` gates and at
   measurement-time; any other value raises the new typed
@@ -297,19 +297,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`Qx.Hardware`** — public namespace owning the full direct-to-IBM execution pipeline (IAM exchange → qxportal transpile → IBM submit → poll → result-build).
-- **`Qx.Hardware.Config`** — credential + execution-preference struct (`portal_url`, `portal_token`, `ibm_api_key`, `ibm_crn`, `ibm_region`, `backend`, `optimization_level`, `shots`). Validates region against the IBM allowlist, optimization_level `0..3`, shots `1..100_000`, portal URL scheme.
-- **`Qx.Hardware.Ibm`** — Req-based client for IBM Quantum (Qiskit Runtime REST API). IAM exchange + 401-refresh-retry, backends list, backend configuration, Sampler V2 submission, poll loop with Pascal-Case status allowlist, sample-aggregation to counts, best-effort cancel.
-- **`Qx.Hardware.Portal`** — Req-based client for the qxportal `/api/v1/me` and `/api/v1/transpile` endpoints. Atomize allowlist for response keys.
-- **`Qx.Hardware.NoMeasurementsError`** — raised when a circuit submitted to hardware has no `measure/2` instructions.
-- **`Qx.Hardware.ConfigError`** — typed validation error for `Qx.Hardware.Config`.
-- **Privacy invariant** — two independent HTTP clients; the portal token never reaches IBM, and the IBM API key/CRN never reach the portal.
-- **Status callback** — pipeline progress events (`{:portal, :transpiling}`, `{:ibm, :polling, status}`, …). All atoms literal (Iron Law #1 — no `String.to_atom` on caller input).
+- **`Qx.Hardware`**: public namespace owning the full direct-to-IBM execution pipeline (IAM exchange → qxportal transpile → IBM submit → poll → result-build).
+- **`Qx.Hardware.Config`**: credential + execution-preference struct (`portal_url`, `portal_token`, `ibm_api_key`, `ibm_crn`, `ibm_region`, `backend`, `optimization_level`, `shots`). Validates region against the IBM allowlist, optimization_level `0..3`, shots `1..100_000`, portal URL scheme.
+- **`Qx.Hardware.Ibm`**: Req-based client for IBM Quantum (Qiskit Runtime REST API). IAM exchange + 401-refresh-retry, backends list, backend configuration, Sampler V2 submission, poll loop with Pascal-Case status allowlist, sample-aggregation to counts, best-effort cancel.
+- **`Qx.Hardware.Portal`**: Req-based client for the qxportal `/api/v1/me` and `/api/v1/transpile` endpoints. Atomize allowlist for response keys.
+- **`Qx.Hardware.NoMeasurementsError`**: raised when a circuit submitted to hardware has no `measure/2` instructions.
+- **`Qx.Hardware.ConfigError`**: typed validation error for `Qx.Hardware.Config`.
+- **Privacy invariant**: two independent HTTP clients; the portal token never reaches IBM, and the IBM API key/CRN never reach the portal.
+- **Status callback**: pipeline progress events (`{:portal, :transpiling}`, `{:ibm, :polling, status}`, …). All atoms literal (Iron Law #1: no `String.to_atom` on caller input).
 
 ### Removed
 
 - `Qx.Remote`, `Qx.Remote.Config`, `Qx.RemoteError` (see BREAKING above).
-- `examples/remote/` — superseded by `examples/hardware/run_on_ibm.exs`.
+- `examples/remote/`: superseded by `examples/hardware/run_on_ibm.exs`.
 
 ### Dependencies
 
@@ -319,15 +319,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.6.0] - 2026-05-04
 
 ### Added
-- **OpenQASM 3.0 import** — `Qx.Export.OpenQASM.from_qasm/1` and `from_qasm!/1` parse OpenQASM 3 source produced by Qx itself, by Qiskit, or by IBM Quantum and return a `%Qx.QuantumCircuit{}`. Round-trips with `to_qasm/1` (statevectors match within 1e-10).
-- **Gate definition codegen** — `Qx.Export.OpenQASM.from_qasm_function/1` (and the bang variant) parses a `gate name(p1, …) a, b { … }` definition and returns `%{name, arity, source}`, where `source` is an Elixir `def …` string that compiles via `Code.compile_string/1`. Function signature: `(circuit, params…, qubits…)`.
-- **Supported gate set on import** — direct mappings for `h, x, y, z, s, sdg, t, rx, ry, rz, p, phase, u, u3, cx, CX, cz, swap, iswap, cp, cphase, ccx, cswap`. Decompositions for `tdg → phase(-π/4)`, `sx → u(π/2, -π/2, π/2)`, `u1(λ) → phase(λ)`, `u2(φ, λ) → u(π/2, φ, λ)`. `id` is dropped.
-- **Typed import errors** — `Qx.QasmParseError` (line/column/snippet) and `Qx.QasmUnsupportedError` (feature/line/hint) for grammar failures and out-of-scope features respectively.
-- `Qx.cp/4` — controlled-phase gate applying e^(i·θ) to the |11⟩ basis state, required for QFT and QPE circuits
-- `Qx.swap/3` — SWAP gate exchanging the quantum states of two qubits; includes circuit diagram rendering (× symbols connected by a line) and OpenQASM 3 export
-- `Qx.iswap/3` — iSWAP gate exchanging qubit states with an i phase factor on the swapped components; native to superconducting hardware; includes circuit diagram rendering (labelled iSW boxes) and OpenQASM 3 export
-- `Qx.u/5` — general single-qubit unitary gate U(θ,φ,λ) per IBM/OpenQASM 3 convention; subsumes X, Y, Z, H, RX, RY, RZ as special cases; includes circuit diagram rendering and OpenQASM 3 export
-- `Qx.cswap/4` — Fredkin (controlled-SWAP) gate; swaps two target qubits when the control is |1⟩; universal reversible gate used in quantum multiplexers and arithmetic circuits; includes circuit diagram rendering and OpenQASM 3 export
+- **OpenQASM 3.0 import**: `Qx.Export.OpenQASM.from_qasm/1` and `from_qasm!/1` parse OpenQASM 3 source produced by Qx itself, by Qiskit, or by IBM Quantum and return a `%Qx.QuantumCircuit{}`. Round-trips with `to_qasm/1` (statevectors match within 1e-10).
+- **Gate definition codegen**: `Qx.Export.OpenQASM.from_qasm_function/1` (and the bang variant) parses a `gate name(p1, …) a, b { … }` definition and returns `%{name, arity, source}`, where `source` is an Elixir `def …` string that compiles via `Code.compile_string/1`. Function signature: `(circuit, params…, qubits…)`.
+- **Supported gate set on import**: direct mappings for `h, x, y, z, s, sdg, t, rx, ry, rz, p, phase, u, u3, cx, CX, cz, swap, iswap, cp, cphase, ccx, cswap`. Decompositions for `tdg → phase(-π/4)`, `sx → u(π/2, -π/2, π/2)`, `u1(λ) → phase(λ)`, `u2(φ, λ) → u(π/2, φ, λ)`. `id` is dropped.
+- **Typed import errors**: `Qx.QasmParseError` (line/column/snippet) and `Qx.QasmUnsupportedError` (feature/line/hint) for grammar failures and out-of-scope features respectively.
+- `Qx.cp/4`: controlled-phase gate applying e^(i·θ) to the |11⟩ basis state, required for QFT and QPE circuits
+- `Qx.swap/3`: SWAP gate exchanging the quantum states of two qubits; includes circuit diagram rendering (× symbols connected by a line) and OpenQASM 3 export
+- `Qx.iswap/3`: iSWAP gate exchanging qubit states with an i phase factor on the swapped components; native to superconducting hardware; includes circuit diagram rendering (labelled iSW boxes) and OpenQASM 3 export
+- `Qx.u/5`: general single-qubit unitary gate U(θ,φ,λ) per IBM/OpenQASM 3 convention; subsumes X, Y, Z, H, RX, RY, RZ as special cases; includes circuit diagram rendering and OpenQASM 3 export
+- `Qx.cswap/4`: Fredkin (controlled-SWAP) gate; swaps two target qubits when the control is |1⟩; universal reversible gate used in quantum multiplexers and arithmetic circuits; includes circuit diagram rendering and OpenQASM 3 export
 
 ### Not supported on import (raises `Qx.QasmUnsupportedError`)
 - Multi-register programs (Qx models a single quantum + single classical register)
@@ -605,19 +605,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## Future Roadmap
-
-### Potential Additions
-- Additional quantum gates (Toffoli, Fredkin, controlled rotations)
-- Quantum Fourier Transform implementation
-- Noise models for realistic simulations
-- Density matrix simulation for mixed states
-- OpenQASM import (export is available since v0.4.0)
-- Performance optimizations for larger circuits
-
----
-
-[Unreleased]: https://github.com/richarc/qx/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/richarc/qx/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/richarc/qx/releases/tag/v0.8.0
+[0.7.1]: https://github.com/richarc/qx/releases/tag/v0.7.1
+[0.7.0]: https://github.com/richarc/qx/releases/tag/v0.7.0
 [0.6.0]: https://github.com/richarc/qx/releases/tag/v0.6.0
 [0.5.2]: https://github.com/richarc/qx/releases/tag/v0.5.2
 [0.5.1]: https://github.com/richarc/qx/releases/tag/v0.5.1
