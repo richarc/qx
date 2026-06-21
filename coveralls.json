@@ -13,5 +13,5 @@
     "_build",
     "deps"
   ],
-  "_comment": "Current coverage is 66.4%. Target is 80% - work in progress to improve test coverage for untested modules (draw/svg/*, simulation_result, errors)"
+  "_comment": "Current coverage is 81.4%. The 80% target is met; remaining low-coverage modules are draw/svg/* (charts.ex 0%, circuit.ex 61.5%), simulation_result (0%), errors (65.2%), and hardware/ibm (75.2%)"
 }
