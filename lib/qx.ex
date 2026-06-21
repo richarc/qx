@@ -852,21 +852,28 @@ defmodule Qx do
       `Qx.Simulation.run/2` for the float32 accuracy note.
 
   ## Returns
-  A map containing:
-    * `:probabilities` - Probability amplitudes for all states
-    * `:classical_bits` - List of measurement results
-    * `:state` - Final quantum state vector
-    * `:shots` - Number of shots performed
-    * `:counts` - Frequency count of measurement outcomes
+
+  A `Qx.SimulationResult` struct with these fields:
+
+    * `:probabilities` - real probability tensor `|ψ|²` over all
+      `2^n` basis states
+    * `:classical_bits` - one classical-bit vector per shot, each
+      a list of `0` / `1` values
+    * `:state` - final statevector (complex-valued `:c64` tensor)
+    * `:shots` - number of shots simulated
+    * `:counts` - frequency map of outcome strings to counts
+      (keys are binary strings like `"01"`)
+
+  Helpers on the struct: `Qx.SimulationResult.most_frequent/1`,
+  `Qx.SimulationResult.outcomes/1`,
+  `Qx.SimulationResult.probability/2`.
 
   ## Examples
 
       iex> qc = Qx.create_circuit(1) |> Qx.h(0)
-      iex> result = Qx.run(qc)
-      iex> is_map(result)
-      true
-      iex> Map.has_key?(result, :probabilities)
-      true
+      iex> %Qx.SimulationResult{shots: shots} = Qx.run(qc)
+      iex> shots
+      1024
 
       # Specify backend at runtime
       # Qx.run(qc, backend: {EXLA.Backend, client: :host})
@@ -874,7 +881,7 @@ defmodule Qx do
       # Backward compatible: pass shots as integer
       # Qx.run(qc, 2048)
   """
-  @spec run(circuit(), pos_integer() | keyword()) :: simulation_result()
+  @spec run(circuit(), pos_integer() | keyword()) :: Qx.SimulationResult.t()
   def run(circuit, options \\ [])
 
   def run(circuit, shots) when is_integer(shots) do
