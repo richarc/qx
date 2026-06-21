@@ -1042,7 +1042,7 @@ defmodule Qx do
       # Visualize probabilities without full simulation
       iex> qc = Qx.create_circuit(2) |> Qx.h(0)
       iex> probs = Qx.get_probabilities(qc)
-      iex> hist = Qx.histogram(probs)
+      iex> hist = Qx.draw_histogram(probs)
       iex> is_map(hist) or is_binary(hist)
       true
 
@@ -1050,6 +1050,15 @@ defmodule Qx do
     * `draw/2` - For plotting from simulation results
     * `get_probabilities/1` - To obtain probability tensors
   """
+  @spec draw_histogram(Nx.Tensor.t(), keyword()) :: VegaLite.t() | String.t()
+  defdelegate draw_histogram(probabilities, options \\ []), to: Draw, as: :histogram
+
+  # Deprecated: use `Qx.draw_histogram/2` for naming consistency
+  # with the rest of the `Qx.draw*` family (draw, draw_counts,
+  # draw_bloch, draw_state). This alias is kept callable for the
+  # 0.8.x deprecation window only and will be removed in v1.0.
+  @deprecated "Use Qx.draw_histogram/2"
+  @doc false
   @spec histogram(Nx.Tensor.t(), keyword()) :: VegaLite.t() | String.t()
   defdelegate histogram(probabilities, options \\ []), to: Draw
 

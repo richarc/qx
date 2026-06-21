@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Qx.draw_histogram/2`, replacing `Qx.histogram/2`. The new name
+  matches the rest of the `Qx.draw*` family (`Qx.draw/2`,
+  `Qx.draw_counts/2`, `Qx.draw_bloch/2`, `Qx.draw_state/2`).
+
+### Deprecated
+
+- `Qx.histogram/2` is deprecated. Use `Qx.draw_histogram/2` instead.
+  Emits a compile-time warning and is hidden from ExDoc. Scheduled
+  for removal in v1.0.
+
 ## [0.8.0] - 2026-05-22
 
 ### Added

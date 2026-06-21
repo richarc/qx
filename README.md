@@ -373,7 +373,7 @@ IO.inspect(Nx.to_flat_list(state))
 
 # Get probabilities for all computational basis states
 probs = Qx.get_probabilities(ghz_circuit)
-Qx.histogram(probs)
+Qx.draw_histogram(probs)
 ```
 
 **Calculation Mode:**
@@ -439,7 +439,7 @@ Qx.Qubit.new() |> Qx.Qubit.h() |> Qx.Qubit.draw_bloch()
 
 ```elixir
 probs = Qx.get_probabilities(circuit)
-Qx.histogram(probs)
+Qx.draw_histogram(probs)
 ```
 
 ## Importing OpenQASM
