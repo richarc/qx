@@ -760,6 +760,25 @@ defmodule Qx do
   defdelegate measure_all(circuit, qubits), to: Patterns
 
   @doc """
+  Adds a barrier across the given qubits.
+
+  Barriers are pure visualisation markers with no effect on the
+  quantum state. Used to group logical sections of a circuit when
+  generating diagrams.
+
+  See `Qx.Operations.barrier/2`. For a barrier across every qubit,
+  see `Qx.barrier_all/1`.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(3) |> Qx.barrier([0, 2])
+      iex> Qx.QuantumCircuit.get_instructions(qc)
+      [{:barrier, [0, 2], []}]
+  """
+  @spec barrier(circuit(), list(non_neg_integer())) :: circuit()
+  defdelegate barrier(circuit, qubits), to: Operations
+
+  @doc """
   Adds a single barrier instruction spanning every qubit.
 
   ## Examples
