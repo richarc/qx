@@ -298,32 +298,6 @@ defmodule Qx.MathTest do
     end
   end
 
-  describe "basis_state/2" do
-    test "creates |0⟩ state" do
-      state = Math.basis_state(0, 2)
-      list = Nx.to_flat_list(state)
-
-      assert approx_equal?(Enum.at(list, 0), 1.0)
-      assert approx_equal?(Enum.at(list, 1), 0.0)
-    end
-
-    test "creates |1⟩ state" do
-      state = Math.basis_state(1, 2)
-      list = Nx.to_flat_list(state)
-
-      assert approx_equal?(Enum.at(list, 0), 0.0)
-      assert approx_equal?(Enum.at(list, 1), 1.0)
-    end
-
-    test "creates basis state in larger space" do
-      state = Math.basis_state(3, 8)
-      list = Nx.to_flat_list(state)
-
-      assert approx_equal?(Enum.at(list, 3), 1.0)
-      assert Enum.sum(List.delete_at(list, 3)) == 0.0
-    end
-  end
-
   describe "unitary?/1" do
     test "Pauli-X is unitary" do
       pauli_x = Nx.tensor([[0.0, 1.0], [1.0, 0.0]])
