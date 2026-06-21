@@ -23,7 +23,7 @@ By the end of this tutorial you will be able to:
 
 ## Introduction
 
-This is the sixth tutorial in the series, following **Interference and Phase Kickback**. There we built the engine: superposition spreads a register across every input, phase kickback stamps a data-dependent phase onto each one, and a second layer of Hadamards interferes those phases into an answer. We even ran a one-bit Bernstein–Vazirani to see all three steps fire together.
+This is the sixth tutorial in the series, following **Preparing for Quantum Algorithms**. There we built the engine: an oracle packs a function into a reversible circuit, superposition spreads a register across every input, phase kickback stamps a data-dependent phase onto each one, and a layer of Hadamards interferes those phases into an answer. We even ran Deutsch's algorithm to see all the steps fire together.
 
 Now we assemble that engine into two real algorithms. **Bernstein–Vazirani** recovers a hidden bit-string in a single query where any classical method needs one query per bit. **Grover's search** finds a marked item in an unstructured set of $N$ in about $\sqrt{N}$ steps, against the $N/2$ a classical scan averages. Both are the same three-step pattern with different oracles and a different amount of interference.
 
