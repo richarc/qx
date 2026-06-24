@@ -8,7 +8,8 @@ defmodule Qx.Error do
   (`Qx.QubitIndexError`, `Qx.GateError`, `Qx.ClassicalBitError`,
   `Qx.QubitCountError`, `Qx.StateNormalizationError`,
   `Qx.StateShapeError`, `Qx.MeasurementError`, `Qx.ConditionalError`,
-  `Qx.OptionError`, `Qx.QasmParseError`, `Qx.QasmUnsupportedError`,
+  `Qx.ParameterError`, `Qx.OptionError`, `Qx.QasmParseError`,
+  `Qx.QasmUnsupportedError`,
   `Qx.Hardware.ConfigError`, `Qx.Hardware.ExecutionError`,
   `Qx.Hardware.NoMeasurementsError`). To rescue any of those, list them
   explicitly:
@@ -26,6 +27,30 @@ defmodule Qx.Error do
   to match this type.
   """
   defexception [:message]
+end
+
+defmodule Qx.ParameterError do
+  @moduledoc """
+  Raised when a gate parameter (rotation angle or phase) is not a number.
+
+  Carries the offending `:value` so callers can pattern-match on the cause
+  rather than parsing the message.
+
+  Unlike the other exceptions in this file, `Qx.ParameterError` intentionally
+  omits the `exception(message) when is_binary` fallback: a plain string is
+  itself a valid non-numeric parameter (e.g. `Qx.rx(qc, 0, "bad")`), so every
+  value — binaries included — is captured in `:value`, never treated as a
+  pre-formatted message.
+  """
+  defexception [:value, :message]
+
+  @impl true
+  def exception(value) do
+    %__MODULE__{
+      value: value,
+      message: "Parameter must be a number, got: #{inspect(value)}"
+    }
+  end
 end
 
 defmodule Qx.OptionError do

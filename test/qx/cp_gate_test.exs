@@ -108,9 +108,9 @@ defmodule Qx.CpGateTest do
   end
 
   describe "cp gate error handling" do
-    test "raises ArgumentError when theta is not a number" do
+    test "raises Qx.ParameterError when theta is not a number" do
       qc = Qx.create_circuit(2)
-      assert_raise ArgumentError, fn -> Qx.cp(qc, 0, 1, "not_a_number") end
+      assert_raise Qx.ParameterError, fn -> Qx.cp(qc, 0, 1, "not_a_number") end
     end
 
     # Out-of-range qubit test moved to

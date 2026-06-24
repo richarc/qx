@@ -302,7 +302,7 @@ defmodule Qx do
   ## Raises
 
     * `Qx.QubitIndexError` - If qubit indices are out of range or equal
-    * `ArgumentError` - If theta is not a number
+    * `Qx.ParameterError` - If theta is not a number
   """
   @spec cp(circuit(), non_neg_integer(), non_neg_integer(), number()) :: circuit()
   defdelegate cp(circuit, control_qubit, target_qubit, theta), to: Operations
@@ -335,7 +335,7 @@ defmodule Qx do
   ## Raises
 
     * `Qx.QubitIndexError` - If qubit indices are out of range or equal
-    * `ArgumentError` - If `theta` is not a number
+    * `Qx.ParameterError` - If `theta` is not a number
   """
   @spec crx(circuit(), non_neg_integer(), non_neg_integer(), number()) :: circuit()
   defdelegate crx(circuit, control_qubit, target_qubit, theta), to: Operations
@@ -352,7 +352,7 @@ defmodule Qx do
   ## Raises
 
     * `Qx.QubitIndexError` - If qubit indices are out of range or equal
-    * `ArgumentError` - If `theta` is not a number
+    * `Qx.ParameterError` - If `theta` is not a number
   """
   @spec cry(circuit(), non_neg_integer(), non_neg_integer(), number()) :: circuit()
   defdelegate cry(circuit, control_qubit, target_qubit, theta), to: Operations
@@ -369,7 +369,7 @@ defmodule Qx do
   ## Raises
 
     * `Qx.QubitIndexError` - If qubit indices are out of range or equal
-    * `ArgumentError` - If `theta` is not a number
+    * `Qx.ParameterError` - If `theta` is not a number
   """
   @spec crz(circuit(), non_neg_integer(), non_neg_integer(), number()) :: circuit()
   defdelegate crz(circuit, control_qubit, target_qubit, theta), to: Operations
@@ -567,7 +567,7 @@ defmodule Qx do
 
   ## Raises
 
-    * `ArgumentError` - If theta, phi, or lambda is not a number
+    * `Qx.ParameterError` - If theta, phi, or lambda is not a number
     * `Qx.QubitIndexError` - If qubit index is out of range
   """
   @spec u(circuit(), non_neg_integer(), number(), number(), number()) :: circuit()

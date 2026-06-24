@@ -119,13 +119,12 @@ defmodule Qx.Validation do
     :ok
   end
 
-  # Validates all qubit indices in a list are distinct. Raises ArgumentError
-  # with the duplicate-containing list on violation.
+  # Validates all qubit indices in a list are distinct. Raises
+  # Qx.QubitIndexError with the duplicate-containing list on violation.
   @doc false
   def validate_qubits_different!(qubits) when is_list(qubits) do
     if length(Enum.uniq(qubits)) != length(qubits) do
-      raise ArgumentError,
-            "All qubit indices must be different: #{inspect(qubits)}"
+      raise Qx.QubitIndexError, {:duplicate, qubits}
     end
 
     :ok
@@ -142,27 +141,26 @@ defmodule Qx.Validation do
     :ok
   end
 
-  # Validates state vector shape matches `expected_size`. Raises ArgumentError
-  # on mismatch. (Iron Law #7 follow-on: route through Qx.StateShapeError.)
+  # Validates state vector shape matches `expected_size`. Raises
+  # Qx.StateShapeError on mismatch.
   @doc false
   def validate_state_shape!(state, expected_size) do
     actual_size = Nx.axis_size(state, 0)
 
     if actual_size != expected_size do
-      raise ArgumentError,
-            "Invalid state shape: expected {#{expected_size}}, got {#{actual_size}}"
+      raise Qx.StateShapeError, {actual_size, expected_size}
     end
 
     :ok
   end
 
-  # Validates angle/parameter is a number. Raises ArgumentError on non-number.
-  # (Iron Law #7 follow-on: typed error.)
+  # Validates angle/parameter is a number. Raises Qx.ParameterError on
+  # non-number.
   @doc false
   def validate_parameter!(param) when is_number(param), do: :ok
 
   def validate_parameter!(param) do
-    raise ArgumentError, "Parameter must be a number, got: #{inspect(param)}"
+    raise Qx.ParameterError, param
   end
 
   # Validates qubit count is in 1..20 (the documented Qx limit). Raises

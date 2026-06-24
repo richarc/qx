@@ -166,19 +166,19 @@ defmodule Qx.ValidationTest do
     end
 
     test "rejects duplicate qubits" do
-      assert_raise ArgumentError, ~r/All qubit indices must be different/, fn ->
+      assert_raise Qx.QubitIndexError, ~r/Qubit indices must be distinct/, fn ->
         Validation.validate_qubits_different!([0, 1, 0])
       end
     end
 
     test "rejects all same qubits" do
-      assert_raise ArgumentError, ~r/All qubit indices must be different/, fn ->
+      assert_raise Qx.QubitIndexError, ~r/Qubit indices must be distinct/, fn ->
         Validation.validate_qubits_different!([2, 2, 2])
       end
     end
 
     test "includes qubit list in error message" do
-      assert_raise ArgumentError, ~r/\[0, 1, 0\]/, fn ->
+      assert_raise Qx.QubitIndexError, ~r/\[0, 1, 0\]/, fn ->
         Validation.validate_qubits_different!([0, 1, 0])
       end
     end
@@ -217,7 +217,7 @@ defmodule Qx.ValidationTest do
     test "rejects wrong shape" do
       state = Qx.Qubit.new()
 
-      assert_raise ArgumentError, ~r/Invalid state shape: expected \{4\}, got \{2\}/, fn ->
+      assert_raise Qx.StateShapeError, ~r/State vector size mismatch: expected 4, got 2/, fn ->
         Validation.validate_state_shape!(state, 4)
       end
     end
@@ -237,21 +237,30 @@ defmodule Qx.ValidationTest do
     end
 
     test "rejects string" do
-      assert_raise ArgumentError, ~r/Parameter must be a number/, fn ->
+      assert_raise Qx.ParameterError, ~r/Parameter must be a number/, fn ->
         Validation.validate_parameter!("not a number")
       end
     end
 
     test "rejects atom" do
-      assert_raise ArgumentError, ~r/Parameter must be a number/, fn ->
+      assert_raise Qx.ParameterError, ~r/Parameter must be a number/, fn ->
         Validation.validate_parameter!(:atom)
       end
     end
 
     test "includes invalid value in error message" do
-      assert_raise ArgumentError, ~r/"not a number"/, fn ->
+      assert_raise Qx.ParameterError, ~r/"not a number"/, fn ->
         Validation.validate_parameter!("not a number")
       end
+    end
+
+    test "exception carries the offending value in :value" do
+      error =
+        assert_raise Qx.ParameterError, fn ->
+          Validation.validate_parameter!("not a number")
+        end
+
+      assert error.value == "not a number"
     end
   end
 

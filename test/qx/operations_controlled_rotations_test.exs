@@ -61,10 +61,10 @@ defmodule Qx.OperationsControlledRotationsTest do
       assert_in_delta theta, :math.pi() / 2, 1.0e-12
     end
 
-    test "non-numeric theta raises ArgumentError" do
+    test "non-numeric theta raises Qx.ParameterError" do
       qc = QuantumCircuit.new(2, 0)
 
-      assert_raise ArgumentError, fn ->
+      assert_raise Qx.ParameterError, fn ->
         Operations.crx(qc, 0, 1, :not_a_number)
       end
     end
@@ -150,10 +150,10 @@ defmodule Qx.OperationsControlledRotationsTest do
       assert_in_delta Enum.at(probs, 0), 1.0, 1.0e-5
     end
 
-    test "non-numeric theta raises ArgumentError" do
+    test "non-numeric theta raises Qx.ParameterError" do
       qc = QuantumCircuit.new(2, 0)
 
-      assert_raise ArgumentError, fn ->
+      assert_raise Qx.ParameterError, fn ->
         Operations.cry(qc, 0, 1, :not_a_number)
       end
     end
@@ -220,10 +220,10 @@ defmodule Qx.OperationsControlledRotationsTest do
       assert_in_delta Enum.at(probs, 2), 0.0, 1.0e-5
     end
 
-    test "non-numeric theta raises ArgumentError" do
+    test "non-numeric theta raises Qx.ParameterError" do
       qc = QuantumCircuit.new(2, 0)
 
-      assert_raise ArgumentError, fn ->
+      assert_raise Qx.ParameterError, fn ->
         Operations.crz(qc, 0, 1, :not_a_number)
       end
     end

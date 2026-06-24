@@ -13,6 +13,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   matches the rest of the `Qx.draw*` family (`Qx.draw/2`,
   `Qx.draw_counts/2`, `Qx.draw_bloch/2`, `Qx.draw_state/2`).
 
+### Changed
+
+- **Typed errors for the last raw `ArgumentError`s in `Qx.Validation`
+  (plan: iron-law-7-followon).** Completes the Iron Law #7 pass begun
+  in 0.8.0. `Qx.Validation` now raises typed exceptions instead of
+  `ArgumentError`:
+
+    - a non-numeric gate parameter raises the new `Qx.ParameterError`
+      (carries the offending `:value`);
+    - duplicate qubit indices raise `Qx.QubitIndexError`;
+    - a state-vector shape mismatch raises `Qx.StateShapeError`.
+
+  Observable on the public rotation/phase gates `Qx.rx/3`, `ry/3`,
+  `rz/3`, `u/5`, `cp/4`, `crx/4`, `cry/4`, `crz/4` (and their
+  `Qx.Operations` equivalents): a non-numeric angle now raises
+  `Qx.ParameterError` rather than `ArgumentError`. Code rescuing the
+  old `ArgumentError` must be updated.
+
 ### Deprecated
 
 - `Qx.histogram/2` is deprecated. Use `Qx.draw_histogram/2` instead.

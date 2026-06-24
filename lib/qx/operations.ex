@@ -286,7 +286,7 @@ defmodule Qx.Operations do
       {:u, [0], 3}
 
   ## Raises
-    * `ArgumentError` - if theta, phi, or lambda is not a number
+    * `Qx.ParameterError` - if theta, phi, or lambda is not a number
     * `FunctionClauseError` - if qubit index is out of range
   """
   def u(%QuantumCircuit{} = circuit, qubit, theta, phi, lambda)
@@ -448,7 +448,7 @@ defmodule Qx.Operations do
   ## Raises
 
     * `Qx.QubitIndexError` - If qubit indices are out of range or equal
-    * `ArgumentError` - If theta is not a number
+    * `Qx.ParameterError` - If theta is not a number
   """
   def cp(%QuantumCircuit{} = circuit, control_qubit, target_qubit, theta) do
     Validation.validate_parameter!(theta)
@@ -506,7 +506,7 @@ defmodule Qx.Operations do
   ## Raises
 
     * `Qx.QubitIndexError` - If qubit indices are out of range or equal
-    * `ArgumentError` - If `theta` is not a number
+    * `Qx.ParameterError` - If `theta` is not a number
   """
   def crx(%QuantumCircuit{} = circuit, control_qubit, target_qubit, theta) do
     Validation.validate_parameter!(theta)
@@ -536,7 +536,7 @@ defmodule Qx.Operations do
   ## Raises
 
     * `Qx.QubitIndexError` - If qubit indices are out of range or equal
-    * `ArgumentError` - If `theta` is not a number
+    * `Qx.ParameterError` - If `theta` is not a number
   """
   def cry(%QuantumCircuit{} = circuit, control_qubit, target_qubit, theta) do
     Validation.validate_parameter!(theta)
@@ -570,7 +570,7 @@ defmodule Qx.Operations do
   ## Raises
 
     * `Qx.QubitIndexError` - If qubit indices are out of range or equal
-    * `ArgumentError` - If `theta` is not a number
+    * `Qx.ParameterError` - If `theta` is not a number
   """
   def crz(%QuantumCircuit{} = circuit, control_qubit, target_qubit, theta) do
     Validation.validate_parameter!(theta)

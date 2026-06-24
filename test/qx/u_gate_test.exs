@@ -66,19 +66,19 @@ defmodule Qx.UGateTest do
   end
 
   describe "u gate error handling" do
-    test "raises ArgumentError for non-numeric theta" do
+    test "raises Qx.ParameterError for non-numeric theta" do
       qc = Qx.create_circuit(1)
-      assert_raise ArgumentError, fn -> Qx.u(qc, 0, "bad", 0, 0) end
+      assert_raise Qx.ParameterError, fn -> Qx.u(qc, 0, "bad", 0, 0) end
     end
 
-    test "raises ArgumentError for non-numeric phi" do
+    test "raises Qx.ParameterError for non-numeric phi" do
       qc = Qx.create_circuit(1)
-      assert_raise ArgumentError, fn -> Qx.u(qc, 0, 0, "bad", 0) end
+      assert_raise Qx.ParameterError, fn -> Qx.u(qc, 0, 0, "bad", 0) end
     end
 
-    test "raises ArgumentError for non-numeric lambda" do
+    test "raises Qx.ParameterError for non-numeric lambda" do
       qc = Qx.create_circuit(1)
-      assert_raise ArgumentError, fn -> Qx.u(qc, 0, 0, 0, "bad") end
+      assert_raise Qx.ParameterError, fn -> Qx.u(qc, 0, 0, 0, "bad") end
     end
 
     test "raises FunctionClauseError for out-of-range qubit index" do
