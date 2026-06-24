@@ -76,7 +76,8 @@ defmodule Qx do
 
   ## Raises
 
-    * `FunctionClauseError` - If `num_qubits <= 0` or `num_classical_bits < 0` (guard-only; struct construction predates `Qx.Validation`)
+    * `Qx.QubitCountError` - If `num_qubits` is an integer outside the supported range (1..20)
+    * `FunctionClauseError` - If `num_qubits`/`num_classical_bits` is not an integer, or `num_classical_bits < 0`
   """
   @spec create_circuit(pos_integer(), non_neg_integer()) :: circuit()
   defdelegate create_circuit(num_qubits, num_classical_bits), to: QuantumCircuit, as: :new
@@ -97,7 +98,8 @@ defmodule Qx do
 
   ## Raises
 
-    * `FunctionClauseError` - If `num_qubits <= 0` (guard-only; struct construction predates `Qx.Validation`)
+    * `Qx.QubitCountError` - If `num_qubits` is an integer outside the supported range (1..20)
+    * `FunctionClauseError` - If `num_qubits` is not an integer
   """
   @spec create_circuit(pos_integer()) :: circuit()
   defdelegate create_circuit(num_qubits), to: QuantumCircuit, as: :new

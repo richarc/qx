@@ -31,6 +31,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Qx.ParameterError` rather than `ArgumentError`. Code rescuing the
   old `ArgumentError` must be updated.
 
+- **Typed errors across the rest of the public surface
+  (plan: iron-law-7-sweep).** Clears the remaining raw `ArgumentError`s
+  and one stray `FunctionClauseError` from the public API, finishing the
+  Iron Law #7 work begun in 0.8.0. Two new exceptions:
+
+    - `Qx.RegisterError` — register construction input (an empty list, a
+      malformed qubit, or a renderer handed a non-register); carries a
+      `:reason`.
+    - `Qx.BasisError` — a computational basis value that is not 0 or 1;
+      carries the offending `:value`.
+
+  Retyped surfaces — code rescuing the old `ArgumentError` /
+  `FunctionClauseError` must be updated:
+
+    - `Qx.Register.new/1` and `Qx.Register.from_basis_states/1` →
+      `Qx.RegisterError` / `Qx.BasisError`;
+    - the register two-qubit distinctness gates (`cx`, `cz`, `cy`,
+      `ccx`, `swap`, `iswap`, `cswap`, and the controlled-target gates)
+      → `Qx.QubitIndexError`;
+    - `Qx.Qubit.from_basis/1` → `Qx.BasisError`;
+    - `Qx.Draw.*` plots and `Qx.Draw.Tables.render/2` with an invalid
+      `:format` → `Qx.OptionError`; a non-register input →
+      `Qx.RegisterError`;
+    - `Qx.Export.OpenQASM.to_qasm/2` with an invalid `:version` →
+      `Qx.OptionError`;
+    - `Qx.Draw.SVG.Circuit.render/1` on a malformed circuit →
+      `Qx.QubitCountError` / `Qx.GateError` / `Qx.QubitIndexError` /
+      `Qx.ClassicalBitError`;
+    - `Qx.u/5` with an out-of-range qubit now raises
+      `Qx.QubitIndexError` instead of `FunctionClauseError`, matching
+      `rx`/`ry`/`rz`/`cp`.
+
 ### Deprecated
 
 - `Qx.histogram/2` is deprecated. Use `Qx.draw_histogram/2` instead.

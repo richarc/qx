@@ -79,10 +79,11 @@ defmodule Qx.Draw.SVG.Circuit do
   SVG string representing the complete circuit diagram.
 
   ## Validation
-  Raises `ArgumentError` if:
-  - Circuit exceeds 20 qubits
-  - Invalid gate types are present
-  - Qubit or classical bit indices are out of range
+  Raises a typed `Qx.*Error` on a malformed circuit:
+  - `Qx.QubitCountError` if the circuit exceeds 20 qubits
+  - `Qx.GateError` if an unsupported gate type is present
+  - `Qx.QubitIndexError` / `Qx.ClassicalBitError` if a qubit or classical
+    bit index is out of range
 
   ## Examples
 
@@ -108,7 +109,7 @@ defmodule Qx.Draw.SVG.Circuit do
   defp validate_circuit!(%Qx.QuantumCircuit{} = circuit) do
     # Check qubit limit
     if circuit.num_qubits > 20 do
-      raise ArgumentError, "Circuit exceeds maximum of 20 qubits (has #{circuit.num_qubits})"
+      raise Qx.QubitCountError, {circuit.num_qubits, 1, 20}
     end
 
     # Validate all instructions
@@ -119,11 +120,11 @@ defmodule Qx.Draw.SVG.Circuit do
     # Validate all measurements
     Enum.each(circuit.measurements, fn {qubit, classical_bit} ->
       if qubit < 0 or qubit >= circuit.num_qubits do
-        raise ArgumentError, "Invalid qubit index #{qubit}"
+        raise Qx.QubitIndexError, {qubit, circuit.num_qubits}
       end
 
       if classical_bit < 0 or classical_bit >= circuit.num_classical_bits do
-        raise ArgumentError, "Invalid classical bit index #{classical_bit}"
+        raise Qx.ClassicalBitError, {classical_bit, circuit.num_classical_bits}
       end
     end)
 
@@ -158,19 +159,19 @@ defmodule Qx.Draw.SVG.Circuit do
     ]
 
     unless gate_name in supported_gates do
-      raise ArgumentError, "Unsupported gate type: #{gate_name}"
+      raise Qx.GateError, {:unsupported_gate, gate_name}
     end
 
     # Validate qubit indices (skip for c_if which has classical bit indices)
     unless gate_name == :c_if do
-      validate_qubit_indices!(qubits, num_qubits, gate_name)
+      validate_qubit_indices!(qubits, num_qubits)
     end
   end
 
-  defp validate_qubit_indices!(qubits, num_qubits, gate_name) do
+  defp validate_qubit_indices!(qubits, num_qubits) do
     Enum.each(qubits, fn qubit ->
       if qubit < 0 or qubit >= num_qubits do
-        raise ArgumentError, "Invalid qubit index #{qubit} for gate #{gate_name}"
+        raise Qx.QubitIndexError, {qubit, num_qubits}
       end
     end)
   end

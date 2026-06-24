@@ -136,7 +136,7 @@ defmodule Qx.Export.OpenQASM do
 
     * `Qx.GateError` - If circuit contains unsupported gates
     * `Qx.ConditionalError` - If circuit has conditionals but version is 2
-    * `ArgumentError` - If invalid options are provided
+    * `Qx.OptionError` - If the `:version` option is not 2 or 3
 
   ## Examples
 
@@ -174,7 +174,7 @@ defmodule Qx.Export.OpenQASM do
   defp validate_version!(version) when version in [2, 3], do: :ok
 
   defp validate_version!(version) do
-    raise ArgumentError, "Invalid OpenQASM version: #{version}. Must be 2 or 3."
+    raise Qx.OptionError, {:version, version, "Must be 2 or 3."}
   end
 
   defp validate_circuit_for_version!(%QuantumCircuit{instructions: instructions}, 2) do

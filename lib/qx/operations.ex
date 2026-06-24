@@ -287,10 +287,10 @@ defmodule Qx.Operations do
 
   ## Raises
     * `Qx.ParameterError` - if theta, phi, or lambda is not a number
-    * `FunctionClauseError` - if qubit index is out of range
+    * `Qx.QubitIndexError` - if qubit index is out of range
   """
   def u(%QuantumCircuit{} = circuit, qubit, theta, phi, lambda)
-      when qubit >= 0 and qubit < circuit.num_qubits do
+      when is_integer(qubit) do
     Validation.validate_parameter!(theta)
     Validation.validate_parameter!(phi)
     Validation.validate_parameter!(lambda)

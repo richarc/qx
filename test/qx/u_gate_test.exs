@@ -81,9 +81,9 @@ defmodule Qx.UGateTest do
       assert_raise Qx.ParameterError, fn -> Qx.u(qc, 0, 0, 0, "bad") end
     end
 
-    test "raises FunctionClauseError for out-of-range qubit index" do
+    test "raises Qx.QubitIndexError for out-of-range qubit index" do
       qc = Qx.create_circuit(1)
-      assert_raise FunctionClauseError, fn -> Qx.u(qc, 5, 0, 0, 0) end
+      assert_raise Qx.QubitIndexError, fn -> Qx.u(qc, 5, 0, 0, 0) end
     end
   end
 

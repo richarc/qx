@@ -89,7 +89,7 @@ defmodule Qx.Register do
 
   def new(qubits) when is_list(qubits) do
     if qubits == [] do
-      raise ArgumentError, "Cannot create register from empty list of qubits"
+      raise Qx.RegisterError, :empty
     end
 
     Qx.Validation.validate_num_qubits!(length(qubits))
@@ -97,7 +97,7 @@ defmodule Qx.Register do
     # Validate all qubits
     Enum.each(qubits, fn qubit ->
       unless Qx.Validation.valid_qubit?(qubit) do
-        raise ArgumentError, "Invalid qubit in list - must be normalized 2-element tensor"
+        raise Qx.RegisterError, {:invalid_qubit, qubit}
       end
     end)
 
@@ -160,12 +160,12 @@ defmodule Qx.Register do
   @spec from_basis_states(list(0 | 1)) :: t()
   def from_basis_states(states) when is_list(states) do
     if Enum.empty?(states) do
-      raise ArgumentError, "Cannot create register from empty basis state list"
+      raise Qx.RegisterError, :empty
     end
 
     # Validate all elements are 0 or 1
     unless Enum.all?(states, &(&1 in [0, 1])) do
-      raise ArgumentError, "All basis states must be 0 or 1"
+      raise Qx.BasisError, Enum.find(states, &(&1 not in [0, 1]))
     end
 
     # Create qubits for each basis state
@@ -507,7 +507,7 @@ defmodule Qx.Register do
     validate_qubit_index!(register, target_qubit)
 
     if control_qubit == target_qubit do
-      raise ArgumentError, "Control and target qubits must be different"
+      raise Qx.QubitIndexError, {:duplicate, [control_qubit, target_qubit]}
     end
 
     new_state =
@@ -535,7 +535,7 @@ defmodule Qx.Register do
     validate_qubit_index!(register, target_qubit)
 
     if control_qubit == target_qubit do
-      raise ArgumentError, "Control and target qubits must be different"
+      raise Qx.QubitIndexError, {:duplicate, [control_qubit, target_qubit]}
     end
 
     # CZ = H on target, CNOT, H on target
@@ -565,9 +565,7 @@ defmodule Qx.Register do
     validate_qubit_index!(register, control2)
     validate_qubit_index!(register, target)
 
-    if control1 == control2 or control1 == target or control2 == target do
-      raise ArgumentError, "All qubit indices must be different"
-    end
+    Qx.Validation.validate_qubits_different!([control1, control2, target])
 
     new_state =
       Qx.Calc.apply_toffoli(register.state, control1, control2, target, register.num_qubits)
@@ -654,7 +652,7 @@ defmodule Qx.Register do
     validate_qubit_index!(register, qubit_b)
 
     if qubit_a == qubit_b do
-      raise ArgumentError, "SWAP requires two distinct qubits"
+      raise Qx.QubitIndexError, {:duplicate, [qubit_a, qubit_b]}
     end
 
     swap_matrix = Qx.Gates.swap(qubit_a, qubit_b, register.num_qubits)
@@ -677,7 +675,7 @@ defmodule Qx.Register do
     validate_qubit_index!(register, qubit_b)
 
     if qubit_a == qubit_b do
-      raise ArgumentError, "iSWAP requires two distinct qubits"
+      raise Qx.QubitIndexError, {:duplicate, [qubit_a, qubit_b]}
     end
 
     iswap_matrix = Qx.Gates.iswap(qubit_a, qubit_b, register.num_qubits)
@@ -700,9 +698,7 @@ defmodule Qx.Register do
     validate_qubit_index!(register, target_a)
     validate_qubit_index!(register, target_b)
 
-    if control == target_a or control == target_b or target_a == target_b do
-      raise ArgumentError, "All qubit indices must be different"
-    end
+    Qx.Validation.validate_qubits_different!([control, target_a, target_b])
 
     new_state =
       Qx.Calc.apply_cswap(register.state, control, target_a, target_b, register.num_qubits)
@@ -743,7 +739,7 @@ defmodule Qx.Register do
     validate_qubit_index!(register, target_qubit)
 
     if control_qubit == target_qubit do
-      raise ArgumentError, "Control and target qubits must be different"
+      raise Qx.QubitIndexError, {:duplicate, [control_qubit, target_qubit]}
     end
 
     controlled_matrix =

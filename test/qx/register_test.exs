@@ -55,7 +55,7 @@ defmodule Qx.RegisterTest do
     end
 
     test "new/1 rejects empty list" do
-      assert_raise ArgumentError, fn ->
+      assert_raise Qx.RegisterError, fn ->
         Register.new([])
       end
     end
@@ -70,7 +70,7 @@ defmodule Qx.RegisterTest do
       # Not normalized
       invalid_qubit = Nx.tensor([1.0, 1.0])
 
-      assert_raise ArgumentError, ~r/Invalid qubit/, fn ->
+      assert_raise Qx.RegisterError, ~r/Invalid qubit/, fn ->
         Register.new([invalid_qubit])
       end
     end
@@ -274,7 +274,7 @@ defmodule Qx.RegisterTest do
     test "raises when control and target are same" do
       reg = Register.new(2)
 
-      assert_raise ArgumentError, fn ->
+      assert_raise Qx.QubitIndexError, fn ->
         Register.cx(reg, 0, 0)
       end
     end
@@ -282,7 +282,7 @@ defmodule Qx.RegisterTest do
     test "raises when Toffoli qubits not all different" do
       reg = Register.new(3)
 
-      assert_raise ArgumentError, fn ->
+      assert_raise Qx.QubitIndexError, fn ->
         Register.ccx(reg, 0, 0, 2)
       end
     end
@@ -528,7 +528,7 @@ defmodule Qx.RegisterTest do
     end
 
     test "duplicate control/target raises" do
-      assert_raise ArgumentError, fn -> Register.cy(Register.new(2), 0, 0) end
+      assert_raise Qx.QubitIndexError, fn -> Register.cy(Register.new(2), 0, 0) end
     end
   end
 
@@ -663,8 +663,8 @@ defmodule Qx.RegisterTest do
     end
 
     test "swap/iswap duplicate-qubit raises" do
-      assert_raise ArgumentError, fn -> Register.swap(Register.new(2), 0, 0) end
-      assert_raise ArgumentError, fn -> Register.iswap(Register.new(2), 0, 0) end
+      assert_raise Qx.QubitIndexError, fn -> Register.swap(Register.new(2), 0, 0) end
+      assert_raise Qx.QubitIndexError, fn -> Register.iswap(Register.new(2), 0, 0) end
     end
   end
 

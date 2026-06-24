@@ -18,9 +18,13 @@ defmodule Qx.Export.OpenQASMTest do
     test "raises on invalid version" do
       circuit = Qx.create_circuit(1)
 
-      assert_raise ArgumentError, ~r/Invalid OpenQASM version/, fn ->
-        OpenQASM.to_qasm(circuit, version: 1)
-      end
+      e =
+        assert_raise Qx.OptionError, fn ->
+          OpenQASM.to_qasm(circuit, version: 1)
+        end
+
+      assert e.option == :version
+      assert e.value == 1
     end
 
     test "defaults to version 3" do
