@@ -60,8 +60,7 @@ defmodule Qx.Draw.Tables do
           tensor
 
         _ ->
-          raise ArgumentError,
-                "Expected Qx.Register or Nx.Tensor, got: #{inspect(register_or_state)}"
+          raise Qx.RegisterError, {:invalid_input, register_or_state}
       end
 
     # Build table data
@@ -81,8 +80,8 @@ defmodule Qx.Draw.Tables do
         format_markdown(table_data)
 
       _ ->
-        raise ArgumentError,
-              "Unsupported format: #{format}. Use :auto, :text, :html, or :markdown"
+        raise Qx.OptionError,
+              {:format, format, "Use :auto, :text, :html, or :markdown."}
     end
   end
 

@@ -95,7 +95,7 @@ defmodule Qx.Draw do
         Charts.plot(result, title, width, height)
 
       _ ->
-        raise ArgumentError, "Unsupported format: #{format}"
+        raise Qx.OptionError, {:format, format, "Use :vega_lite or :svg."}
     end
   end
 
@@ -137,7 +137,7 @@ defmodule Qx.Draw do
         Charts.plot_counts(result, title, width, height)
 
       _ ->
-        raise ArgumentError, "Unsupported format: #{format}"
+        raise Qx.OptionError, {:format, format, "Use :vega_lite or :svg."}
     end
   end
 
@@ -179,7 +179,7 @@ defmodule Qx.Draw do
         Bloch.render(coords, title, size)
 
       _ ->
-        raise ArgumentError, "Unsupported format: #{format}"
+        raise Qx.OptionError, {:format, format, "Use :vega_lite or :svg."}
     end
   end
 
@@ -228,7 +228,7 @@ defmodule Qx.Draw do
         Charts.histogram(data, title, width, height)
 
       _ ->
-        raise ArgumentError, "Unsupported format: #{format}"
+        raise Qx.OptionError, {:format, format, "Use :vega_lite or :svg."}
     end
   end
 

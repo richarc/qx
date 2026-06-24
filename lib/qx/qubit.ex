@@ -287,7 +287,7 @@ defmodule Qx.Qubit do
   def from_basis(1), do: one()
 
   def from_basis(basis) do
-    raise ArgumentError, "Basis must be 0 or 1, got: #{inspect(basis)}"
+    raise Qx.BasisError, basis
   end
 
   @doc """

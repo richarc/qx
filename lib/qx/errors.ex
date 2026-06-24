@@ -8,8 +8,8 @@ defmodule Qx.Error do
   (`Qx.QubitIndexError`, `Qx.GateError`, `Qx.ClassicalBitError`,
   `Qx.QubitCountError`, `Qx.StateNormalizationError`,
   `Qx.StateShapeError`, `Qx.MeasurementError`, `Qx.ConditionalError`,
-  `Qx.ParameterError`, `Qx.OptionError`, `Qx.QasmParseError`,
-  `Qx.QasmUnsupportedError`,
+  `Qx.ParameterError`, `Qx.OptionError`, `Qx.RegisterError`,
+  `Qx.BasisError`, `Qx.QasmParseError`, `Qx.QasmUnsupportedError`,
   `Qx.Hardware.ConfigError`, `Qx.Hardware.ExecutionError`,
   `Qx.Hardware.NoMeasurementsError`). To rescue any of those, list them
   explicitly:
@@ -49,6 +49,71 @@ defmodule Qx.ParameterError do
     %__MODULE__{
       value: value,
       message: "Parameter must be a number, got: #{inspect(value)}"
+    }
+  end
+end
+
+defmodule Qx.RegisterError do
+  @moduledoc """
+  Raised when register construction receives invalid input.
+
+  Carries a `:reason` describing the cause so callers can pattern-match
+  rather than parsing the message:
+
+    * `:empty` — the input list was empty.
+    * `{:invalid_qubit, qubit}` — a list element was not a normalized
+      2-element qubit tensor.
+    * `{:invalid_input, value}` — a renderer expected a `Qx.Register` or
+      `Nx.Tensor` and got something else.
+  """
+  defexception [:reason, :message]
+
+  @impl true
+  def exception(:empty) do
+    %__MODULE__{
+      reason: :empty,
+      message: "Cannot create register from an empty list"
+    }
+  end
+
+  def exception({:invalid_qubit, qubit}) do
+    %__MODULE__{
+      reason: {:invalid_qubit, qubit},
+      message: "Invalid qubit in list - must be a normalized 2-element tensor"
+    }
+  end
+
+  def exception({:invalid_input, value}) do
+    %__MODULE__{
+      reason: {:invalid_input, value},
+      message: "Expected Qx.Register or Nx.Tensor, got: #{inspect(value)}"
+    }
+  end
+
+  def exception(message) when is_binary(message) do
+    %__MODULE__{message: message}
+  end
+end
+
+defmodule Qx.BasisError do
+  @moduledoc """
+  Raised when a computational basis value is not 0 or 1.
+
+  Carries the offending `:value` so callers can pattern-match on the cause
+  rather than parsing the message.
+
+  Like `Qx.ParameterError`, this exception omits the
+  `exception(message) when is_binary` fallback: a basis value may be any
+  term — a binary included — so every value is captured in `:value`, never
+  treated as a pre-formatted message.
+  """
+  defexception [:value, :message]
+
+  @impl true
+  def exception(value) do
+    %__MODULE__{
+      value: value,
+      message: "Basis must be 0 or 1, got: #{inspect(value)}"
     }
   end
 end
