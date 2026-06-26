@@ -13,7 +13,7 @@ for the bit-manipulation hot paths.
 
 - [x] Test coverage to 80%+ — confirmed 82.1% total on 2026-06-26 (`mix test --cover`, 895 tests + 245 doctests green). Target met; the "~66%" baseline predated the v0.8.1 test work (qx-d1f, qx-eb1, the `:c64`-tolerance widening, and the `basis_state` migration)
 - [x] Add tests verifying partial measurement does not corrupt unmeasured qubits (qx-d1f)
-- [ ] Add tests for nested and chained c_if conditional operations (qx-sso)
+- [x] Add tests for nested and chained c_if conditional operations (qx-sso)
 - [x] Add error path tests for CalcFast edge cases and invalid inputs (qx-eb1)
 - [ ] Add @spec to all defp functions in CalcFast and Simulation (qx-atv)
 - [ ] Add WHY comments to bit-manipulation logic in CalcFast Nx.Defn blocks (qx-8gf)
