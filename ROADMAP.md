@@ -14,7 +14,7 @@ for the bit-manipulation hot paths.
 - [ ] Test coverage to 80%+ (currently ~66%)
 - [x] Add tests verifying partial measurement does not corrupt unmeasured qubits (qx-d1f)
 - [ ] Add tests for nested and chained c_if conditional operations (qx-sso)
-- [ ] Add error path tests for CalcFast edge cases and invalid inputs (qx-eb1)
+- [x] Add error path tests for CalcFast edge cases and invalid inputs (qx-eb1)
 - [ ] Add @spec to all defp functions in CalcFast and Simulation (qx-atv)
 - [ ] Add WHY comments to bit-manipulation logic in CalcFast Nx.Defn blocks (qx-8gf)
 - [ ] Rename is_* private helpers to *? per Elixir naming convention (qx-mbv)
