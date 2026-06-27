@@ -29,6 +29,8 @@ defmodule Qx.CalcFast do
 
   This avoids building a 2^n x 2^n matrix, using only O(2^n) memory.
   """
+  @spec apply_single_qubit_gate(Nx.Tensor.t(), Nx.Tensor.t(), non_neg_integer(), pos_integer()) ::
+          Nx.Tensor.t()
   def apply_single_qubit_gate(state, gate_matrix, _target_qubit, 1) do
     # Special case: single qubit system (simple matrix-vector multiply)
     Nx.dot(gate_matrix, state)
@@ -39,11 +41,23 @@ defmodule Qx.CalcFast do
     apply_single_qubit_gate_compiled(state, gate_matrix, target_qubit, num_qubits)
   end
 
+  @spec apply_single_qubit_gate_compiled(
+          Nx.Tensor.t(),
+          Nx.Tensor.t(),
+          non_neg_integer(),
+          pos_integer()
+        ) :: Nx.Tensor.t()
   defn apply_single_qubit_gate_compiled(state, gate_matrix, target_qubit, num_qubits) do
     apply_single_qubit_gate_direct(state, gate_matrix, target_qubit, num_qubits)
   end
 
   # Direct statevector manipulation for single-qubit gates
+  @spec apply_single_qubit_gate_direct(
+          Nx.Tensor.t(),
+          Nx.Tensor.t(),
+          non_neg_integer(),
+          pos_integer()
+        ) :: Nx.Tensor.t()
   defnp apply_single_qubit_gate_direct(state, gate, target_qubit, num_qubits) do
     state_size = Nx.axis_size(state, 0)
 
@@ -111,6 +125,8 @@ defmodule Qx.CalcFast do
 
   This is much faster than building a 2^n x 2^n CNOT matrix.
   """
+  @spec apply_cnot(Nx.Tensor.t(), non_neg_integer(), non_neg_integer(), pos_integer()) ::
+          Nx.Tensor.t()
   defn apply_cnot(state, control_qubit, target_qubit, num_qubits) do
     state_size = Nx.axis_size(state, 0)
 
@@ -143,17 +159,24 @@ defmodule Qx.CalcFast do
   end
 
   @doc """
-  Applies a Toffoli (CCX) gate directly to a statevector.
+  Applies a CSWAP (Fredkin) gate directly to a statevector.
 
-  Toffoli flips the target qubit if and only if both control qubits are |1⟩.
+  CSWAP swaps the two target qubits if and only if the control qubit is |1⟩.
 
   ## Parameters
     * `state` - State vector (2^n dimensional complex tensor)
-    * `control1` - Index of first control qubit
-    * `control2` - Index of second control qubit
-    * `target` - Index of target qubit
+    * `control` - Index of the control qubit
+    * `target_a` - Index of the first target qubit
+    * `target_b` - Index of the second target qubit
     * `num_qubits` - Total number of qubits in the system
   """
+  @spec apply_cswap(
+          Nx.Tensor.t(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          pos_integer()
+        ) :: Nx.Tensor.t()
   defn apply_cswap(state, control, target_a, target_b, num_qubits) do
     state_size = Nx.axis_size(state, 0)
     indices = Nx.iota({state_size}, type: :s64)
@@ -184,6 +207,25 @@ defmodule Qx.CalcFast do
     Nx.select(should_swap, swapped_amps, state)
   end
 
+  @doc """
+  Applies a Toffoli (CCX) gate directly to a statevector.
+
+  Toffoli flips the target qubit if and only if both control qubits are |1⟩.
+
+  ## Parameters
+    * `state` - State vector (2^n dimensional complex tensor)
+    * `control1` - Index of first control qubit
+    * `control2` - Index of second control qubit
+    * `target` - Index of target qubit
+    * `num_qubits` - Total number of qubits in the system
+  """
+  @spec apply_toffoli(
+          Nx.Tensor.t(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          pos_integer()
+        ) :: Nx.Tensor.t()
   defn apply_toffoli(state, control1, control2, target, num_qubits) do
     state_size = Nx.axis_size(state, 0)
 

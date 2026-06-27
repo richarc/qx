@@ -11,6 +11,22 @@ defmodule Qx.Simulation do
 
   @type simulation_result :: SimulationResult.t()
 
+  # Internal type aliases shared across the engine's private functions.
+  @typep state :: Nx.Tensor.t()
+  @typep renorm :: :off | :measurement | {:every, pos_integer()}
+  @typep gate_name :: atom()
+  @typep qubit :: non_neg_integer()
+  @typep bit :: 0 | 1
+  @typep instruction :: {gate_name(), [qubit()], [number()]}
+  @typep measurement :: {qubit(), non_neg_integer()}
+  @typep cbits :: [bit()]
+  @typep counts :: %{optional([bit()]) => pos_integer()}
+  @typep timeline_item ::
+           {:instruction, instruction()}
+           | {:measurement, measurement()}
+           # conditional payload: {classical-bit index, expected bit value, body}
+           | {:conditional, {non_neg_integer(), bit(), [instruction()]}}
+
   # Dev/test-only norm-drift guard, compile-time gated. In :prod
   # `@assert_norm` is false (config/config.exs) so `assert_norm/1`'s
   # body — including the host sync inside `validate_normalized!/2`
@@ -76,6 +92,7 @@ defmodule Qx.Simulation do
       iex> is_map(result)
       true
   """
+  @spec run(QuantumCircuit.t(), keyword()) :: simulation_result()
   def run(%QuantumCircuit{} = circuit, options \\ []) do
     shots = Keyword.get(options, :shots, 1024)
     backend = Keyword.get(options, :backend)
@@ -101,6 +118,7 @@ defmodule Qx.Simulation do
 
   # Resolve the `:renormalize` opt to the internal form threaded
   # through the engine: :off | :measurement | {:every, n}.
+  @spec resolve_renormalize(keyword()) :: renorm()
   defp resolve_renormalize(options) do
     options
     |> Keyword.get(:renormalize, false)
@@ -108,11 +126,14 @@ defmodule Qx.Simulation do
     |> to_renorm()
   end
 
+  @spec to_renorm(boolean() | pos_integer()) :: renorm()
   defp to_renorm(false), do: :off
   defp to_renorm(true), do: :measurement
   defp to_renorm(n), do: {:every, n}
 
   # Original implementation for circuits without conditionals
+  @spec run_without_conditionals(QuantumCircuit.t(), pos_integer(), renorm()) ::
+          simulation_result()
   defp run_without_conditionals(%QuantumCircuit{} = circuit, shots, renorm) do
     # Execute the circuit; renorm per-gate for {:every, n}, then once
     # more at measurement-time for :measurement / {:every, n}.
@@ -137,6 +158,7 @@ defmodule Qx.Simulation do
   end
 
   # New implementation for circuits with conditionals
+  @spec run_with_conditionals(QuantumCircuit.t(), pos_integer(), renorm()) :: simulation_result()
   defp run_with_conditionals(%QuantumCircuit{} = circuit, shots, renorm) do
     # Execute each shot independently
     results =
@@ -190,6 +212,7 @@ defmodule Qx.Simulation do
 
     * `Qx.MeasurementError` - If circuit contains measurements or conditionals
   """
+  @spec get_state(QuantumCircuit.t(), keyword()) :: Nx.Tensor.t()
   def get_state(%QuantumCircuit{} = circuit, options \\ []) do
     # Check if circuit has measurements or conditionals
     if has_measurements?(circuit) or has_conditionals?(circuit) do
@@ -209,6 +232,7 @@ defmodule Qx.Simulation do
   end
 
   # Helper to check if circuit has measurements
+  @spec has_measurements?(QuantumCircuit.t()) :: boolean()
   defp has_measurements?(%QuantumCircuit{measurements: measurements}) do
     measurements != []
   end
@@ -237,6 +261,7 @@ defmodule Qx.Simulation do
 
     * `Qx.MeasurementError` - If circuit contains measurements or conditionals
   """
+  @spec get_probabilities(QuantumCircuit.t(), keyword()) :: Nx.Tensor.t()
   def get_probabilities(%QuantumCircuit{} = circuit, options \\ []) do
     # Check if circuit has measurements or conditionals
     if has_measurements?(circuit) or has_conditionals?(circuit) do
@@ -260,6 +285,7 @@ defmodule Qx.Simulation do
 
   # Private functions
 
+  @spec execute_circuit(QuantumCircuit.t(), renorm()) :: state()
   defp execute_circuit(%QuantumCircuit{} = circuit, renorm) do
     # Convert initial real state to complex representation
     initial_complex_state = real_state_to_complex(circuit.state)
@@ -277,6 +303,8 @@ defmodule Qx.Simulation do
   # per-gate renorm + dev/test norm guard. Single source of the
   # every-n cadence so the non-conditional path, the conditional
   # timeline, and gates *inside* a `c_if` block all count identically.
+  @spec apply_gate_step(state(), instruction(), non_neg_integer(), non_neg_integer(), renorm()) ::
+          {state(), non_neg_integer()}
   defp apply_gate_step(state, instruction, count, num_qubits, renorm) do
     next = count + 1
 
@@ -291,12 +319,14 @@ defmodule Qx.Simulation do
 
   # Measurement-time renorm: applied for :measurement and {:every, n}.
   # :off preserves the exact prior behaviour at zero cost.
+  @spec maybe_measurement_renorm(state(), renorm()) :: state()
   defp maybe_measurement_renorm(state, :off), do: state
   defp maybe_measurement_renorm(state, _renorm), do: Math.normalize(state)
 
   # Per-gate renorm for {:every, n}: renorm after the `ordinal`-th gate
   # (1-based) when `ordinal` is a multiple of n. :off / :measurement
   # add no per-gate work (catch-all clause just returns state).
+  @spec maybe_gate_renorm(state(), renorm(), non_neg_integer()) :: state()
   defp maybe_gate_renorm(state, {:every, n}, ordinal) do
     if rem(ordinal, n) == 0, do: Math.normalize(state), else: state
   end
@@ -307,11 +337,13 @@ defmodule Qx.Simulation do
   # sync (`Nx.to_number`); acceptable ONLY because @assert_norm is
   # compiled false in :prod (config/config.exs) so this is dead code
   # there (Iron Law Nx #5). Active in :test (config/test.exs).
+  @spec assert_norm(state()) :: state()
   defp assert_norm(state) do
     if @assert_norm, do: :ok = Validation.validate_normalized!(state, @norm_tolerance)
     state
   end
 
+  @spec real_state_to_complex(Nx.Tensor.t()) :: state()
   defp real_state_to_complex(state) do
     # If already c64, return as-is; otherwise convert real to complex
     case Nx.type(state) do
@@ -326,6 +358,7 @@ defmodule Qx.Simulation do
     end
   end
 
+  @spec apply_instruction(instruction(), state(), non_neg_integer()) :: state()
   defp apply_instruction({gate_name, qubits, params}, state, num_qubits) do
     case length(qubits) do
       0 ->
@@ -349,6 +382,8 @@ defmodule Qx.Simulation do
     end
   end
 
+  @spec apply_single_qubit_op(gate_name(), [qubit()], [number()], state(), non_neg_integer()) ::
+          state()
   defp apply_single_qubit_op(gate_name, [qubit], params, state, num_qubits) do
     case gate_name do
       :h -> Calc.apply_single_qubit_gate(state, Gates.hadamard(), qubit, num_qubits)
@@ -362,6 +397,13 @@ defmodule Qx.Simulation do
     end
   end
 
+  @spec apply_parameterized_single_qubit_op(
+          gate_name(),
+          qubit(),
+          [number()],
+          state(),
+          non_neg_integer()
+        ) :: state()
   defp apply_parameterized_single_qubit_op(gate_name, qubit, params, state, num_qubits) do
     case gate_name do
       :rx ->
@@ -388,6 +430,8 @@ defmodule Qx.Simulation do
     end
   end
 
+  @spec apply_two_qubit_op(gate_name(), [qubit()], [number()], state(), non_neg_integer()) ::
+          state()
   defp apply_two_qubit_op(gate_name, [c, t], params, state, num_qubits) do
     case gate_name do
       :cx ->
@@ -416,6 +460,14 @@ defmodule Qx.Simulation do
   # Lifts a single-qubit gate matrix (parameterised by `gate_name` and
   # `params`) into the controlled two-qubit gate `|0⟩⟨0|⊗I + |1⟩⟨1|⊗U`,
   # then applies it to `state`. Covers `cp`, `cy`, `crx`, `cry`, `crz`.
+  @spec apply_controlled_target_op(
+          gate_name(),
+          qubit(),
+          qubit(),
+          [number()],
+          state(),
+          non_neg_integer()
+        ) :: state()
   defp apply_controlled_target_op(gate_name, c, t, params, state, num_qubits) do
     target_gate =
       case gate_name do
@@ -430,6 +482,8 @@ defmodule Qx.Simulation do
     Nx.dot(Gates.controlled_gate(target_gate, c, t, num_qubits), state)
   end
 
+  @spec apply_three_qubit_op(gate_name(), [qubit()], [number()], state(), non_neg_integer()) ::
+          state()
   defp apply_three_qubit_op(:ccx, [c1, c2, t], _params, state, num_qubits) do
     Calc.apply_toffoli(state, c1, c2, t, num_qubits)
   end
@@ -442,6 +496,7 @@ defmodule Qx.Simulation do
     raise Qx.GateError, {:unsupported_gate, gate_name}
   end
 
+  @spec perform_measurements(QuantumCircuit.t(), state(), pos_integer()) :: {[[bit()]], counts()}
   defp perform_measurements(%QuantumCircuit{} = circuit, final_state, shots) do
     measurements = QuantumCircuit.get_measurements(circuit)
 
@@ -464,6 +519,7 @@ defmodule Qx.Simulation do
     end
   end
 
+  @spec generate_samples([float()], pos_integer()) :: [non_neg_integer()]
   defp generate_samples(probabilities, shots) do
     # Create cumulative distribution
     cumulative = Enum.scan(probabilities, &(&1 + &2))
@@ -475,6 +531,8 @@ defmodule Qx.Simulation do
     end
   end
 
+  @spec extract_classical_bits([non_neg_integer()], [measurement()], non_neg_integer()) ::
+          [[bit()]]
   defp extract_classical_bits(samples, measurements, num_qubits) do
     Enum.map(samples, fn sample ->
       Enum.map(measurements, fn {qubit, _classical_bit} ->
@@ -486,6 +544,7 @@ defmodule Qx.Simulation do
   end
 
   # Check if circuit has conditional instructions
+  @spec has_conditionals?(QuantumCircuit.t()) :: boolean()
   defp has_conditionals?(%QuantumCircuit{} = circuit) do
     Enum.any?(circuit.instructions, fn
       {:c_if, _, _} -> true
@@ -494,6 +553,7 @@ defmodule Qx.Simulation do
   end
 
   # Execute a single shot of a circuit with conditionals
+  @spec execute_single_shot(QuantumCircuit.t(), renorm()) :: {state(), cbits()}
   defp execute_single_shot(%QuantumCircuit{} = circuit, renorm) do
     initial_state = real_state_to_complex(circuit.state)
     classical_bits = List.duplicate(0, circuit.num_classical_bits)
@@ -515,6 +575,7 @@ defmodule Qx.Simulation do
   end
 
   # Create unified timeline of operations (instructions and measurements)
+  @spec create_instruction_timeline(QuantumCircuit.t()) :: [timeline_item()]
   defp create_instruction_timeline(%QuantumCircuit{} = circuit) do
     instructions = circuit.instructions
 
@@ -535,6 +596,7 @@ defmodule Qx.Simulation do
   end
 
   # Perform a single measurement and collapse the state
+  @spec perform_single_measurement(state(), qubit(), non_neg_integer()) :: {state(), bit()}
   defp perform_single_measurement(state, qubit, num_qubits) do
     # Calculate probability of measuring |0⟩
     prob_0 = calculate_measurement_probability(state, qubit, 0, num_qubits)
@@ -549,6 +611,7 @@ defmodule Qx.Simulation do
   end
 
   # Calculate probability of measuring a specific value for a qubit
+  @spec calculate_measurement_probability(state(), qubit(), bit(), non_neg_integer()) :: float()
   defp calculate_measurement_probability(state, qubit, value, num_qubits) do
     state_size = trunc(:math.pow(2, num_qubits))
 
@@ -572,6 +635,7 @@ defmodule Qx.Simulation do
   end
 
   # Collapse state to a measurement outcome
+  @spec collapse_to_measurement(state(), qubit(), bit(), non_neg_integer()) :: state()
   defp collapse_to_measurement(state, qubit, measured_value, num_qubits) do
     state_size = trunc(:math.pow(2, num_qubits))
 
@@ -598,6 +662,14 @@ defmodule Qx.Simulation do
     Nx.tensor(collapsed_data, type: :c64)
   end
 
+  @spec process_timeline_item(
+          timeline_item(),
+          state(),
+          cbits(),
+          non_neg_integer(),
+          non_neg_integer(),
+          renorm()
+        ) :: {state(), cbits(), non_neg_integer()}
   defp process_timeline_item(item, state, cbits, count, num_qubits, renorm) do
     case item do
       {:instruction, instruction} ->
@@ -615,6 +687,16 @@ defmodule Qx.Simulation do
     end
   end
 
+  @spec process_conditional(
+          cbits(),
+          non_neg_integer(),
+          bit(),
+          [instruction()],
+          state(),
+          non_neg_integer(),
+          non_neg_integer(),
+          renorm()
+        ) :: {state(), cbits(), non_neg_integer()}
   defp process_conditional(cbits, cbit, value, instructions, state, count, num_qubits, renorm) do
     if Enum.at(cbits, cbit) == value do
       # c_if sub-gates advance the SAME gate counter, so renormalize: N

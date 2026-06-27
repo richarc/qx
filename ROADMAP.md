@@ -15,7 +15,7 @@ for the bit-manipulation hot paths.
 - [x] Add tests verifying partial measurement does not corrupt unmeasured qubits (qx-d1f)
 - [x] Add tests for nested and chained c_if conditional operations (qx-sso)
 - [x] Add error path tests for CalcFast edge cases and invalid inputs (qx-eb1)
-- [ ] Add @spec to all defp functions in CalcFast and Simulation (qx-atv)
+- [x] Add @spec to all defp functions in CalcFast and Simulation (qx-atv) (done: calcfast-simulation-specs — full @spec coverage of both files: 28 defp + 3 def in `simulation.ex` (10 shared `@typep` aliases) + 6 defn/defnp/def kernels in `calc_fast.ex`; review tightened cbits/counts/conditional to `bit()` and fixed a CSWAP/Toffoli doc mixup; no dialyzer yet so specs are doc-only)
 - [ ] Add WHY comments to bit-manipulation logic in CalcFast Nx.Defn blocks (qx-8gf)
 - [x] Rename is_* private helpers to *? per Elixir naming convention (qx-mbv) — superseded by qx-7iw (commit 297a579, "Audit and enhance predicate function conventions"): all boolean-returning functions already end in `?`, no `defp is_*` helpers remain. The only residual `is_*` tokens are built-in Kernel guards and three local boolean variables (`is_first`/`is_conditional`/`is_valid`), which cannot take a `?` suffix. Verified 2026-06-26
 - [x] Iron Law #7 follow-on: route `Qx.Validation.validate_parameter!/1` through a typed `Qx.*Error` instead of raw `ArgumentError`. Affects every rotation gate (`rx`/`ry`/`rz`/`cp`/`crx`/`cry`/`crz`). Currently a visible inconsistency in the new QAAL-parity gates' `## Raises` sections. (plan: iron-law-7-followon — new `Qx.ParameterError`; `## Raises` docs fixed in `qx.ex` + `operations.ex`)
