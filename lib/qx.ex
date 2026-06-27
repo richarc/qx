@@ -6,6 +6,31 @@ defmodule Qx do
   It supports up to 20 qubits with statevector simulation using Nx as the
   computational backend for efficient processing.
 
+  ## Which `h` am I calling?
+
+  Four modules expose gate functions named like `h`, for principled but
+  easily-confused reasons. Two questions decide which one you want:
+
+  - **Calc or circuit?** Calc functions transform a state *eagerly* and return
+    the new state. Circuit functions *record* a gate onto a
+    `Qx.QuantumCircuit`, which you run later with `Qx.run/2`.
+  - **Single- or multi-qubit?** Whether you hold one isolated qubit or an
+    indexed register of several.
+
+  |              | Calc (returns a new state)    | Circuit (records a recipe)              |
+  | ------------ | ----------------------------- | --------------------------------------- |
+  | Single-qubit | `Qx.Qubit.h(qubit)`           | build a 1-qubit circuit, then `Qx.h/2`  |
+  | Multi-qubit  | `Qx.Register.h(register, i)`  | `Qx.h(circuit, i)` (via `Qx.Operations`) |
+
+  Most code wants the bottom-right: build a circuit with `Qx.h/2` and its
+  siblings, then `Qx.run/2`. Reach for `Qx.Qubit` or `Qx.Register` only to
+  evolve a state vector directly, without a circuit.
+
+  `Qx.Qubit` is deliberately **not** a `Qx.Behaviours.QuantumState` implementor:
+  its gates take a single state (`Qx.Qubit.h(qubit)`) rather than the
+  `(state, qubit_index)` shape the behaviour requires. Unifying the two would
+  mean restructuring `Qx.Qubit`, and is deferred to a future major version.
+
   ## Example Usage
 
       # Create a Bell state circuit
