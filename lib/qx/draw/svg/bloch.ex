@@ -1,26 +1,5 @@
 defmodule Qx.Draw.SVG.Bloch do
-  @moduledoc """
-  SVG rendering of qubit states on the Bloch sphere.
-
-  The Bloch sphere is a geometrical representation of pure qubit states where:
-  - |0⟩ state is at the north pole (top)
-  - |1⟩ state is at the south pole (bottom)
-  - |+⟩ state is on the equator (front)
-  - |-⟩ state is on the equator (back)
-  - |i⟩ and |-i⟩ states are on the equator (sides)
-
-  This module provides a sophisticated 3D SVG rendering with:
-  - Wireframe sphere with latitude and longitude lines
-  - Colored coordinate axes
-  - State labels at key positions
-  - State vector visualization
-  - Angle information (θ and φ)
-
-  ## Internal Module
-
-  This module is part of the Qx.Draw refactoring and should be accessed
-  through the public `Qx.Draw` API rather than directly.
-  """
+  @moduledoc false
 
   @doc """
   Converts a qubit state to Bloch sphere coordinates.

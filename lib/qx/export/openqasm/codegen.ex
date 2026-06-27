@@ -1,20 +1,5 @@
 defmodule Qx.Export.OpenQASM.Codegen do
-  @moduledoc """
-  Translates a single OpenQASM `gate` definition into Elixir source code
-  that defines an equivalent circuit-transforming function.
-
-  The generated function has the signature
-
-      def name(circuit, p1, p2, ..., q1, q2, ...)
-
-  — `circuit` first, then declared parameters in source order, then qubit
-  arguments in source order — and returns a new circuit with the
-  expanded gate body applied.
-
-  Only stdgate references are emitted in v1; nested user-defined gate
-  references and modifiers (`inv`, `pow`, `ctrl`, `negctrl`) are rejected
-  with `Qx.QasmUnsupportedError` upstream in the parser/lowering layer.
-  """
+  @moduledoc false
 
   # Supported QASM gate name → emitted Elixir helper. Same whitelist as
   # Lowering's @stdgate_table but emits Elixir source rather than

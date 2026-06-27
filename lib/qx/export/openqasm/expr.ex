@@ -1,19 +1,5 @@
 defmodule Qx.Export.OpenQASM.Expr do
-  @moduledoc """
-  Evaluator for OpenQASM parameter expressions.
-
-  Handles numeric literals, the `pi` constant, the four arithmetic operators,
-  unary minus, and the function set `sin`, `cos`, `tan`, `exp`, `ln`, `sqrt`.
-
-  Identifier references are resolved against an `env` map, used when
-  evaluating bodies of `gate` definitions whose parameter names are bound
-  to caller-supplied values. For top-level `gate_call` parameters the env is
-  empty — any identifier reference there raises `Qx.QasmParseError`.
-
-  Function names are matched against a literal whitelist; unknown names
-  raise `Qx.QasmUnsupportedError`. Per Iron Law 1, no `String.to_atom/1`
-  on caller-supplied identifiers.
-  """
+  @moduledoc false
 
   @type expr :: tuple()
   @type env :: %{optional(String.t()) => float()}

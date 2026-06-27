@@ -1,13 +1,5 @@
 defmodule Qx.Export.OpenQASM.Parser do
-  @moduledoc """
-  nimble_parsec grammar for the OpenQASM 3.0 subset Qx supports.
-
-  See `Qx.Export.OpenQASM.AST` for the shape of the produced AST nodes.
-
-  Whitespace and comments (`//` line and `/* … */` block, including nested
-  blocks) are skipped between every grammar production via the `optional_ws`
-  combinator — nimble_parsec has no built-in whitespace handling.
-  """
+  @moduledoc false
 
   import NimbleParsec
 

@@ -1,30 +1,5 @@
 defmodule Qx.Draw.SVG.Circuit do
-  @moduledoc """
-  SVG rendering of quantum circuit diagrams.
-
-  This module provides sophisticated SVG-based circuit visualization with:
-  - Publication-quality IEEE-style gate notation
-  - Support for all common quantum gates
-  - Automatic gate layout with collision avoidance
-  - Multi-qubit gates (CNOT, CZ, Toffoli)
-  - Measurement operations with classical bit connections
-  - Conditional gates (classical feedback)
-  - Parametric gates with π-notation
-  - Barrier markers for circuit organization
-
-  ## Circuit Diagram Features
-
-  - **Single-qubit gates**: H, X, Y, Z, S, T, RX, RY, RZ, Phase
-  - **Multi-qubit gates**: CNOT (CX), Controlled-Z (CZ), Controlled-Phase (CP), Toffoli (CCX)
-  - **Measurements**: With visual connection to classical registers
-  - **Conditionals**: Gates controlled by classical bit values
-  - **Barriers**: Visual separators for circuit sections
-
-  ## Internal Module
-
-  This module is part of the Qx.Draw refactoring and should be accessed
-  through the public `Qx.Draw` API rather than directly.
-  """
+  @moduledoc false
 
   # Private data structure for circuit diagram
   defmodule CircuitDiagram do

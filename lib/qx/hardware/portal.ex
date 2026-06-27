@@ -1,44 +1,5 @@
 defmodule Qx.Hardware.Portal do
-  @moduledoc """
-  HTTP client for the qxportal transpilation service (`/api/v1`).
-
-  Used by `Qx.Hardware` to:
-
-    * confirm a portal token and fetch the authenticated identity
-      (`me/1`); and
-    * transpile an OpenQASM 3.0 program for a target IBM backend
-      (`transpile/3`).
-
-  Wraps [Req](https://hexdocs.pm/req). Maps the documented error shapes
-  to plain tuples callers can pattern-match on.
-
-  ## Privacy invariant
-
-  This module reads `config.portal_url` and `config.portal_token` only —
-  the IBM API key and CRN never leave `Qx.Hardware.Ibm`.
-
-  ## Error mapping
-
-  Common to GET and POST:
-
-  | HTTP                         | Returned                          |
-  |------------------------------|-----------------------------------|
-  | 200 OK                       | `{:ok, decoded_data}`             |
-  | 401                          | `{:error, :unauthorized}`         |
-  | 404                          | `{:error, :not_found}`            |
-  | 429 + `retry-after` header   | `{:error, {:rate_limited, secs}}` |
-  | Other 4xx/5xx                | `{:error, {:http, status, body}}` |
-  | Network / Req exception      | `{:error, {:network, reason}}`    |
-
-  POST-only (`transpile/3`):
-
-  | HTTP | Returned                              |
-  |------|---------------------------------------|
-  | 422  | `{:error, {:invalid_qasm, detail}}`   |
-  | 502  | `{:error, :transpile_failed}`         |
-  | 503  | `{:error, :transpile_unavailable}`    |
-  | 504  | `{:error, :transpile_timeout}`        |
-  """
+  @moduledoc false
 
   alias Qx.Hardware.Config
 

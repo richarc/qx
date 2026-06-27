@@ -1,21 +1,5 @@
 defmodule Qx.Draw.VegaLite do
-  @moduledoc """
-  VegaLite visualization functions for quantum simulation results.
-
-  This module handles all VegaLite-based chart generation, including:
-  - Probability distribution plots
-  - Measurement count histograms
-  - Raw probability histograms
-  - Bloch sphere 2D projections
-
-  VegaLite visualizations are particularly useful in LiveBook environments
-  where they provide interactive, publication-quality charts.
-
-  ## Internal Module
-
-  This module is part of the Qx.Draw refactoring and should be accessed
-  through the public `Qx.Draw` API rather than directly.
-  """
+  @moduledoc false
 
   @doc """
   Creates a VegaLite plot of probability distribution from simulation result.

@@ -27,6 +27,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Public API surface is now declared explicitly (no API change).** Iron
+  Law #6 now guards the modules README and the tutorials actually treat as
+  primary surface: `Qx.Qubit`, `Qx.Register`, `Qx.StateInit`, `Qx.Patterns`,
+  `Qx.Math`, `Qx.Hardware`, `Qx.Hardware.Config`, `Qx.Export.OpenQASM`, and
+  `Qx.Draw` (alongside the previously-declared `Qx`, `Qx.QuantumCircuit`,
+  `Qx.Operations`, `Qx.Simulation`, `Qx.SimulationResult`, `Qx.Behaviours.*`).
+  Internal helpers no longer appear in the published docs — `Qx.Validation`,
+  the `Qx.Draw.SVG.*` and `Qx.Export.OpenQASM.*` sub-modules, and
+  `Qx.Hardware.Ibm` / `Qx.Hardware.Portal` are now `@moduledoc false`. Every
+  function stays callable; the typed `Qx.*Error` exceptions remain part of the
+  public contract.
+
 - **Typed errors for the last raw `ArgumentError`s in `Qx.Validation`
   (plan: iron-law-7-followon).** Completes the Iron Law #7 pass begun
   in 0.8.0. `Qx.Validation` now raises typed exceptions instead of
@@ -68,7 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       `Qx.RegisterError`;
     - `Qx.Export.OpenQASM.to_qasm/2` with an invalid `:version` →
       `Qx.OptionError`;
-    - `Qx.Draw.SVG.Circuit.render/1` on a malformed circuit →
+    - `Qx.Draw.circuit/2` on a malformed circuit →
       `Qx.QubitCountError` / `Qx.GateError` / `Qx.QubitIndexError` /
       `Qx.ClassicalBitError`;
     - `Qx.u/5` with an out-of-range qubit now raises

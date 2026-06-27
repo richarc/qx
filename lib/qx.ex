@@ -24,6 +24,7 @@ defmodule Qx do
 
   - `Qx` - Main API (this module)
   - `Qx.Qubit` - Functions for qubit creation and manipulation
+  - `Qx.Register` - Multi-qubit register creation and manipulation
   - `Qx.QuantumCircuit` - Quantum circuit creation and management
   - `Qx.Operations` - Quantum gate operations, including basis-explicit
     measurement (`measure_x`/`measure_y`/`measure_z`) and controlled
@@ -32,9 +33,14 @@ defmodule Qx do
     accepts either no second arg (whole-circuit) or a list/range of qubit
     indices (sub-register) — e.g. `Qx.h_all(qc, 0..2)`.
   - `Qx.Simulation` - Circuit execution and simulation
+  - `Qx.SimulationResult` - Struct returned by `Qx.run/2` (statevector + counts)
   - `Qx.Draw` - Visualization of results
   - `Qx.Math` - Core mathematical functions for quantum mechanics
+  - `Qx.StateInit` - State-vector constructors (basis, Bell, GHZ, W states)
   - `Qx.Export.OpenQASM` - Export circuits to OpenQASM for real quantum hardware
+  - `Qx.Hardware` - Run circuits on cloud QPUs (e.g. IBM Quantum)
+  - `Qx.Hardware.Config` - Hardware backend configuration (IBM Quantum via qxportal)
+  - `Qx.Behaviours.QuantumState` - Behaviour contract for quantum-state types
 
   ## Exporting to Real Quantum Hardware
 

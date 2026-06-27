@@ -1,23 +1,5 @@
 defmodule Qx.Validation do
-  @moduledoc """
-  Centralized validation functions for quantum operations.
-
-  Provides consistent error handling and validation across all Qx modules.
-
-  ## Examples
-
-      # Validate single qubit state
-      iex> q = Qx.Qubit.new()
-      iex> Qx.Validation.valid_qubit?(q)
-      true
-
-      # Validate qubit index
-      iex> Qx.Validation.validate_qubit_index!(0, 3)
-      :ok
-
-      iex> Qx.Validation.validate_qubit_index!(5, 3)
-      ** (Qx.QubitIndexError) Qubit index 5 out of range (0..2)
-  """
+  @moduledoc false
 
   @doc """
   Validates a single qubit state.

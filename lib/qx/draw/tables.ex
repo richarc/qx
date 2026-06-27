@@ -1,20 +1,5 @@
 defmodule Qx.Draw.Tables do
-  @moduledoc """
-  State table formatting for quantum registers and state vectors.
-
-  This module provides functions for displaying quantum states in tabular format,
-  showing basis states with their amplitudes and probabilities. Supports multiple
-  output formats:
-  - `:auto` - Auto-detects LiveBook/Kino and chooses best format
-  - `:text` - Plain text table with ASCII formatting
-  - `:html` - HTML table with styling
-  - `:markdown` - Markdown table (with Kino support in LiveBook)
-
-  ## Internal Module
-
-  This module is part of the Qx.Draw refactoring and should be accessed
-  through the public `Qx.Draw` API rather than directly.
-  """
+  @moduledoc false
 
   @doc """
   Displays a quantum state as a formatted table.

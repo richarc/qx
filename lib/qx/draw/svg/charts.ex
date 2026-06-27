@@ -1,20 +1,5 @@
 defmodule Qx.Draw.SVG.Charts do
-  @moduledoc """
-  SVG chart generation for quantum simulation results.
-
-  This module handles all SVG-based chart rendering, including:
-  - Probability distribution bar charts
-  - Measurement count histograms
-  - Raw probability histograms
-
-  SVG visualizations are standalone and can be embedded in web pages,
-  saved to files, or used in environments where VegaLite is not available.
-
-  ## Internal Module
-
-  This module is part of the Qx.Draw refactoring and should be accessed
-  through the public `Qx.Draw` API rather than directly.
-  """
+  @moduledoc false
 
   @doc """
   Creates an SVG bar chart of probability distribution from simulation result.

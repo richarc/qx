@@ -1,24 +1,5 @@
 defmodule Qx.Export.OpenQASM.Lowering do
-  @moduledoc """
-  Converts a parsed OpenQASM AST (see `Qx.Export.OpenQASM.AST`) into a
-  `%Qx.QuantumCircuit{}`.
-
-  This stage performs:
-
-  * **Register tracking** — accepts a single `qubit`/`bit` register; rejects
-    multi-register programs with a typed error pointing at the second
-    declaration.
-  * **Gate-name resolution** — looks up each `gate_call` against a literal
-    whitelist (`@stdgate_table`); unknown names raise
-    `Qx.QasmUnsupportedError`. Per Iron Law 1, never converts caller input
-    to atoms.
-  * **Decomposition** — for `tdg`, `sx`, `u1`, `u2`, expands to one or more
-    Qx instruction tuples. `id` is dropped.
-  * **Parameter evaluation** — calls `Qx.Export.OpenQASM.Expr.eval/2` to
-    fold numeric expressions to floats.
-  * **Validation** — qubit references must point at the declared register
-    and stay in bounds; classical bits likewise.
-  """
+  @moduledoc false
 
   alias Qx.Export.OpenQASM.Expr
   alias Qx.QuantumCircuit

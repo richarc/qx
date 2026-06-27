@@ -1,48 +1,5 @@
 defmodule Qx.Hardware.Ibm do
-  @moduledoc """
-  HTTP client for IBM Quantum (Qiskit Runtime REST API).
-
-  Wraps [Req](https://hexdocs.pm/req); callers never touch HTTP details
-  directly.
-
-  ## Auth
-
-  IBM Cloud splits identity into:
-
-    * **API key** — exchanged at `iam.cloud.ibm.com/identity/token` for a
-      1-hour bearer token (`access_token`).
-    * **Service-CRN** — sent on every API request to identify which
-      Quantum *instance* the request is for. Cannot be derived from the
-      API key.
-    * **Region** — encoded into the CRN; the API base URL must match.
-
-  Tokens are 1-hour TTL; long queue waits routinely outlive them. Every
-  authed call is wrapped in `with_iam_refresh/2`, which catches 401, runs
-  a fresh IAM exchange once, and retries.
-
-  ## Sessions are optional — we don't use them
-
-  IBM's current spec (2026-05) treats sessions as optional and supports
-  direct `POST /jobs`. Empirically verified against a production-proven
-  reference (`qx_server`, last working 2026-02 and no relevant IBM API
-  changes since per the changelog). Dropping sessions removes a request,
-  an error path, and a leakage class.
-
-  ## Iron Law #1
-
-  IBM job-status values arrive as binaries from the wire (Pascal-Case per
-  the documented enum: `"Queued"`, `"Running"`, `"Completed"`,
-  `"Cancelled"`, `"Cancelled - Ran too long"`, `"Failed"`). They are
-  matched against `@known_statuses` and returned as binaries — never
-  `String.to_atom/1`-ed.
-
-  ## Privacy invariant
-
-  This module never sees the qxportal token, and `Qx.Hardware.Portal`
-  never sees the IBM API key or CRN. Two independent clients, two
-  independent auth flows; the shared `Qx.Hardware.Config` struct is the
-  only point of contact and each side reads only its own fields.
-  """
+  @moduledoc false
 
   alias Qx.Hardware.Config
 
