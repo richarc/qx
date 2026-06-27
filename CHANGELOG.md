@@ -27,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `Qx.Patterns.bell_state_circuit/1` and `Qx.Patterns.ghz_state_circuit/1` are
+  now `@doc false`. The documented entry points for these circuits are the
+  `Qx.bell_state/1` and `Qx.ghz_state/1` facades, which delegate to them; the
+  Patterns functions remain callable (no API change), they just no longer
+  appear as separate HexDocs pages.
+
 - **Public API surface is now declared explicitly (no API change).** Iron
   Law #6 now guards the modules README and the tutorials actually treat as
   primary surface: `Qx.Qubit`, `Qx.Register`, `Qx.StateInit`, `Qx.Patterns`,

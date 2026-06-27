@@ -26,6 +26,10 @@ defmodule Qx.Patterns do
   - `Qx.StateInit` — sibling module for composite *state-vector* recipes
     (Bell state, GHZ state, W state). `Qx.Patterns` is the *circuit-instruction*
     analogue.
+  - `Qx.bell_state/1` and `Qx.ghz_state/1` — the documented entry points for
+    the Bell- and GHZ-preparation circuits. `bell_state_circuit/1` and
+    `ghz_state_circuit/1` here are their delegated-to implementations and carry
+    `@doc false`; call them through the `Qx` facade.
 
   ## Examples
 
@@ -293,32 +297,7 @@ defmodule Qx.Patterns do
   """
   @type bell_state_type :: :phi_plus | :phi_minus | :psi_plus | :psi_minus
 
-  @doc """
-  Builds a two-qubit circuit recipe that prepares one of the four Bell
-  states. Selector defaults to `:phi_plus`.
-
-  | Atom         | State                                  |
-  | ------------ | -------------------------------------- |
-  | `:phi_plus`  | `|Φ+⟩ = (|00⟩ + |11⟩)/√2` (default)    |
-  | `:phi_minus` | `|Φ-⟩ = (|00⟩ - |11⟩)/√2`              |
-  | `:psi_plus`  | `|Ψ+⟩ = (|01⟩ + |10⟩)/√2`              |
-  | `:psi_minus` | `|Ψ-⟩ = (|01⟩ - |10⟩)/√2`              |
-
-  ## Examples
-
-      iex> qc = Qx.Patterns.bell_state_circuit()
-      iex> qc.num_qubits
-      2
-
-      iex> qc = Qx.Patterns.bell_state_circuit(:psi_minus)
-      iex> qc.num_qubits
-      2
-
-  ## See Also
-
-    * `Qx.StateInit.bell_state_vector/2` — returns the **state vector** directly
-      (no circuit recipe).
-  """
+  @doc false
   @spec bell_state_circuit(bell_state_type()) :: QuantumCircuit.t()
   def bell_state_circuit(which \\ :phi_plus)
 
@@ -350,25 +329,7 @@ defmodule Qx.Patterns do
     |> Operations.cx(0, 1)
   end
 
-  @doc """
-  Builds an `n`-qubit GHZ-state preparation circuit: `H(0)` followed by
-  a linear `cx_chain([0, 1, …, n-1])`. Final state on `|0…0⟩` input is
-  `(|0…0⟩ + |1…1⟩)/√2`. Default is 3 qubits.
-
-  ## Examples
-
-      iex> qc = Qx.Patterns.ghz_state_circuit()
-      iex> qc.num_qubits
-      3
-
-      iex> qc = Qx.Patterns.ghz_state_circuit(5)
-      iex> qc.num_qubits
-      5
-
-  ## See Also
-
-    * `Qx.StateInit.ghz_state_vector/2` — returns the **state vector** directly.
-  """
+  @doc false
   @spec ghz_state_circuit(pos_integer()) :: QuantumCircuit.t()
   def ghz_state_circuit(num_qubits \\ 3) when is_integer(num_qubits) and num_qubits >= 2 do
     QuantumCircuit.new(num_qubits)
