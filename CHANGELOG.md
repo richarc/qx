@@ -13,6 +13,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   matches the rest of the `Qx.draw*` family (`Qx.draw/2`,
   `Qx.draw_counts/2`, `Qx.draw_bloch/2`, `Qx.draw_state/2`).
 
+- `Qx.StateInit.bell_state_vector/2` and `Qx.StateInit.ghz_state_vector/2`,
+  the canonically-named state-vector constructors. The `_vector` suffix
+  names the return type, disambiguating these from the circuit-returning
+  `Qx.bell_state/1` and `Qx.ghz_state/0`.
+
+### Deprecated
+
+- `Qx.StateInit.bell_state/2` and `Qx.StateInit.ghz_state/2` in favour of
+  the `_vector`-suffixed names above. Both keep working through 0.8.x —
+  they delegate verbatim to the new functions — and are scheduled for
+  removal in v0.9.
+
 ### Changed
 
 - **Typed errors for the last raw `ArgumentError`s in `Qx.Validation`

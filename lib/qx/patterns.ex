@@ -316,7 +316,7 @@ defmodule Qx.Patterns do
 
   ## See Also
 
-    * `Qx.StateInit.bell_state/2` — returns the **state vector** directly
+    * `Qx.StateInit.bell_state_vector/2` — returns the **state vector** directly
       (no circuit recipe).
   """
   @spec bell_state_circuit(bell_state_type()) :: QuantumCircuit.t()
@@ -367,7 +367,7 @@ defmodule Qx.Patterns do
 
   ## See Also
 
-    * `Qx.StateInit.ghz_state/2` — returns the **state vector** directly.
+    * `Qx.StateInit.ghz_state_vector/2` — returns the **state vector** directly.
   """
   @spec ghz_state_circuit(pos_integer()) :: QuantumCircuit.t()
   def ghz_state_circuit(num_qubits \\ 3) when is_integer(num_qubits) and num_qubits >= 2 do

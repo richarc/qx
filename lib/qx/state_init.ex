@@ -226,11 +226,13 @@ defmodule Qx.StateInit do
     Qx.Math.normalize(state)
   end
 
+  @type bell_state_which :: :phi_plus | :phi_minus | :psi_plus | :psi_minus
+
   @doc """
   Creates one of the four Bell states as a state vector.
 
   Accepts an optional atom to select which Bell state to prepare, and an
-  optional tensor type (`:c64` or `:c32`):
+  optional tensor type (`:c64` or `:c128`):
 
   | Atom          | State                            |
   | ------------- | -------------------------------- |
@@ -241,22 +243,22 @@ defmodule Qx.StateInit do
 
   ## Examples
 
-      iex> state = Qx.StateInit.bell_state()
+      iex> state = Qx.StateInit.bell_state_vector()
       iex> probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
       iex> abs(Enum.at(probs, 0) - 0.5) < 0.01 and abs(Enum.at(probs, 3) - 0.5) < 0.01
       true
 
-      iex> state = Qx.StateInit.bell_state(:phi_minus)
+      iex> state = Qx.StateInit.bell_state_vector(:phi_minus)
       iex> probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
       iex> abs(Enum.at(probs, 0) - 0.5) < 0.01 and abs(Enum.at(probs, 3) - 0.5) < 0.01
       true
 
-      iex> state = Qx.StateInit.bell_state(:psi_plus)
+      iex> state = Qx.StateInit.bell_state_vector(:psi_plus)
       iex> probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
       iex> abs(Enum.at(probs, 1) - 0.5) < 0.01 and abs(Enum.at(probs, 2) - 0.5) < 0.01
       true
 
-      iex> state = Qx.StateInit.bell_state(:psi_minus)
+      iex> state = Qx.StateInit.bell_state_vector(:psi_minus)
       iex> probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
       iex> abs(Enum.at(probs, 1) - 0.5) < 0.01 and abs(Enum.at(probs, 2) - 0.5) < 0.01
       true
@@ -268,9 +270,10 @@ defmodule Qx.StateInit do
       directly. Use that when you want a circuit to execute, this when you
       want the mathematical state.
   """
-  def bell_state(which \\ :phi_plus, type \\ :c64)
+  @spec bell_state_vector(bell_state_which(), Nx.Type.t()) :: Nx.Tensor.t()
+  def bell_state_vector(which \\ :phi_plus, type \\ :c64)
 
-  def bell_state(:phi_plus, type) do
+  def bell_state_vector(:phi_plus, type) do
     inv_sqrt2 = 1.0 / :math.sqrt(2)
 
     Nx.tensor(
@@ -279,7 +282,7 @@ defmodule Qx.StateInit do
     )
   end
 
-  def bell_state(:phi_minus, type) do
+  def bell_state_vector(:phi_minus, type) do
     inv_sqrt2 = 1.0 / :math.sqrt(2)
 
     Nx.tensor(
@@ -288,7 +291,7 @@ defmodule Qx.StateInit do
     )
   end
 
-  def bell_state(:psi_plus, type) do
+  def bell_state_vector(:psi_plus, type) do
     inv_sqrt2 = 1.0 / :math.sqrt(2)
 
     Nx.tensor(
@@ -297,7 +300,7 @@ defmodule Qx.StateInit do
     )
   end
 
-  def bell_state(:psi_minus, type) do
+  def bell_state_vector(:psi_minus, type) do
     inv_sqrt2 = 1.0 / :math.sqrt(2)
 
     Nx.tensor(
@@ -306,28 +309,42 @@ defmodule Qx.StateInit do
     )
   end
 
+  # Deprecated: use `Qx.StateInit.bell_state_vector/2` — the `_vector` suffix
+  # signals the state-vector return type, disambiguating from the
+  # circuit-returning `Qx.bell_state/1`. Kept callable for the 0.8.x window.
+  @deprecated "Use Qx.StateInit.bell_state_vector/2"
+  @doc false
+  def bell_state(which \\ :phi_plus, type \\ :c64) do
+    bell_state_vector(which, type)
+  end
+
   @doc """
   Creates a GHZ state for n qubits: (|00...0⟩ + |11...1⟩)/√2
 
   The Greenberger-Horne-Zeilinger (GHZ) state is a maximally entangled
   state for multiple qubits.
 
+  ## Parameters
+  - `num_qubits` - Number of qubits; must be `>= 2` (a single-qubit GHZ
+    state is undefined). Smaller values raise `FunctionClauseError`.
+  - `type` - Tensor type (default: `:c64`)
+
   ## Examples
 
       # GHZ state for 2 qubits (same as Bell state)
-      iex> state = Qx.StateInit.ghz_state(2)
+      iex> state = Qx.StateInit.ghz_state_vector(2)
       iex> probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
       iex> abs(Enum.at(probs, 0) - 0.5) < 0.01 and abs(Enum.at(probs, 3) - 0.5) < 0.01
       true
 
       # GHZ state for 3 qubits: (|000⟩ + |111⟩)/√2
-      iex> state = Qx.StateInit.ghz_state(3)
+      iex> state = Qx.StateInit.ghz_state_vector(3)
       iex> probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
       iex> abs(Enum.at(probs, 0) - 0.5) < 0.01 and abs(Enum.at(probs, 7) - 0.5) < 0.01
       true
 
       # All other states have zero probability
-      iex> state = Qx.StateInit.ghz_state(3)
+      iex> state = Qx.StateInit.ghz_state_vector(3)
       iex> probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
       iex> Enum.sum(Enum.slice(probs, 1..6))
       0.0
@@ -338,20 +355,31 @@ defmodule Qx.StateInit do
       rather than the state vector. Use that for a runnable circuit; this
       for the mathematical state at any qubit count.
   """
-  def ghz_state(num_qubits, type \\ :c64) when is_integer(num_qubits) and num_qubits >= 2 do
+  @spec ghz_state_vector(pos_integer(), Nx.Type.t()) :: Nx.Tensor.t()
+  def ghz_state_vector(num_qubits, type \\ :c64)
+      when is_integer(num_qubits) and num_qubits >= 2 do
     dimension = trunc(:math.pow(2, num_qubits))
     inv_sqrt2 = 1.0 / :math.sqrt(2)
 
     state_data =
       for i <- 0..(dimension - 1) do
-        cond do
-          i == 0 -> C.new(inv_sqrt2, 0.0)
-          i == dimension - 1 -> C.new(inv_sqrt2, 0.0)
-          true -> C.new(0.0, 0.0)
+        if i == 0 or i == dimension - 1 do
+          C.new(inv_sqrt2, 0.0)
+        else
+          C.new(0.0, 0.0)
         end
       end
 
     Nx.tensor(state_data, type: type)
+  end
+
+  # Deprecated: use `Qx.StateInit.ghz_state_vector/2` — the `_vector` suffix
+  # signals the state-vector return type, disambiguating from the
+  # circuit-returning `Qx.ghz_state/0`. Kept callable for the 0.8.x window.
+  @deprecated "Use Qx.StateInit.ghz_state_vector/2"
+  @doc false
+  def ghz_state(num_qubits, type \\ :c64) do
+    ghz_state_vector(num_qubits, type)
   end
 
   @doc """

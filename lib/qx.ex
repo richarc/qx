@@ -1162,7 +1162,7 @@ defmodule Qx do
 
   ## See Also
 
-    * `Qx.StateInit.bell_state/2` — returns a state vector, not a circuit.
+    * `Qx.StateInit.bell_state_vector/2` — returns a state vector, not a circuit.
   """
   @type bell_state_type :: Patterns.bell_state_type()
   @spec bell_state(bell_state_type()) :: circuit()
@@ -1186,7 +1186,7 @@ defmodule Qx do
 
   ## See Also
 
-    * `Qx.StateInit.ghz_state/2` — returns a state vector, not a circuit.
+    * `Qx.StateInit.ghz_state_vector/2` — returns a state vector, not a circuit.
   """
   @spec ghz_state(pos_integer()) :: circuit()
   defdelegate ghz_state(num_qubits \\ 3), to: Patterns, as: :ghz_state_circuit
