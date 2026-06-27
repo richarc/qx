@@ -3,6 +3,20 @@ defmodule Qx.Export.OpenQASM do
   Export Qx quantum circuits to OpenQASM format **and import** OpenQASM 3.0
   source back into a `Qx.QuantumCircuit`.
 
+  ## Return shapes
+
+  Export and import deliberately report failure differently:
+
+  - `to_qasm/2` returns a `String.t()` and **raises** on failure
+    (`Qx.GateError`, `Qx.ConditionalError`, or `Qx.OptionError`). Its failure
+    modes are all caller-controlled (an unsupported gate in the circuit you
+    built, or a bad `:version` option) and are known before the call, so there
+    is no `{:ok, _}` variant to handle.
+  - `from_qasm/1` returns `{:ok, circuit} | {:error, reason}`, because it parses
+    external source whose validity cannot be guaranteed; a parse failure is an
+    expected, recoverable outcome. Use `from_qasm!/1` when you already trust the
+    source and want it to raise instead.
+
   ## Importing OpenQASM (since v0.6.0)
 
   `from_qasm/1` parses OpenQASM 3 source produced by Qx, by Qiskit, or by
