@@ -1,5 +1,5 @@
 defmodule Qx.FormatTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   doctest Qx.Format
 
   alias Complex, as: C

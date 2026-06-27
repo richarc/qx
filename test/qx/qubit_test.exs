@@ -1,5 +1,5 @@
 defmodule Qx.QubitTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   doctest Qx.Qubit
 
   alias Qx.Qubit

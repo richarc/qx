@@ -1,5 +1,5 @@
 defmodule Qx.SwapGateTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   alias Qx.Export.OpenQASM
 

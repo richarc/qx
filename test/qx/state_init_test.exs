@@ -1,5 +1,5 @@
 defmodule Qx.StateInitTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   doctest Qx.StateInit
 
   alias Qx.StateInit

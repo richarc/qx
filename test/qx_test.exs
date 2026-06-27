@@ -1,5 +1,5 @@
 defmodule QxTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   doctest Qx
 
   test "create simple quantum circuit" do

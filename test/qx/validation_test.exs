@@ -1,5 +1,5 @@
 defmodule Qx.ValidationTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   doctest Qx.Validation
 
   alias Complex, as: C

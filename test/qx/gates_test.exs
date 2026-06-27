@@ -1,5 +1,5 @@
 defmodule Qx.GatesTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   alias Complex, as: C
   alias Qx.Gates

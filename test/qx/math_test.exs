@@ -1,5 +1,5 @@
 defmodule Qx.MathTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   doctest Qx.Math
 
   alias Complex, as: C

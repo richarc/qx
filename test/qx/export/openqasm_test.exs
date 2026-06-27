@@ -1,5 +1,5 @@
 defmodule Qx.Export.OpenQASMTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   doctest Qx.Export.OpenQASM
 
   alias Qx.Export.OpenQASM
