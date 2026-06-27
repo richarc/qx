@@ -8,6 +8,20 @@ defmodule Qx.CalcFast do
 
   import Nx.Defn
 
+  # Bit-manipulation convention shared by every kernel below.
+  #
+  # These kernels evolve the statevector over its 2^n amplitudes without ever
+  # building a 2^n x 2^n gate matrix and without a host-side loop over
+  # amplitudes (Iron Law #5) — all indexing is vectorised Nx.
+  #
+  # Qubit 0 is the MOST significant bit, so in a basis-state index `i`
+  # (0..2^n-1), qubit `q` is bit `(num_qubits - 1 - q)` of `i`. Every kernel
+  # therefore computes `bit_pos = num_qubits - 1 - q`. Two recurring tricks:
+  #   * value of qubit q in index i      ->  (i >>> bit_pos) &&& 1
+  #   * partner index with qubit q flipped ->  i XOR (1 <<< bit_pos)
+  # A single-bit XOR toggles exactly one qubit — that is how a gate locates the
+  # amplitude(s) it must mix with each basis state.
+
   @doc """
   Applies a single-qubit gate directly to a statevector.
 
@@ -61,33 +75,28 @@ defmodule Qx.CalcFast do
   defnp apply_single_qubit_gate_direct(state, gate, target_qubit, num_qubits) do
     state_size = Nx.axis_size(state, 0)
 
-    # For each basis state, we need to determine if its target qubit is |0⟩ or |1⟩
-    # and pair it with the state that has the target qubit flipped
-    #
-    # Qubit indexing: qubit 0 is MSB (leftmost)
-    # For state index i, qubit q is: bit (num_qubits - 1 - q) of i
-
-    # Create index tensor: [0, 1, 2, ..., state_size-1]
+    # A single-qubit gate acts independently on each pair of amplitudes that
+    # differ only in the target qubit, (|...0...⟩, |...1...⟩). We build both
+    # halves of every pair at once and apply the 2x2 matrix to all pairs.
     indices = Nx.iota({state_size}, type: :s64)
-
-    # Calculate which qubit bit to check (MSB convention)
     qubit_bit_position = num_qubits - 1 - target_qubit
 
-    # Mask to isolate the target qubit bit
+    # Single 1-bit at the target slot: XOR-ing an index by it toggles only the
+    # target, giving that index's partner in its pair.
     qubit_mask = Nx.left_shift(1, qubit_bit_position)
 
-    # Determine which states have target qubit = 0 vs 1
-    # target_bit = (indices >>> qubit_bit_position) & 1
+    # The target qubit's value (0/1) for every basis state.
     target_bits =
       Nx.bitwise_and(
         Nx.right_shift(indices, qubit_bit_position),
         1
       )
 
-    # For each index, compute its pair (index with target qubit flipped)
     paired_indices = Nx.bitwise_xor(indices, qubit_mask)
 
-    # Extract amplitudes for |0⟩ and |1⟩ states of target qubit
+    # Line up (|0⟩-amp, |1⟩-amp) for the pair each index belongs to: if this
+    # index's target bit is 0 it IS the |0⟩ half (partner is |1⟩); if 1, the
+    # reverse. select/take build both views with no host-side loop.
     amp_0 = Nx.select(Nx.equal(target_bits, 0), state, Nx.take(state, paired_indices))
     amp_1 = Nx.select(Nx.equal(target_bits, 1), state, Nx.take(state, paired_indices))
 
@@ -144,17 +153,14 @@ defmodule Qx.CalcFast do
         1
       )
 
-    # For states with control=1, we need to flip the target bit
-    # Mask to flip target bit
+    # Partner index with the target flipped (XOR-partner trick): flipping the
+    # target qubit swaps each index's amplitude with this partner's.
     target_mask = Nx.left_shift(1, target_bit_pos)
-
-    # Compute swapped indices (target bit flipped)
     swapped_indices = Nx.bitwise_xor(indices, target_mask)
-
-    # Get amplitudes from potentially swapped positions
     swapped_amps = Nx.take(state, swapped_indices)
 
-    # Apply CNOT: if control=1, use swapped amplitude; else use original
+    # CNOT flips the target only where control=1: there, take the partner's
+    # amplitude; elsewhere keep the original. One vectorised select, no branch.
     Nx.select(Nx.equal(control_bits, 1), swapped_amps, state)
   end
 
@@ -181,7 +187,6 @@ defmodule Qx.CalcFast do
     state_size = Nx.axis_size(state, 0)
     indices = Nx.iota({state_size}, type: :s64)
 
-    # MSB convention: qubit 0 is the most significant bit
     control_bit_pos = num_qubits - 1 - control
     ta_bit_pos = num_qubits - 1 - target_a
     tb_bit_pos = num_qubits - 1 - target_b
@@ -190,11 +195,14 @@ defmodule Qx.CalcFast do
     ta_bits = Nx.bitwise_and(Nx.right_shift(indices, ta_bit_pos), 1)
     tb_bits = Nx.bitwise_and(Nx.right_shift(indices, tb_bit_pos), 1)
 
+    # A swap only moves amplitude where the two targets DIFFER (|01⟩<->|10⟩);
+    # when they're equal (|00⟩, |11⟩) it's a no-op fixed point. So act only
+    # where control=1 AND ta != tb.
     control_set = Nx.equal(control_bits, 1)
     targets_differ = Nx.not_equal(ta_bits, tb_bits)
     should_swap = Nx.logical_and(control_set, targets_differ)
 
-    # XOR both target bit positions to get the swap partner index
+    # Flipping BOTH target bits at once maps 01<->10 — the partner to swap in.
     swap_mask =
       Nx.bitwise_or(
         Nx.left_shift(Nx.tensor(1, type: :s64), ta_bit_pos),
@@ -250,17 +258,16 @@ defmodule Qx.CalcFast do
         1
       )
 
-    # Check if both controls are 1
+    # Toffoli = CNOT gated on two controls: flip the target only where BOTH
+    # control bits are 1.
     both_controls_set =
       Nx.logical_and(
         Nx.equal(control1_bits, 1),
         Nx.equal(control2_bits, 1)
       )
 
-    # Mask to flip target bit
+    # Partner index with the target flipped (XOR-partner trick).
     target_mask = Nx.left_shift(1, target_bit_pos)
-
-    # Compute swapped indices (target bit flipped)
     swapped_indices = Nx.bitwise_xor(indices, target_mask)
 
     # Get amplitudes from potentially swapped positions
