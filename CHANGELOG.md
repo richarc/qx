@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-06-27
+
 ### Added
 
 - `Qx.draw_histogram/2`, replacing `Qx.histogram/2`. The new name
@@ -697,7 +699,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/richarc/qx/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/richarc/qx/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/richarc/qx/releases/tag/v0.8.1
 [0.8.0]: https://github.com/richarc/qx/releases/tag/v0.8.0
 [0.7.1]: https://github.com/richarc/qx/releases/tag/v0.7.1
 [0.7.0]: https://github.com/richarc/qx/releases/tag/v0.7.0
