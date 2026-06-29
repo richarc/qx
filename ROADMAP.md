@@ -84,6 +84,7 @@ backward-compatible.
 - [ ] Break the 4-module cycle `tables → register → qubit → draw → tables`: anchored by `Qx.Qubit.draw_bloch/2` defdelegating up to `Qx.Draw` (`lib/qx/qubit.ex:154`) and `Qx.Draw.Tables.render/2` pattern-matching on `%Qx.Register{}` (`lib/qx/draw/tables.ex:56`). Blocks future Draw refactors (audit: arch MED)
 - [ ] Replace `:math.pow(2, n) |> trunc/1` with `Integer.pow(2, n)` (or `Bitwise.bsl(1, n)`) across `state_init.ex`, `quantum_circuit.ex`, `simulation.ex`, `gates.ex`, `validation.ex`. Exact integer math (audit: perf LOW)
 - [ ] Fix `lib/qx/simulation.ex:50–57` docstring example referencing `EXLA.Backend` while EXLA is commented out of `mix.exs`. Users following the example hit `UndefinedFunctionError` (audit: perf MED; pair with the v0.8.2 `exla`/`emlx` decision)
+- [ ] Add a first-class step-through API so circuit mode can be inspected one operation at a time (the calc-mode feel inside circuit mode): e.g. `Qx.steps/1` returning a lazy `Stream` of `%{gate, state, probabilities}`, or a `Qx.run(qc, trace: true)` option. Thin lazy stream over the existing `Qx.Simulation.execute_circuit/2` reduce, so it threads the state ONCE (not the O(gates²) prefix re-run that `tap_state`/`tap_probabilities` do today). Re-implement the taps on top of it. Additive; sets up the v0.12 calc-mode demotion (design: `spec/unified-circuit-stepper-design.md`)
 
 ---
 
@@ -114,6 +115,7 @@ anything. Each removal needs a CHANGELOG `### Removed` entry.
 - [ ] Remove the v0.8.1-deprecated `Qx.StateInit.bell_state/2` and `Qx.StateInit.ghz_state/1` aliases (the state-vector returners): `_vector`-suffixed names become canonical. CHANGELOG entry required; deprecation window closes here (audit: public-api S1 CRIT, removal phase)
 - [ ] Remove the deprecated `Qx.Math.basis_state/2` shim (`lib/qx/math.ex:225`): already `@deprecated` in 0.8.x, only internal callers remain. CHANGELOG entry (audit: public-api MED)
 - [ ] Remove the deprecated `Qx.histogram/2` alias once `Qx.draw_histogram/2` has shipped for one minor (audit: public-api LOW naming)
+- [ ] Reposition calc mode (`Qx.Register` / `Qx.Qubit`) out of the co-equal public surface now the v0.9 stepper covers "inspect the state after each operation" inside circuit mode. Make them an internal engine (`@moduledoc false`) or a clearly-demoted "operate on a raw state vector" advanced escape hatch. Removes the "Which `h` am I calling?" cognitive load (the four `h` entry points collapse toward `Qx.h/2`). Breaking if removed from the public surface; CHANGELOG entry (design: `spec/unified-circuit-stepper-design.md`; depends on the v0.9 stepper)
 
 ---
 
