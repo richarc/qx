@@ -13,7 +13,9 @@ defmodule Qx.Hardware.Config do
   Required (enforced at struct construction time):
 
     * `:portal_url` — base URL for the qxportal transpilation service
-      (e.g. `"https://api.qxquantum.com"`).
+      (e.g. `"https://api.qxquantum.com"`). Must be `https://` for any remote
+      host; plaintext `http://` is accepted only for a loopback host
+      (`localhost`, `127.0.0.1`, `::1`) so local mocks and dev keep working.
     * `:portal_token` — bearer token for the qxportal API.
     * `:ibm_api_key` — IBM Quantum API key (used for the IAM exchange).
     * `:ibm_crn` — IBM Cloud Resource Name for the Quantum service instance.
@@ -38,8 +40,11 @@ defmodule Qx.Hardware.Config do
     * `:access_token` — IBM IAM bearer token. Populated by
       `Qx.Hardware.Ibm.iam_exchange/1`.
     * `:token_expires_at` — `DateTime` for the IAM token's expiry.
-    * `:iam_url` — overrides the IBM IAM endpoint (test hook).
-    * `:base_url` — overrides the IBM Quantum API base URL (test hook).
+    * `:iam_url` — overrides the IBM IAM endpoint (test hook). When set, it is
+      validated like `:portal_url` (https for remote hosts, http only for
+      loopback).
+    * `:base_url` — overrides the IBM Quantum API base URL (test hook). When
+      set, it is validated like `:portal_url`.
 
   ## Construction
 
@@ -153,6 +158,8 @@ defmodule Qx.Hardware.Config do
 
     with :ok <- check_required(attrs),
          :ok <- validate_portal_url(attrs[:portal_url]),
+         :ok <- validate_optional_url(:base_url, attrs[:base_url]),
+         :ok <- validate_optional_url(:iam_url, attrs[:iam_url]),
          :ok <- validate_optimization_level(Map.get(attrs, :optimization_level, 1)),
          :ok <- validate_shots(Map.get(attrs, :shots, 4096)),
          :ok <- validate_region(attrs[:ibm_region]) do
@@ -232,25 +239,54 @@ defmodule Qx.Hardware.Config do
     end)
   end
 
-  defp validate_portal_url(url) do
+  # Hosts for which plaintext http is allowed (local mocks / dev). Any other
+  # host must use https, since these URLs carry the portal bearer token and
+  # route IBM IAM token exchange.
+  @loopback_hosts ~w(localhost 127.0.0.1 ::1)
+
+  defp validate_portal_url(url), do: validate_url(:portal_url, url)
+
+  # base_url / iam_url are optional test-hook overrides (default nil).
+  defp validate_optional_url(_field, nil), do: :ok
+  defp validate_optional_url(field, url), do: validate_url(field, url)
+
+  # Loopback allowlist: require http or https; allow http only for a loopback
+  # host; require a host. Raises the typed Qx.Hardware.ConfigError tagged with
+  # the offending field.
+  defp validate_url(field, url) do
     case URI.new(url) do
-      {:ok, %URI{scheme: scheme}} when scheme in ["http", "https"] ->
-        :ok
+      {:ok, %URI{scheme: scheme, host: host}} when scheme in ["http", "https"] ->
+        validate_url_host(field, scheme, normalize_host(host))
 
       {:ok, %URI{}} ->
-        {:error,
-         ConfigError.exception(
-           field: :portal_url,
-           reason: "scheme must be \"http\" or \"https\""
-         )}
+        url_error(field, ~s(scheme must be "http" or "https"))
 
       {:error, _} ->
-        {:error,
-         ConfigError.exception(
-           field: :portal_url,
-           reason: "is not a valid URI"
-         )}
+        url_error(field, "is not a valid URI")
     end
+  end
+
+  # Hostnames are case-insensitive (RFC 3986 §6.2.2.1), so compare in lowercase.
+  defp normalize_host(host) when is_binary(host), do: String.downcase(host)
+  defp normalize_host(host), do: host
+
+  defp validate_url_host(field, _scheme, host) when host in [nil, ""] do
+    url_error(field, "must include a host")
+  end
+
+  defp validate_url_host(_field, "https", _host), do: :ok
+
+  defp validate_url_host(_field, "http", host) when host in @loopback_hosts, do: :ok
+
+  defp validate_url_host(field, "http", _host) do
+    url_error(
+      field,
+      "plaintext http is only allowed for a loopback host (localhost, 127.0.0.1, ::1); use https for remote hosts"
+    )
+  end
+
+  defp url_error(field, reason) do
+    {:error, ConfigError.exception(field: field, reason: reason)}
   end
 
   defp validate_optimization_level(level) when level in 0..3, do: :ok

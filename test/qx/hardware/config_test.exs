@@ -88,6 +88,114 @@ defmodule Qx.Hardware.ConfigTest do
     end
   end
 
+  describe "URL/host validation (loopback allowlist)" do
+    # Reuses @valid_attrs from the "new/1" describe (module-wide attribute).
+
+    test "portal_url: https to a remote host is accepted" do
+      assert {:ok, %Config{}} = Config.new(@valid_attrs)
+    end
+
+    test "portal_url: http to loopback is accepted (localhost / 127.0.0.1 / ::1, with/without port)" do
+      for url <- [
+            "http://localhost",
+            "http://localhost:4000",
+            "http://127.0.0.1:9999",
+            "http://[::1]:8080"
+          ] do
+        assert {:ok, %Config{}} = Config.new(Keyword.put(@valid_attrs, :portal_url, url)),
+               "expected #{url} accepted"
+      end
+    end
+
+    test "portal_url: plaintext http to a remote host is rejected" do
+      for url <- ["http://remote-host", "http://example.com:8080", "http://api.qxquantum.com"] do
+        assert {:error, %ConfigError{field: :portal_url, reason: reason}} =
+                 Config.new(Keyword.put(@valid_attrs, :portal_url, url)),
+               "expected #{url} rejected"
+
+        assert reason =~ "loopback"
+      end
+    end
+
+    test "base_url / iam_url default nil and are not validated" do
+      assert {:ok, %Config{base_url: nil, iam_url: nil}} = Config.new(@valid_attrs)
+    end
+
+    test "base_url / iam_url: http to loopback is accepted" do
+      attrs =
+        @valid_attrs
+        |> Keyword.put(:base_url, "http://localhost:8080")
+        |> Keyword.put(:iam_url, "http://localhost:8081/identity/token")
+
+      assert {:ok, %Config{}} = Config.new(attrs)
+    end
+
+    test "base_url: plaintext http to a remote host is rejected" do
+      assert {:error, %ConfigError{field: :base_url, reason: reason}} =
+               Config.new(Keyword.put(@valid_attrs, :base_url, "http://attacker/api/v1"))
+
+      assert reason =~ "loopback"
+    end
+
+    test "iam_url: plaintext http to a remote host is rejected" do
+      assert {:error, %ConfigError{field: :iam_url, reason: reason}} =
+               Config.new(Keyword.put(@valid_attrs, :iam_url, "http://attacker/identity/token"))
+
+      assert reason =~ "loopback"
+    end
+
+    test "loopback look-alike hosts are rejected (no allowlist bypass)" do
+      # `localhost@evil.com` parses to host evil.com (userinfo stripped); the
+      # subdomain/suffix tricks are not string-equal to a loopback host.
+      for url <- [
+            "http://localhost@evil.com",
+            "http://localhost.attacker.com",
+            "http://127.0.0.1.attacker.com",
+            "http://notlocalhost"
+          ] do
+        assert {:error, %ConfigError{field: :portal_url}} =
+                 Config.new(Keyword.put(@valid_attrs, :portal_url, url)),
+               "expected #{url} rejected"
+      end
+    end
+
+    test "loopback host matching is case-insensitive (http://LOCALHOST accepted)" do
+      assert {:ok, %Config{}} =
+               Config.new(Keyword.put(@valid_attrs, :portal_url, "http://LOCALHOST:4000"))
+    end
+
+    test "https to a remote host is accepted for base_url / iam_url" do
+      attrs =
+        @valid_attrs
+        |> Keyword.put(:base_url, "https://api.example.com")
+        |> Keyword.put(:iam_url, "https://iam.example.com/identity/token")
+
+      assert {:ok, %Config{}} = Config.new(attrs)
+    end
+
+    test "non-http(s) scheme is rejected on every URL field" do
+      for {field, url} <- [
+            portal_url: "ws://nope",
+            base_url: "ftp://nope",
+            iam_url: "gopher://nope"
+          ] do
+        assert {:error, %ConfigError{field: ^field}} =
+                 Config.new(Keyword.put(@valid_attrs, field, url))
+      end
+    end
+
+    test "malformed / empty-host URL is rejected" do
+      for {field, url} <- [
+            portal_url: "http://",
+            base_url: "not a uri",
+            iam_url: "https://"
+          ] do
+        assert {:error, %ConfigError{field: ^field}} =
+                 Config.new(Keyword.put(@valid_attrs, field, url))
+      end
+    end
+  end
+
   describe "new!/1" do
     test "returns struct on success" do
       attrs = [

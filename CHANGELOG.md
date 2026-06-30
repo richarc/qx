@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- `Qx.Hardware.Config` now rejects plaintext `http://` URLs to non-loopback
+  hosts for `portal_url`, `base_url`, and `iam_url`. These carry the portal
+  bearer token and route IBM IAM token exchange, so a remote `http` URL would
+  expose them in cleartext. `http://` stays valid for loopback hosts
+  (`localhost`, `127.0.0.1`, `::1`) so local mocks and dev are unaffected.
+  Behaviour change: a config with a remote `http` URL now raises
+  `Qx.Hardware.ConfigError` instead of being accepted.
+
 ## [0.8.1] - 2026-06-27
 
 ### Added
