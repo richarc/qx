@@ -20,34 +20,38 @@ for the bit-manipulation hot paths.
 - [x] Rename is_* private helpers to *? per Elixir naming convention (qx-mbv) — superseded by qx-7iw (commit 297a579, "Audit and enhance predicate function conventions"): all boolean-returning functions already end in `?`, no `defp is_*` helpers remain. The only residual `is_*` tokens are built-in Kernel guards and three local boolean variables (`is_first`/`is_conditional`/`is_valid`), which cannot take a `?` suffix. Verified 2026-06-26
 - [x] Iron Law #7 follow-on: route `Qx.Validation.validate_parameter!/1` through a typed `Qx.*Error` instead of raw `ArgumentError`. Affects every rotation gate (`rx`/`ry`/`rz`/`cp`/`crx`/`cry`/`crz`). Currently a visible inconsistency in the new QAAL-parity gates' `## Raises` sections. (plan: iron-law-7-followon — new `Qx.ParameterError`; `## Raises` docs fixed in `qx.ex` + `operations.ex`)
 - [x] Iron Law #7 stray: `Qx.Operations.u/5` (and `Qx.u/5`) still leak `FunctionClauseError` for an out-of-range qubit — the guard `when qubit >= 0 and qubit < circuit.num_qubits` fails with no fallback clause instead of routing through `Qx.Validation.validate_qubit_index!/2`. `lib/qx/operations.ex:290` documents the `FunctionClauseError` accurately, but it's a typed-error gap the predecessor `iron-law-7-critical` plan closed everywhere else; not covered by the `ArgumentError` sweep below (discovered: iron-law-7-followon) (done: iron-law-7-sweep — `u/5` guard relaxed to `is_integer(qubit)`, now routes through `add_gate/4` → `Qx.QubitIndexError`; `operations.ex` `## Raises` doc fixed)
-- [x] Widen `:c64` sub-ε test tolerances and add non-integer fixtures: `test/qx/cswap_iswap_matrix_test.exs:33` (`1.0e-12` → `1.0e-6`), `test/qx/export/openqasm/round_trip_test.exs:8` (`1.0e-10` → `1.0e-6`), and the boundary case at `test/qx/u_gate_convention_test.exs:24`. Currently pass only because fixtures use exactly-representable amplitudes; prerequisite for the v0.8.2 `CalcFast` rewrite (audit: test CRIT C5/C6; Iron Law #8)
+- [x] Widen `:c64` sub-ε test tolerances and add non-integer fixtures: `test/qx/cswap_iswap_matrix_test.exs:33` (`1.0e-12` → `1.0e-6`), `test/qx/export/openqasm/round_trip_test.exs:8` (`1.0e-10` → `1.0e-6`), and the boundary case at `test/qx/u_gate_convention_test.exs:24`. Currently pass only because fixtures use exactly-representable amplitudes; prerequisite for the v0.11 `CalcFast` rewrite (audit: test CRIT C5/C6; Iron Law #8)
 - [x] Migrate three deprecated `Qx.Math.basis_state/2` test calls. Resolved by deletion: the three tests at `test/qx/math_test.exs:301–325` were fully redundant with the five `basis_state/3` tests already in `test/qx/state_init_test.exs`. Test gate now runs cleanly under `--warnings-as-errors` (audit: test MED)
 - [x] Flip 16 pure-compute test files to `async: true` for ~10–15 % suite-runtime improvement (audit: test MED, listed in summary) (done: async-test-flip — 16 pure-compute files flipped; `config_from_env_test.exs` kept `async: false` (mutates `System` env); verified green across 3 seeds, ~27% faster: 1.1s→0.8s)
 - [x] Update stale `coveralls.json:16` `_comment` ("66.4 %" → actual 81.4 %). Confirmed by `mix test --cover` on 2026-06-21: total 81.4 %, target met; remaining low-coverage modules now named in the comment for the next coverage push (audit: test LOW)
 - [x] Expand the Iron Law #7 follow-on above to also route `Qx.Validation.validate_qubits_different!/2` and `validate_state_shape!/2` through `Qx.*Error`. Both still raise raw `ArgumentError` with in-source TODO markers at `lib/qx/validation.ex:127,152` (audit: arch HIGH) (plan: iron-law-7-followon — `Qx.QubitIndexError {:duplicate}` + `Qx.StateShapeError`)
-- [x] `ArgumentError` → typed `Qx.*Error` sweep across the rest of the public surface: `lib/qx/register.ex` (11 sites), `lib/qx/draw/svg/circuit.ex` (5 sites reached via public `Qx.Draw.circuit/2`), `lib/qx/qubit.ex:290` (`from_basis/1`), `lib/qx/draw.ex` (4 `:format`-option sites), `lib/qx/export/openqasm.ex:177`, `lib/qx/export/openqasm/parser.ex:568` (`String.to_float/1` on hostile input) (audit: arch HIGH cluster + security MED). Note: the `register.ex` distinctness raises (`569`/`704` "all indices different", `510`/`538`/`657`/`680`/`746` control≠target / distinct) are exactly what `Qx.Validation.validate_qubits_different!/1` was built for — wire that existing helper in to resolve several sites at once (discovered: iron-law-7-followon) (done: iron-law-7-sweep — new `Qx.RegisterError`/`Qx.BasisError`, reused existing types incl. `validate_qubits_different!/1`; `parser.ex:568` deferred to v0.8.2 parser hardening — confirmed it does not leak across the public boundary)
+- [x] `ArgumentError` → typed `Qx.*Error` sweep across the rest of the public surface: `lib/qx/register.ex` (11 sites), `lib/qx/draw/svg/circuit.ex` (5 sites reached via public `Qx.Draw.circuit/2`), `lib/qx/qubit.ex:290` (`from_basis/1`), `lib/qx/draw.ex` (4 `:format`-option sites), `lib/qx/export/openqasm.ex:177`, `lib/qx/export/openqasm/parser.ex:568` (`String.to_float/1` on hostile input) (audit: arch HIGH cluster + security MED). Note: the `register.ex` distinctness raises (`569`/`704` "all indices different", `510`/`538`/`657`/`680`/`746` control≠target / distinct) are exactly what `Qx.Validation.validate_qubits_different!/1` was built for — wire that existing helper in to resolve several sites at once (discovered: iron-law-7-followon) (done: iron-law-7-sweep — new `Qx.RegisterError`/`Qx.BasisError`, reused existing types incl. `validate_qubits_different!/1`; `parser.ex:568` deferred to v0.9 parser hardening — confirmed it does not leak across the public boundary)
 - [x] Decide `Qx.StateInit` public/internal status: used by `examples/tutorials/systems_of_qubits_and_entanglement.livemd:534` but omitted from `Qx`'s public-module list. Pick one and document, currently at risk of a silent breaking change (audit: arch LOW) (done: public-surface-declaration — declared PUBLIC; added to Iron Law #6 surface + the `lib/qx.ex` `## Modules` list)
 - [x] Expand the Iron-Laws declared public surface in `AGENTS.md` / `CLAUDE.md` to match reality: add `Qx.Qubit`, `Qx.Register`, `Qx.StateInit`, `Qx.Patterns`, `Qx.Math`, `Qx.Hardware`, `Qx.Hardware.Config`, `Qx.Export.OpenQASM`, and `Qx.Draw`. README and every tutorial alias-import these as primary surface; a breaking change today would not trip Iron Law #6 (audit: public-api S2 HIGH) (done: public-surface-declaration — 9 modules added to Iron Law #6 + the complexity-score table; `lib/qx.ex` `## Modules` reconciled)
 - [x] Mark internals `@moduledoc false` so they stop reading as public: `Qx.Draw.SVG.Bloch`, `Qx.Draw.SVG.Charts`, `Qx.Draw.SVG.Circuit`, `Qx.Draw.Tables`, `Qx.Draw.VegaLite`, `Qx.Export.OpenQASM.{AST,Codegen,Expr,Lowering,Parser}`, `Qx.Hardware.Ibm`, `Qx.Hardware.Portal` (audit: public-api LOW × 3) (done: public-surface-declaration — all hidden; review caught the `Qx.Draw.SVG.Circuit` outer-module miss; `AST` taxonomy preserved as `#` comments)
 - [x] Add `defdelegate barrier(circuit, qubits), to: Operations` in `lib/qx.ex`. Public surface now exposes the primitive `Qx.barrier/2` alongside the existing `Qx.barrier_all/1,/2` delegates, closing the accidental gap from when `Qx.Patterns` landed (audit: public-api S4 MED)
 - [x] Fix `Qx.run/2` docstring at `lib/qx.ex:854-861`. `## Returns` block now describes the `Qx.SimulationResult` struct (with accurate field types), the doctest pattern-matches the struct shape, and the `@spec` uses `Qx.SimulationResult.t()` directly instead of the indirect `simulation_result()` alias for clearer HexDocs output (audit: public-api S5 MED)
-- [x] Deprecate `Qx.StateInit.bell_state/2` and `Qx.StateInit.ghz_state/1` in favour of `Qx.StateInit.bell_state_vector/2` and `ghz_state_vector/1`. Eliminates the type collision with `Qx.bell_state/1` / `Qx.ghz_state/1` (which return circuits, not state vectors). Add `@deprecated` to the old names, ship the `_vector` variants alongside; removal scheduled for v0.9 (audit: public-api S1 CRIT) (done: stateinit-vector-deprecation — shipped `bell_state_vector/2` + `ghz_state_vector/2` as canonical, old names now `@deprecated`+`@doc false` delegators; `### Added`/`### Deprecated` CHANGELOG entries; corrected an inherited docstring `:c32`→`:c128` since Nx has no `:c32`)
+- [x] Deprecate `Qx.StateInit.bell_state/2` and `Qx.StateInit.ghz_state/1` in favour of `Qx.StateInit.bell_state_vector/2` and `ghz_state_vector/1`. Eliminates the type collision with `Qx.bell_state/1` / `Qx.ghz_state/1` (which return circuits, not state vectors). Add `@deprecated` to the old names, ship the `_vector` variants alongside; removal scheduled for v0.10 (audit: public-api S1 CRIT) (done: stateinit-vector-deprecation — shipped `bell_state_vector/2` + `ghz_state_vector/2` as canonical, old names now `@deprecated`+`@doc false` delegators; `### Added`/`### Deprecated` CHANGELOG entries; corrected an inherited docstring `:c32`→`:c128` since Nx has no `:c32`)
 - [x] Lead `Qx`'s moduledoc with a "Which `h` am I calling?" decision tree: single/multi × calc/circuit grid. `Qx.Qubit.h/1`, `Qx.Register.h/2`, `Qx.Operations.h/2`, `Qx.h/2` all exist for principled reasons but constitute the largest cognitive load in the API. Pull the `Qx.Behaviours.QuantumState` callout (`lib/qx/behaviours/quantum_state.ex:13`) about `Qx.Qubit` deliberately not implementing the behaviour up into the lead doc (audit: public-api MED) (done: which-h-decision-tree — calc/circuit × single/multi grid leads the moduledoc + the QuantumState non-implementor callout pulled up; light review verified the four signatures, em-dashes removed per anti-ai-writing-style)
-- [x] Rename `Qx.histogram/2` to `Qx.draw_histogram/2`. Canonical name now matches the rest of the `Qx.draw*` family (`draw`, `draw_counts`, `draw_bloch`, `draw_state`). Old name kept as a `@deprecated`, `@doc false` alias for the 0.8.x window; scheduled for removal in v0.9. CHANGELOG entry added under `[Unreleased]` (audit: public-api LOW naming)
+- [x] Rename `Qx.histogram/2` to `Qx.draw_histogram/2`. Canonical name now matches the rest of the `Qx.draw*` family (`draw`, `draw_counts`, `draw_bloch`, `draw_state`). Old name kept as a `@deprecated`, `@doc false` alias for the 0.8.x window; scheduled for removal in v0.10. CHANGELOG entry added under `[Unreleased]` (audit: public-api LOW naming)
 - [x] Decide `Qx.Validation` public/internal: currently has a full `@moduledoc` with examples (suggests public, useful for downstream library extension) but isn't in the Iron-Laws list. Either add to the declared public surface or mark `@moduledoc false` and stop documenting examples (audit: public-api LOW) (done: public-surface-declaration — INTERNAL: `@moduledoc false`, moduledoc examples dropped; the public contract is the typed `Qx.*Error` types; 245→242 doctests)
 - [x] Mark `Qx.Patterns.ghz_state_circuit/1` (`lib/qx/patterns.ex:373`) `@doc false` or merge with `Qx.StateInit.ghz_state/1`. Currently three names for one concept once `Qx.ghz_state/1` is counted (audit: public-api MED) (done: ghz-naming-cleanup — `@doc false` on both `ghz_state_circuit/1` AND `bell_state_circuit/1` for consistency; `Qx.ghz_state/1`/`Qx.bell_state/1` are the documented facades; the return-type collision was already resolved by stateinit-vector-deprecation. Non-breaking, `### Changed` CHANGELOG note)
 - [x] Document `to_qasm/1` vs `from_qasm/1` return-shape asymmetry: `to_qasm` raises while `from_qasm` returns `{:ok, _} | {:error, _}`. Defensible (`to_qasm` failure modes are limited to version + unsupported instruction) but currently surprising. Add a one-paragraph note to `Qx.Export.OpenQASM`'s moduledoc (audit: public-api MED return-shape) (done: qasm-return-shape-doc — "Return shapes" section explains to_qasm raises caller-controlled errors vs from_qasm's recoverable tuple on external input, with from_qasm!/1 as the raising variant)
 
 ---
 
-## v0.8.2: Security & Hardening
+## v0.9: Security & Hardening
 
 Hardening pass over the IBM Quantum client, the OpenQASM parser, and
 the runtime dependency surface. Items here come from the 2026-06-14
 project-health audit
-(`.claude/audit/summaries/project-health-2026-06-14.md`). A patch-level
-release: no new features and no breaking changes, just closing the
-MED/LOW security, hardening, and dependency findings.
+(`.claude/audit/summaries/project-health-2026-06-14.md`). A **minor**
+release, not a patch: several of these hardening fixes tighten validation
+in ways that reject previously-accepted input (remote-`http` config URLs,
+deeply nested QASM) or change output shape (`from_qasm_function/1` now
+returns a `defmodule`), which are backward-incompatible behaviour changes
+in the 0.x line. (Numbered 0.9, skipping 0.8.2: the config-URL change
+already shipped to `main`, so the next release is a minor regardless.)
 
 - [x] Reject plaintext `http://` for `QX_PORTAL_URL`: `lib/qx/hardware/config.ex:237` `validate_portal_url/1` currently accepts both schemes, so a misconfigured environment sends the portal bearer token over cleartext (audit: security MED) (done: config-url-validation — loopback allowlist: https required for remote hosts, http allowed only for localhost/127.0.0.1/::1)
 - [x] Validate `:base_url` / `:iam_url` test-hook overrides: `lib/qx/hardware/config.ex:42,112–113` accept any scheme/host without sanity checks; a caller setting `base_url: "http://attacker/api/v1"` routes IAM token exchange to an attacker host. Allowlist hosts or require `https://` (audit: security MED) (done: config-url-validation — both validated via the shared loopback-allowlist `validate_url/2`, only when non-nil; raises typed `Qx.Hardware.ConfigError`)
@@ -60,7 +64,7 @@ MED/LOW security, hardening, and dependency findings.
 
 ---
 
-## v0.9: Step-Through API & Public-API Streamlining
+## v0.10: Step-Through API & Public-API Streamlining
 
 The "API" minor: make circuit mode inspectable one operation at a time, then
 clean up and streamline the public surface around it. Two thrusts: a
@@ -78,7 +82,7 @@ satisfied here.
 
 ---
 
-## v0.10: Simulation Refactor, Performance & Visualization
+## v0.11: Simulation Refactor, Performance & Visualization
 
 Land the audit's simulation-engine refactor and performance work, clarify the
 Calc / CalcFast split, polish the Bloch sphere renderer, broaden hardware
@@ -101,7 +105,7 @@ backward-compatible.
 - [ ] Cap or auto-truncate probability charts above n≈12 qubits: `lib/qx/draw/svg/charts.ex:31–69,103–137` and `lib/qx/draw/vega_lite.ex:32–50,102–109` currently render one bar per basis state with no bound (n=20 → ~1 M-bar SVG, >100 MB XML, crashes browsers). Raise typed `Qx.*Error` instead (audit: perf CRIT C4)
 - [ ] Break the 4-module cycle `tables → register → qubit → draw → tables`: anchored by `Qx.Qubit.draw_bloch/2` defdelegating up to `Qx.Draw` (`lib/qx/qubit.ex:154`) and `Qx.Draw.Tables.render/2` pattern-matching on `%Qx.Register{}` (`lib/qx/draw/tables.ex:56`). Blocks future Draw refactors (audit: arch MED)
 - [ ] Replace `:math.pow(2, n) |> trunc/1` with `Integer.pow(2, n)` (or `Bitwise.bsl(1, n)`) across `state_init.ex`, `quantum_circuit.ex`, `simulation.ex`, `gates.ex`, `validation.ex`. Exact integer math (audit: perf LOW)
-- [ ] Fix `lib/qx/simulation.ex:50–57` docstring example referencing `EXLA.Backend` while EXLA is commented out of `mix.exs`. Users following the example hit `UndefinedFunctionError` (audit: perf MED; pair with the v0.8.2 `exla`/`emlx` decision)
+- [ ] Fix `lib/qx/simulation.ex:50–57` docstring example referencing `EXLA.Backend` while EXLA is commented out of `mix.exs`. Users following the example hit `UndefinedFunctionError` (audit: perf MED; pair with the v0.9 `exla`/`emlx` decision)
 - [x] Performance benchmarking infrastructure: Benchee suite for GHZ and QFT circuits across
   n = 2–20 qubits, with console and HTML output (`mix bench`); establishes the baseline for
   measuring GPU and distributed execution improvements
@@ -110,7 +114,7 @@ backward-compatible.
 
 ---
 
-## v0.11: Noise & Realism
+## v0.12: Noise & Realism
 
 - [ ] Noise models for simulating real-hardware decoherence (bit-flip, phase-flip, depolarising)
 - [ ] Density matrix simulation as an alternative to statevector
@@ -119,7 +123,7 @@ backward-compatible.
 
 ---
 
-## v0.12: Algorithms & Learning
+## v0.13: Algorithms & Learning
 
 - [ ] More quantum algorithm examples in tutorials: Quantum Phase Estimation (QPE), Variational Quantum
   Eigensolver (VQE), Shor's algorithm
