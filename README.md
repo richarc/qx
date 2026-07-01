@@ -612,7 +612,7 @@ EXLA provides significant speedup through XLA's LLVM optimizations.
 def deps do
   [
     {:qx_sim, "~> 0.8.0"},
-    {:exla, "~> 0.10"}  # Add this line
+    {:exla, "~> 0.12"}  # Add this line (match Qx's Nx version)
   ]
 end
 ```
@@ -760,7 +760,7 @@ For LiveBook, add the acceleration backend to your `Mix.install` call:
 ```elixir
 Mix.install([
   {:qx, "~> 0.6.0", hex: :qx_sim},
-  {:exla, "~> 0.10"},
+  {:exla, "~> 0.12"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
   {:kino_vega_lite, "~> 0.1.11"}
@@ -786,7 +786,7 @@ Application.put_env(:nx, :default_backend, {EMLX.Backend, device: :gpu})
 ```elixir
 Mix.install([
   {:qx, "~> 0.6.0", hex: :qx_sim},
-  {:exla, "~> 0.10"},
+  {:exla, "~> 0.12"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
   {:kino_vega_lite, "~> 0.1.11"}

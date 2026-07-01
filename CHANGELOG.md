@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Qx.Hardware.Portal` GETs retry transiently too; POST requests (IAM exchange,
   job submission, transpile) are never auto-replayed.
 
+- Raised minimum runtime dependency versions: `nx ~> 0.12` (was `~> 0.10`),
+  `complex ~> 0.7` (was `~> 0.6`, now required by nx 0.12), and `req ~> 0.6`
+  (was `~> 0.5`). No Qx API or numerical changes; Nx 0.12 renders float32
+  tensors at native precision, so two `Qx.Math` doctests were updated to match.
+
 ### Security
 
 - `Qx.Hardware.Ibm` and `Qx.Hardware.Portal` HTTP error tuples

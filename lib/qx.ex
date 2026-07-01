@@ -896,7 +896,8 @@ defmodule Qx do
 
   ## Options
     * `:shots` - Number of measurement shots (default: 1024)
-    * `:backend` - Nx backend to use (e.g., `{EXLA.Backend, client: :host}`)
+    * `:backend` - Nx backend to use, e.g. `Nx.BinaryBackend` (default) or
+      `{EXLA.Backend, client: :host}` if EXLA is added to your deps (see README)
     * `:renormalize` - Counter unitary float drift (default: `false`).
       `false` = off; `true` = renormalize at measurement-time;
       positive integer `N` = renormalize every `N` gates and at
@@ -952,7 +953,8 @@ defmodule Qx do
     * `options` - Optional parameters
 
   ## Options
-    * `:backend` - Nx backend to use (e.g., `{EXLA.Backend, client: :host}`)
+    * `:backend` - Nx backend to use, e.g. `Nx.BinaryBackend` (default) or
+      `{EXLA.Backend, client: :host}` if EXLA is added to your deps (see README)
 
   ## Examples
 
@@ -981,7 +983,8 @@ defmodule Qx do
     * `options` - Optional parameters
 
   ## Options
-    * `:backend` - Nx backend to use (e.g., `{EXLA.Backend, client: :host}`)
+    * `:backend` - Nx backend to use, e.g. `Nx.BinaryBackend` (default) or
+      `{EXLA.Backend, client: :host}` if EXLA is added to your deps (see README)
 
   ## Examples
 

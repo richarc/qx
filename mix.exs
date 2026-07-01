@@ -51,13 +51,14 @@ defmodule Qx.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:nx, "~> 0.10"},
-      # {:exla, "~> 0.10", optional: true},
-      # {:emlx, "~> 0.2", optional: true},
+      {:nx, "~> 0.12"},
+      # Acceleration backends (EXLA / EMLX) are NOT deps of Qx — users add them
+      # to their own project and set `config :nx, :default_backend`. See the
+      # "Performance & Acceleration" section of README.md.
       {:vega_lite, "~> 0.1"},
-      {:complex, "~> 0.6"},
+      {:complex, "~> 0.7"},
       {:nimble_parsec, "~> 1.4"},
-      {:req, "~> 0.5"},
+      {:req, "~> 0.6"},
       {:jason, "~> 1.4"},
       {:usage_rules, "~> 1.2", only: :dev, runtime: false},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},

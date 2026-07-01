@@ -65,7 +65,9 @@ defmodule Qx.Simulation do
 
   You can specify which Nx backend to use for this simulation:
 
-      # Use EXLA for GPU/CPU acceleration
+      # Use EXLA for GPU/CPU acceleration. EXLA is not a Qx dependency; add it
+      # to your own project first (see the README's "Performance &
+      # Acceleration" section), then pass its backend here.
       Qx.Simulation.run(circuit, backend: EXLA.Backend)
 
       # Force binary backend (no acceleration)

@@ -55,7 +55,7 @@ defmodule Qx.Math do
       iex> Qx.Math.normalize(state)
       #Nx.Tensor<
         f32[2]
-        [0.7071067690849304, 0.7071067690849304]
+        [0.70710677, 0.70710677]
       >
   """
   defn normalize(state) do
@@ -126,7 +126,7 @@ defmodule Qx.Math do
       iex> Qx.Math.probabilities(state)
       #Nx.Tensor<
         f32[2]
-        [0.4999903738498688, 0.4999903738498688]
+        [0.49999037, 0.49999037]
       >
   """
   defn probabilities(state) do
