@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-07-01
+
 ### Changed
 
 - The IBM Quantum client now retries transient GET failures
@@ -740,7 +742,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/richarc/qx/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/richarc/qx/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/richarc/qx/releases/tag/v0.9.0
 [0.8.1]: https://github.com/richarc/qx/releases/tag/v0.8.1
 [0.8.0]: https://github.com/richarc/qx/releases/tag/v0.8.0
 [0.7.1]: https://github.com/richarc/qx/releases/tag/v0.7.1
