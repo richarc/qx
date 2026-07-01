@@ -173,18 +173,38 @@ defmodule Qx.Hardware.PortalTest do
                {:error, :transpile_timeout}
     end
 
-    test "other status falls through to {:http, status, body}", %{bypass: bypass, config: config} do
+    test "other status falls through to {:http, status, redacted}", %{
+      bypass: bypass,
+      config: config
+    } do
       Bypass.expect_once(bypass, "POST", "/api/v1/transpile", fn conn ->
         json_resp(conn, 418, %{error: "teapot"})
       end)
 
-      assert {:error, {:http, 418, %{"error" => "teapot"}}} =
+      # The body is redacted to the recognised error field, not the raw map.
+      assert {:error, {:http, 418, "teapot"}} =
                Portal.transpile(config, sample_qasm(), sample_opts())
     end
 
     test "network failure maps to {:network, reason}", %{bypass: bypass, config: config} do
       Bypass.down(bypass)
       assert {:error, {:network, _}} = Portal.transpile(config, sample_qasm(), sample_opts())
+    end
+  end
+
+  describe "HTTP error hardening" do
+    test "http error body is bounded/redacted", %{bypass: bypass, config: config} do
+      leak = String.duplicate("SECRET", 2000)
+
+      # 400 is unmapped AND not transient (not retried by :safe_transient).
+      Bypass.expect_once(bypass, "GET", "/api/v1/me", fn conn ->
+        json_resp(conn, 400, %{"leaked" => leak})
+      end)
+
+      assert {:error, {:http, 400, body}} = Portal.me(config)
+      # No recognised error field → generic marker; the leaked content is dropped.
+      assert body == "(response body redacted: 1 field(s))"
+      refute body =~ "SECRET"
     end
   end
 end

@@ -8,3 +8,8 @@ config :nx, :default_backend, Nx.BinaryBackend
 # Activate the compile-time norm-drift guard in Qx.Simulation so the
 # suite fails fast if any circuit drifts beyond @norm_tolerance (1e-6).
 config :qx, assert_norm: true
+
+# Zero the IBM HTTP-client retry backoff in tests so the transient-retry
+# test isn't slowed by Req's exponential backoff. Prod leaves it unset
+# (Req keeps its default backoff).
+config :qx, ibm_retry_delay: 0

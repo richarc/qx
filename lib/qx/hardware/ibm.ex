@@ -2,9 +2,13 @@ defmodule Qx.Hardware.Ibm do
   @moduledoc false
 
   alias Qx.Hardware.Config
+  alias Qx.Hardware.Http
 
   @iam_url_default "https://iam.cloud.ibm.com/identity/token"
   @api_version "2026-03-15"
+  # nil in prod (Req uses its default exponential backoff); the test env sets
+  # it to 0 ms to keep the transient-retry test fast.
+  @ibm_retry_delay Application.compile_env(:qx, :ibm_retry_delay, nil)
   @known_statuses [
     "Queued",
     "Running",
@@ -59,7 +63,7 @@ defmodule Qx.Hardware.Ibm do
         {:error, :unauthorized}
 
       {:ok, %Req.Response{status: status, body: body}} ->
-        {:error, {:http, status, body}}
+        Http.http_error(status, body)
 
       {:error, %{reason: reason}} ->
         {:error, {:network, reason}}
@@ -272,7 +276,9 @@ defmodule Qx.Hardware.Ibm do
           {:ok, %{counts: map(), metadata: map()}} | {:error, term()}
   def fetch_results(%Config{} = config, job_id) when is_binary(job_id) do
     with_iam_refresh(config, fn cfg ->
-      case authed_request(:get, cfg, "/jobs/#{job_id}/results", nil) do
+      # Sampler V2 result bodies can be multi-MB and slow; give /results a
+      # longer receive_timeout than the default.
+      case authed_request(:get, cfg, "/jobs/#{job_id}/results", nil, receive_timeout: 60_000) do
         {:ok, body} when is_map(body) -> parse_sampler_results(body)
         {:error, _} = error -> error
         _ -> {:error, :unexpected_response}
@@ -373,7 +379,7 @@ defmodule Qx.Hardware.Ibm do
     end
   end
 
-  defp authed_request(method, %Config{} = config, path, body) do
+  defp authed_request(method, %Config{} = config, path, body, opts \\ []) do
     url = api_base_url(config) <> path
 
     headers = [
@@ -383,12 +389,16 @@ defmodule Qx.Hardware.Ibm do
       {"accept", "application/json"}
     ]
 
-    base_options = [
-      url: url,
-      headers: headers,
-      receive_timeout: 30_000,
-      retry: false
-    ]
+    # `:safe_transient` retries only idempotent methods (GET/HEAD) on transient
+    # errors, so POSTs (IAM exchange, job submission) are never auto-replayed.
+    base_options =
+      [
+        url: url,
+        headers: headers,
+        receive_timeout: Keyword.get(opts, :receive_timeout, 30_000),
+        retry: :safe_transient
+      ]
+      |> maybe_put_retry_delay()
 
     options =
       if body != nil do
@@ -409,6 +419,16 @@ defmodule Qx.Hardware.Ibm do
     handle_response(result)
   end
 
+  # Prod leaves `:ibm_retry_delay` unset so Req uses its default exponential
+  # backoff; the test env sets it to 0 to keep the transient-retry test fast.
+  # Req's :retry_delay accepts a plain integer (fixed millis between retries).
+  defp maybe_put_retry_delay(options) do
+    case @ibm_retry_delay do
+      nil -> options
+      delay when is_integer(delay) -> Keyword.put(options, :retry_delay, delay)
+    end
+  end
+
   defp handle_response({:ok, %Req.Response{status: 200, body: body}}), do: {:ok, decode(body)}
   defp handle_response({:ok, %Req.Response{status: 201, body: body}}), do: {:ok, decode(body)}
   defp handle_response({:ok, %Req.Response{status: 204}}), do: :ok
@@ -416,10 +436,10 @@ defmodule Qx.Hardware.Ibm do
   defp handle_response({:ok, %Req.Response{status: 404}}), do: {:error, :not_found}
 
   defp handle_response({:ok, %Req.Response{status: 429} = resp}),
-    do: {:error, {:rate_limited, retry_after_seconds(resp)}}
+    do: {:error, {:rate_limited, Http.retry_after_seconds(resp)}}
 
   defp handle_response({:ok, %Req.Response{status: status, body: body}}),
-    do: {:error, {:http, status, body}}
+    do: Http.http_error(status, body)
 
   defp handle_response({:error, %{reason: reason}}), do: {:error, {:network, reason}}
 
@@ -434,17 +454,4 @@ defmodule Qx.Hardware.Ibm do
   end
 
   defp decode(body), do: body
-
-  defp retry_after_seconds(%Req.Response{} = resp) do
-    case Req.Response.get_header(resp, "retry-after") do
-      [value | _] ->
-        case Integer.parse(value) do
-          {n, _} -> n
-          :error -> nil
-        end
-
-      _ ->
-        nil
-    end
-  end
 end

@@ -443,4 +443,41 @@ defmodule Qx.Hardware.IbmTest do
       assert Ibm.base_url_for("au-syd") == "https://au-syd.quantum.cloud.ibm.com/api/v1"
     end
   end
+
+  describe "HTTP error hardening" do
+    test "http error body is bounded/redacted (no full response leak)", %{
+      api: api,
+      config: config
+    } do
+      config = authed_config(config)
+      leak = String.duplicate("SECRET", 2000)
+
+      # 400 is unmapped AND not transient, so it hits the {:http, _, _}
+      # fallthrough without being retried by :safe_transient.
+      Bypass.expect_once(api, "GET", "/backends", fn conn ->
+        json_resp(conn, 400, %{"errorMessage" => "boom", "leaked" => leak})
+      end)
+
+      assert {:error, {:http, 400, body}} = Ibm.list_backends(config)
+      # Redacted to the recognised error field; the leaked field is dropped.
+      assert body == "boom"
+      refute inspect(body) =~ "SECRET"
+    end
+
+    test "GET retries a transient 503 then succeeds", %{api: api, config: config} do
+      config = authed_config(config)
+      counter = :counters.new(1, [])
+
+      Bypass.expect(api, "GET", "/backends", fn conn ->
+        :counters.add(counter, 1, 1)
+
+        if :counters.get(counter, 1) == 1,
+          do: Plug.Conn.resp(conn, 503, ""),
+          else: json_resp(conn, 200, %{"devices" => []})
+      end)
+
+      assert {:ok, []} = Ibm.list_backends(config)
+      assert :counters.get(counter, 1) == 2
+    end
+  end
 end

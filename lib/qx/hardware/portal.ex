@@ -2,6 +2,7 @@ defmodule Qx.Hardware.Portal do
   @moduledoc false
 
   alias Qx.Hardware.Config
+  alias Qx.Hardware.Http
 
   @typedoc "The shape returned by `/api/v1/me`."
   @type identity :: %{
@@ -73,7 +74,9 @@ defmodule Qx.Hardware.Portal do
           {"accept", "application/json"}
         ],
         receive_timeout: 10_000,
-        retry: false
+        # GET is idempotent; retry transient failures. (The transpile POST
+        # below stays retry: false — it is not safe to auto-replay.)
+        retry: :safe_transient
       )
 
     handle_response(Req.get(request), :get)
@@ -110,7 +113,7 @@ defmodule Qx.Hardware.Portal do
     do: {:error, {:invalid_qasm, error_detail(body)}}
 
   defp handle_response({:ok, %Req.Response{status: 429} = resp}, _verb),
-    do: {:error, {:rate_limited, retry_after_seconds(resp)}}
+    do: {:error, {:rate_limited, Http.retry_after_seconds(resp)}}
 
   defp handle_response({:ok, %Req.Response{status: 502}}, :post),
     do: {:error, :transpile_failed}
@@ -122,7 +125,7 @@ defmodule Qx.Hardware.Portal do
     do: {:error, :transpile_timeout}
 
   defp handle_response({:ok, %Req.Response{status: status, body: body}}, _verb),
-    do: {:error, {:http, status, body}}
+    do: Http.http_error(status, body)
 
   defp handle_response({:error, %{reason: reason}}, _verb),
     do: {:error, {:network, reason}}
@@ -158,17 +161,4 @@ defmodule Qx.Hardware.Portal do
   defp error_detail(%{"detail" => detail}) when is_binary(detail), do: detail
   defp error_detail(%{"error" => err}) when is_binary(err), do: err
   defp error_detail(_), do: nil
-
-  defp retry_after_seconds(%Req.Response{} = resp) do
-    case Req.Response.get_header(resp, "retry-after") do
-      [value | _] ->
-        case Integer.parse(value) do
-          {n, _} -> n
-          :error -> nil
-        end
-
-      _ ->
-        nil
-    end
-  end
 end

@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The IBM Quantum client now retries transient GET failures
+  (`retry: :safe_transient`) instead of failing on the first blip, and raises
+  the `/results` receive timeout to 60 s for multi-MB Sampler V2 results.
+  `Qx.Hardware.Portal` GETs retry transiently too; POST requests (IAM exchange,
+  job submission, transpile) are never auto-replayed.
+
 ### Security
+
+- `Qx.Hardware.Ibm` and `Qx.Hardware.Portal` HTTP error tuples
+  (`{:error, {:http, status, body}}`) no longer echo the full decoded response
+  body, which could carry echoed request context. The body is reduced to a
+  recognised error message or a generic marker, bounded to ~256 characters.
+  **Behaviour change:** the third element is now a bounded string rather than
+  the raw response map/body.
 
 - `Qx.Hardware.Config` now rejects plaintext `http://` URLs to non-loopback
   hosts for `portal_url`, `base_url`, and `iam_url`. These carry the portal
