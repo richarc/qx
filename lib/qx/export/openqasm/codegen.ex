@@ -32,7 +32,11 @@ defmodule Qx.Export.OpenQASM.Codegen do
   @decomposable ~w(tdg sx u1 u2 id)
 
   @doc """
-  Generates a `%{name, arity, source}` map from a `:gate_def` AST node.
+  Generates a `%{name, arity, module, source}` map from a `:gate_def` AST node.
+
+  `source` is a self-contained `defmodule #{"Qx.Generated.<Name>_<hash>"} do … end`
+  wrapping the emitted helper, so a downstream `Code.compile_string/1` lands the
+  function in that isolated module rather than the caller's. `module` is its name.
 
   Returns `{:ok, map}` or `{:error, exception}`.
   """
@@ -44,18 +48,36 @@ defmodule Qx.Export.OpenQASM.Codegen do
       arity = 1 + length(param_names) + length(qubit_names)
       args = ["circuit"] ++ param_names ++ qubit_names
 
-      source =
+      def_source =
         IO.iodata_to_binary([
-          "def #{name}(#{Enum.join(args, ", ")}) do\n",
-          "  circuit\n",
-          Enum.map(body_lines, &["  ", &1, "\n"]),
-          "end"
+          "  def #{name}(#{Enum.join(args, ", ")}) do\n",
+          "    circuit\n",
+          Enum.map(body_lines, &["    ", &1, "\n"]),
+          "  end"
         ])
 
-      {:ok, %{name: name, arity: arity, source: source}}
+      module = generated_module_name(name, def_source)
+
+      source = IO.iodata_to_binary(["defmodule #{module} do\n", def_source, "\nend"])
+
+      {:ok, %{name: name, arity: arity, module: module, source: source}}
     end
   rescue
     e in [Qx.QasmParseError, Qx.QasmUnsupportedError] -> {:error, e}
+  end
+
+  # Isolate generated code in a unique `Qx.Generated.*` module so a downstream
+  # `Code.compile_string/1` cannot inject `name/arity` into the caller's module.
+  # `name` is already `[A-Za-z_]\w*` (validate_identifier/1), so `Macro.camelize`
+  # gives a valid alias segment; the short content hash keeps distinct gates
+  # from colliding on the module name.
+  defp generated_module_name(name, def_source) do
+    hash =
+      :crypto.hash(:sha256, def_source)
+      |> Base.encode16(case: :lower)
+      |> binary_part(0, 8)
+
+    "Qx.Generated.#{Macro.camelize(name)}_#{hash}"
   end
 
   # Validate that EVERY name passes `validate_identifier/1`. Stops at the

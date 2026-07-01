@@ -50,7 +50,7 @@ defmodule Qx.Export.OpenQASM.CodegenTest do
       assert source =~ "def g(circuit, theta, phi, a, b)"
     end
 
-    test "generated source compiles" do
+    test "wraps the generated def in an isolated Qx.Generated module" do
       src = """
       OPENQASM 3.0;
       include "stdgates.inc";
@@ -60,20 +60,38 @@ defmodule Qx.Export.OpenQASM.CodegenTest do
       }
       """
 
-      {:ok, %{source: source}} = OpenQASM.from_qasm_function(src)
+      assert {:ok, %{name: "bell", arity: 3, module: module, source: source}} =
+               OpenQASM.from_qasm_function(src)
 
-      module_source = """
-      defmodule TestGen.Bell#{:erlang.unique_integer([:positive])} do
-        #{source}
-      end
+      # Isolated module envelope: a downstream `Code.compile_string/1` lands the
+      # helper in Qx.Generated.*, never in the caller's module.
+      assert String.starts_with?(module, "Qx.Generated.Bell")
+      assert source =~ "defmodule #{module} do"
+      assert source =~ "def bell(circuit, a, b)"
+    end
+
+    test "generated source compiles to its isolated module" do
+      src = """
+      OPENQASM 3.0;
+      include "stdgates.inc";
+      gate bell a, b {
+        h a;
+        cx a, b;
+      }
       """
 
-      assert [{module, _bin} | _] = Code.compile_string(module_source)
+      # `source` is already a self-contained defmodule; compile it directly. It
+      # defines exactly one module (no tail wildcard), the one named in `:module`.
+      {:ok, %{source: source, module: module_name}} = OpenQASM.from_qasm_function(src)
+
+      assert [{module, _bin}] = Code.compile_string(source)
 
       on_exit(fn ->
         :code.purge(module)
         :code.delete(module)
       end)
+
+      assert inspect(module) == module_name
 
       circuit = Qx.create_circuit(2)
       # credo:disable-for-next-line Credo.Check.Refactor.Apply

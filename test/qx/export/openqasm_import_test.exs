@@ -29,6 +29,42 @@ defmodule Qx.Export.OpenQASMImportTest do
     end
   end
 
+  describe "expression nesting cap" do
+    test "rejects deeply nested parentheses with a typed parse error" do
+      deep = String.duplicate("(", 200) <> "0.5" <> String.duplicate(")", 200)
+      src = "OPENQASM 3.0;\nqubit[1] q;\nrx#{deep} q[0];\n"
+
+      assert {:error, %Qx.QasmParseError{reason: reason}} = OpenQASM.from_qasm(src)
+      assert reason =~ "nesting too deep"
+    end
+
+    test "from_qasm_function/1 also caps nesting depth" do
+      deep = String.duplicate("(", 200) <> "0.5" <> String.duplicate(")", 200)
+
+      assert {:error, %Qx.QasmParseError{reason: reason}} =
+               OpenQASM.from_qasm_function("OPENQASM 3.0;\ngate g a { rx#{deep} a; }\n")
+
+      assert reason =~ "nesting too deep"
+    end
+
+    test "the cap is at 64: depth 64 parses, depth 65 is rejected" do
+      ok = String.duplicate("(", 64) <> "0.5" <> String.duplicate(")", 64)
+      assert {:ok, _circuit} = OpenQASM.from_qasm("OPENQASM 3.0;\nqubit[1] q;\nrx#{ok} q[0];\n")
+
+      over = String.duplicate("(", 65) <> "0.5" <> String.duplicate(")", 65)
+
+      assert {:error, %Qx.QasmParseError{reason: reason}} =
+               OpenQASM.from_qasm("OPENQASM 3.0;\nqubit[1] q;\nrx#{over} q[0];\n")
+
+      assert reason =~ "nesting too deep"
+    end
+
+    test "normally-nested expressions still parse" do
+      assert {:ok, _circuit} =
+               OpenQASM.from_qasm("OPENQASM 3.0;\nqubit[1] q;\nrx(((0.5))) q[0];\n")
+    end
+  end
+
   describe "from_qasm/1" do
     test "returns {:ok, %QuantumCircuit{}} on a valid Bell-state program" do
       src = """

@@ -30,11 +30,14 @@ defmodule Qx.Export.OpenQASM do
   `from_qasm_function/1` parses a `gate name(p) a, b { … }` definition and
   returns Elixir source for an equivalent function:
 
-      {:ok, %{name: "bell", arity: 3, source: source}} =
+      {:ok, %{name: "bell", arity: 3, module: module, source: source}} =
         Qx.Export.OpenQASM.from_qasm_function(qasm_with_gate)
 
-  The generated `def name(circuit, params…, qubits…)` body composes
-  `Qx.h/2`, `Qx.cx/3`, etc. via the `|>` pipeline and can be `Code.compile_string/1`-ed.
+  `source` is a self-contained `defmodule Qx.Generated.<Name>_<hash> do … end`
+  wrapping a `def name(circuit, params…, qubits…)` that composes `Qx.h/2`,
+  `Qx.cx/3`, etc. via the `|>` pipeline. `Code.compile_string/1`-ing it defines
+  that isolated module (named by `module`), so the helper can never be injected
+  into the caller's own module.
 
   ### Supported gate set on import
 
@@ -127,6 +130,12 @@ defmodule Qx.Export.OpenQASM do
   # mitigates other unbounded-input concerns (deep parenthesisation,
   # very long identifiers).
   @max_qasm_size 1_048_576
+
+  # Hard ceiling on parenthesis nesting depth. The expression grammar recurses
+  # one parser frame per `(`, so within the 1 MB size cap a `((((…))))` chain
+  # could still nest ~500K deep and exhaust the stack (:enomem) before the
+  # parser errors. No legitimate gate-parameter expression nests this deep.
+  @max_paren_depth 64
 
   @doc """
   Converts a Qx quantum circuit to OpenQASM format.
@@ -421,6 +430,7 @@ defmodule Qx.Export.OpenQASM do
           {:ok, QuantumCircuit.t()} | {:error, Exception.t()}
   def from_qasm(source) when is_binary(source) do
     with :ok <- enforce_size(source),
+         :ok <- enforce_paren_depth(source),
          {:ok, ast} <- Parser.parse(source) do
       Lowering.lower(ast)
     end
@@ -441,11 +451,13 @@ defmodule Qx.Export.OpenQASM do
   Parses an OpenQASM 3.0 program containing a `gate` definition and
   returns Elixir source code for an equivalent function.
 
-  The result map is `%{name: String.t(), arity: pos_integer(), source: String.t()}`
-  where `source` is a `def` definition that can be inserted into a module
-  via `Code.compile_string/1` (or stored verbatim by callers like
-  `qxportal`). The function takes `(circuit, params..., qubits...)` and
-  returns the new circuit.
+  The result map is
+  `%{name: String.t(), arity: pos_integer(), module: String.t(), source: String.t()}`
+  where `source` is a self-contained `defmodule #{"Qx.Generated.<Name>_<hash>"} do … end`
+  (named by `module`) that can be compiled via `Code.compile_string/1` (or
+  stored verbatim by callers like `qxportal`). The wrapping module means the
+  generated helper is never injected into the caller's own module. The function
+  takes `(circuit, params..., qubits...)` and returns the new circuit.
 
   When the source contains multiple gate definitions, the **last** is
   treated as the "main" function — earlier ones are usually helpers
@@ -467,12 +479,13 @@ defmodule Qx.Export.OpenQASM do
       ...> \"\"\"
       iex> {:ok, %{name: "bell", arity: 3, source: source}} =
       ...>   Qx.Export.OpenQASM.from_qasm_function(qasm)
-      iex> source =~ "def bell(circuit, a, b)"
+      iex> source =~ "defmodule Qx.Generated.Bell" and source =~ "def bell(circuit, a, b)"
       true
   """
   @spec from_qasm_function(String.t()) :: {:ok, map()} | {:error, Exception.t()}
   def from_qasm_function(source) when is_binary(source) do
     with :ok <- enforce_size(source),
+         :ok <- enforce_paren_depth(source),
          {:ok, {:program, statements}} <-
            source |> Parser.parse() |> reclassify_unsupported(),
          {:ok, gate_def} <- find_main_gate_def(statements) do
@@ -489,6 +502,30 @@ defmodule Qx.Export.OpenQASM do
          "QASM source exceeds maximum size of #{@max_qasm_size} bytes (got #{byte_size(source)})"
      )}
   end
+
+  # Reject pathological parenthesis nesting before the recursive-descent
+  # expression parser is reached (it recurses one frame per `(`). Tail-recursive
+  # byte scan with early exit the moment depth exceeds the cap, so a paren bomb
+  # is rejected after ~65 bytes. Counts every `(`, including inside comments and
+  # string literals: a deliberate fail-closed tradeoff, since no legitimate
+  # source nests 64 parentheses deep anywhere.
+  defp enforce_paren_depth(source), do: scan_paren_depth(source, 0)
+
+  defp scan_paren_depth(<<>>, _depth), do: :ok
+
+  defp scan_paren_depth(<<?(, _rest::binary>>, depth) when depth + 1 > @max_paren_depth do
+    {:error,
+     Qx.QasmParseError.exception(
+       reason: "expression nesting too deep (max #{@max_paren_depth} parentheses)"
+     )}
+  end
+
+  defp scan_paren_depth(<<?(, rest::binary>>, depth), do: scan_paren_depth(rest, depth + 1)
+
+  defp scan_paren_depth(<<?), rest::binary>>, depth),
+    do: scan_paren_depth(rest, max(depth - 1, 0))
+
+  defp scan_paren_depth(<<_, rest::binary>>, depth), do: scan_paren_depth(rest, depth)
 
   # Parser-level rejections that semantically mean "feature unsupported"
   # rather than "syntax error" surface as the typed unsupported exception.

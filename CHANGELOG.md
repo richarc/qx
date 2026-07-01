@@ -17,6 +17,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Behaviour change: a config with a remote `http` URL now raises
   `Qx.Hardware.ConfigError` instead of being accepted.
 
+- The OpenQASM importer now caps parenthesis nesting depth (64) before parsing.
+  The expression grammar recurses one frame per `(`, so a `((((…))))` chain
+  within the 1 MB source cap could exhaust the stack (`:enomem`); deeply nested
+  input now raises `Qx.QasmParseError`.
+
+- `Qx.Export.OpenQASM.from_qasm_function/1` now wraps the generated code in a
+  unique `Qx.Generated.<Name>_<hash>` module instead of returning a bare `def`,
+  so a downstream `Code.compile_string/1` can no longer inject an
+  attacker-named helper into the caller's module. **Behaviour change:** the
+  returned `source` is a `defmodule`, and the result map gains a `:module` key.
+
 ## [0.8.1] - 2026-06-27
 
 ### Added
