@@ -53,6 +53,17 @@ returns a `defmodule`), which are backward-incompatible behaviour changes
 in the 0.x line. (Numbered 0.9, skipping 0.8.2: the config-URL change
 already shipped to `main`, so the next release is a minor regardless.)
 
+> **Release status — HELD (2026-07-01).** v0.9.0 is version-bumped (`mix.exs`),
+> `CHANGELOG`-finalized, and tagged (`v0.9.0`) on `main`, but publishing is
+> **held**. The release workflow aborted at `mix hex.audit` (also failing CI on
+> `main`): a newly-disclosed, unpatched advisory in `cowlib`
+> (`CVE-2026-43966` MEDIUM + `CVE-2026-43969` LOW) affects every released
+> version. `cowlib` is **test-only** (`bypass → cowboy → cowlib`, `only: :test`)
+> and is **not** in the shipped `qx_sim` package, so consumers are unaffected.
+> Nothing is on Hex. **Un-hold:** when upstream `cowlib` publishes a patched
+> version, `mix deps.update cowlib` and re-run the release workflow from the
+> `v0.9.0` tag; or adjust the audit gate to scope shipped deps only.
+
 - [x] Reject plaintext `http://` for `QX_PORTAL_URL`: `lib/qx/hardware/config.ex:237` `validate_portal_url/1` currently accepts both schemes, so a misconfigured environment sends the portal bearer token over cleartext (audit: security MED) (done: config-url-validation — loopback allowlist: https required for remote hosts, http allowed only for localhost/127.0.0.1/::1)
 - [x] Validate `:base_url` / `:iam_url` test-hook overrides: `lib/qx/hardware/config.ex:42,112–113` accept any scheme/host without sanity checks; a caller setting `base_url: "http://attacker/api/v1"` routes IAM token exchange to an attacker host. Allowlist hosts or require `https://` (audit: security MED) (done: config-url-validation — both validated via the shared loopback-allowlist `validate_url/2`, only when non-nil; raises typed `Qx.Hardware.ConfigError`)
 - [x] Add a parenthesis-depth cap to the QASM expression grammar: `lib/qx/export/openqasm/parser.ex:180–243` is unbounded within the 1 MB source cap; deep `((((…))))` walks ~0.5 M parser frames and can `:enomem` before erroring (audit: security MED) (done: openqasm-hardening — `@max_paren_depth 64` + a tail-recursive `enforce_paren_depth/1` byte scan with early-exit, wired before the parser in both `from_qasm/1` and `from_qasm_function/1`; raises `Qx.QasmParseError`)
