@@ -23,6 +23,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   execution path internally. No behaviour change: same values, same
   `Qx.MeasurementError` contract on measured/conditional prefixes.
 
+### Changed
+
+- The docs and README now teach one path: build a circuit, run it, and
+  step through it with `Qx.steps/2` / `Qx.Step.show/1` when you want to
+  see the state evolve. The "Which `h` am I calling?" grid, the
+  two-modes framing, and the calc-mode README sections are gone; a
+  short migration note in the README maps old calc-mode pipelines onto
+  the stepper.
+
+### Deprecated
+
+- `Qx.Qubit` and `Qx.Register` (calc mode) are demoted to an internal
+  engine: hidden from the generated docs, dropped from the declared
+  public surface, and carrying no stability guarantee from here on.
+  Both modules still compile, run, and pass their tests, so existing
+  notebooks keep working. Removal or restructuring is deferred to v1.0.
+
 ### Fixed
 
 - Circuits containing a barrier no longer raise

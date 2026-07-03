@@ -6,30 +6,19 @@ defmodule Qx do
   It supports up to 20 qubits with statevector simulation using Nx as the
   computational backend for efficient processing.
 
-  ## Which `h` am I calling?
+  ## Applying gates
 
-  Four modules expose gate functions named like `h`, for principled but
-  easily-confused reasons. Two questions decide which one you want:
+  Gate functions like `Qx.h/2` record onto a `Qx.QuantumCircuit`; run the
+  finished circuit with `Qx.run/2`.
 
-  - **Calc or circuit?** Calc functions transform a state *eagerly* and return
-    the new state. Circuit functions *record* a gate onto a
-    `Qx.QuantumCircuit`, which you run later with `Qx.run/2`.
-  - **Single- or multi-qubit?** Whether you hold one isolated qubit or an
-    indexed register of several.
+  Want the state after each operation? `Qx.steps/2` replays the circuit
+  one instruction at a time, and `Qx.Step.show/1` turns any step into
+  amplitudes plus probabilities.
 
-  |              | Calc (returns a new state)    | Circuit (records a recipe)              |
-  | ------------ | ----------------------------- | --------------------------------------- |
-  | Single-qubit | `Qx.Qubit.h(qubit)`           | build a 1-qubit circuit, then `Qx.h/2`  |
-  | Multi-qubit  | `Qx.Register.h(register, i)`  | `Qx.h(circuit, i)` (via `Qx.Operations`) |
-
-  Most code wants the bottom-right: build a circuit with `Qx.h/2` and its
-  siblings, then `Qx.run/2`. Reach for `Qx.Qubit` or `Qx.Register` only to
-  evolve a state vector directly, without a circuit.
-
-  `Qx.Qubit` is deliberately **not** a `Qx.Behaviours.QuantumState` implementor:
-  its gates take a single state (`Qx.Qubit.h(qubit)`) rather than the
-  `(state, qubit_index)` shape the behaviour requires. Unifying the two would
-  mean restructuring `Qx.Qubit`, and is deferred to a future major version.
+  Earlier releases also documented a calc mode (eager per-gate state
+  evolution, no circuit). Those modules are now an internal engine:
+  still present and functional, hidden from these docs, no stability
+  guarantee.
 
   ## Example Usage
 
@@ -48,8 +37,6 @@ defmodule Qx do
   The Qx library consists of several modules:
 
   - `Qx` - Main API (this module)
-  - `Qx.Qubit` - Functions for qubit creation and manipulation
-  - `Qx.Register` - Multi-qubit register creation and manipulation
   - `Qx.QuantumCircuit` - Quantum circuit creation and management
   - `Qx.Operations` - Quantum gate operations, including basis-explicit
     measurement (`measure_x`/`measure_y`/`measure_z`) and controlled
@@ -1170,11 +1157,11 @@ defmodule Qx do
   Visualizes a single qubit state on the Bloch sphere.
 
   The Bloch sphere provides a geometric representation of a pure qubit state.
-  This visualization is particularly useful for understanding single-qubit gates
-  and state transformations in calculation mode.
+  Handy for seeing what a single-qubit gate did to the state.
 
   ## Parameters
-    * `qubit` - Single qubit state tensor (from `Qx.Qubit`)
+    * `qubit` - Single-qubit state tensor (2 amplitudes), e.g. from
+      `Qx.get_state/1` on a 1-qubit circuit or from a `Qx.Step`
     * `options` - Optional plotting parameters
 
   ## Options
@@ -1185,20 +1172,20 @@ defmodule Qx do
   ## Examples
 
       # Visualize |0⟩ state
-      iex> q = Qx.Qubit.new()
-      iex> plot = Qx.draw_bloch(q)
+      iex> state = Qx.create_circuit(1) |> Qx.get_state()
+      iex> plot = Qx.draw_bloch(state)
       iex> is_map(plot) or is_binary(plot)
       true
 
       # Visualize superposition state
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.h()
-      iex> plot = Qx.draw_bloch(q, title: "Superposition State")
+      iex> state = Qx.create_circuit(1) |> Qx.h(0) |> Qx.get_state()
+      iex> plot = Qx.draw_bloch(state, title: "Superposition State")
       iex> is_map(plot) or is_binary(plot)
       true
 
   ## See Also
-    * `Qx.Qubit` - Calculation mode for single qubits
     * `draw_state/2` - Display multi-qubit state as table
+    * `Qx.steps/2` - State after each operation of a circuit
   """
   @spec draw_bloch(Nx.Tensor.t(), keyword()) :: VegaLite.t() | String.t()
   defdelegate draw_bloch(qubit, options \\ []), to: Draw, as: :bloch_sphere
@@ -1207,10 +1194,11 @@ defmodule Qx do
   Displays a quantum state as a formatted table.
 
   Shows basis states with their amplitudes and probabilities. Useful for
-  inspecting multi-qubit states in calculation mode.
+  inspecting a multi-qubit state without running the full circuit.
 
   ## Parameters
-    * `register_or_state` - `Qx.Register.t()` or state tensor
+    * `register_or_state` - state tensor, e.g. from `Qx.get_state/1`
+      (an internal calc-engine register struct also works)
     * `options` - Optional display parameters
 
   ## Options
@@ -1221,22 +1209,22 @@ defmodule Qx do
   ## Examples
 
       # Display Bell state
-      iex> reg = Qx.Register.new(2) |> Qx.Register.h(0) |> Qx.Register.cx(0, 1)
-      iex> table = Qx.draw_state(reg)
+      iex> state = Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1) |> Qx.get_state()
+      iex> table = Qx.draw_state(state)
       iex> is_binary(table)
       true
 
       # Hide zero states
-      iex> reg = Qx.Register.new(3) |> Qx.Register.h(0)
-      iex> table = Qx.draw_state(reg, hide_zeros: true)
+      iex> state = Qx.create_circuit(3) |> Qx.h(0) |> Qx.get_state()
+      iex> table = Qx.draw_state(state, hide_zeros: true)
       iex> is_binary(table)
       true
 
   ## See Also
-    * `Qx.Register` - Calculation mode for multi-qubit systems
     * `draw_bloch/2` - Bloch sphere visualization for single qubits
+    * `Qx.Step.show/1` - The same view for one step of `Qx.steps/2`
   """
-  @spec draw_state(Qx.Register.t() | Nx.Tensor.t(), keyword()) :: String.t()
+  @spec draw_state(Nx.Tensor.t() | struct(), keyword()) :: String.t()
   defdelegate draw_state(register_or_state, options \\ []), to: Draw, as: :state_table
 
   # Convenience functions for creating common quantum states and circuits

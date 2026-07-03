@@ -10,10 +10,8 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 
 ## Features
 
-- **Two Modes of Operation**:
-  - **Circuit Mode**: Build quantum circuits and execute them (traditional workflow)
-  - **Calculation Mode**: Apply gates in real-time and inspect states immediately (great for learning!)
 - **Simple API**: Easy-to-use functions for quantum circuit creation and simulation
+- **Step-Through Inspection**: Replay any circuit one operation at a time with `Qx.steps/2` and watch the state evolve (great for learning!)
 - **Up to 20 Qubits**: Supports quantum circuits with up to 20 qubits
 - **Statevector Simulation**: Uses statevector method for accurate quantum state representation
 - **Optional Acceleration**: Add EXLA or EMLX backends for speedup (CPU/GPU)
@@ -59,9 +57,9 @@ This installs Qx with the default `Nx.BinaryBackend`, which works on all platfor
 ## Quick Start
 
 ```elixir
-iex> # Create a qubit and put it in superposition
-iex> q = Qx.Qubit.new() |> Qx.Qubit.h()
-iex> Qx.Qubit.measure_probabilities(q)
+iex> # Put a qubit in superposition and check the probabilities
+iex> qc = Qx.create_circuit(1) |> Qx.h(0)
+iex> Qx.get_probabilities(qc)
 #Nx.Tensor<[0.5, 0.5]>
 
 iex> # Build and run a Bell state circuit
@@ -105,117 +103,44 @@ Qx.draw_counts(result)
 
 **Tips for LiveBook users:**
 - Start with the basic setup for learning and small circuits, add [acceleration](#livebook-acceleration-snippets) when needed
-- Use Calculation Mode (`Qx.Qubit` / `Qx.Register`) for interactive exploration
+- Use `Qx.steps/2` to walk a circuit one operation at a time; each step prints as a readable state line
 - `Qx.draw_counts/1` returns VegaLite specs that render beautifully in LiveBook
 - Use `tap_state/2` and `tap_probabilities/2` in pipelines for immediate feedback
 
 
-## Understanding the Two Modes
+## Inspecting States
 
-Qx offers two ways to work with quantum states:
-
-**Calculation Mode** (`Qx.Qubit` / `Qx.Register`): Gates apply immediately and you can inspect state at any step. Best for learning, debugging, and interactive exploration.
-
-**Circuit Mode** (`Qx.create_circuit`): Build a circuit description first, then execute it with `Qx.run/2`. Best for multi-shot simulations, measurements with classical feedback, OpenQASM 3.0 export and import, and running on real hardware.
-
-| | Calculation Mode | Circuit Mode |
-|---|---|---|
-| Gates apply | Immediately | On `Qx.run/2` |
-| State inspection | Anytime | Before measurements only |
-| Measurements | Probabilities only | Full measurement + classical bits |
-| Multi-shot | No | Yes |
-| Hardware export | No | Yes (OpenQASM) |
-
-## Calculation Mode
-
-### Single Qubits (Qx.Qubit)
-
-Create qubits and apply gates in real-time:
+Circuits are recipes. Gates are recorded as you build, then applied when
+you run. To watch the state change gate by gate, step through the
+circuit with `Qx.steps/2`:
 
 ```elixir
-# Create and manipulate qubits directly - gates apply immediately!
-q = Qx.Qubit.new()
-  |> Qx.Qubit.h()
-
-Qx.Qubit.show_state(q)
-# Output:
-# %{
-#   state: "0.707|0⟩ + 0.707|1⟩",
-#   amplitudes: [{"|0⟩", "0.707+0.000i"}, {"|1⟩", "0.707+0.000i"}],
-#   probabilities: [{"|0⟩", 0.5}, {"|1⟩", 0.5}]
-# }
-
-# Inspect state at any step
-q = Qx.Qubit.new()
-Qx.Qubit.measure_probabilities(q)  # [1.0, 0.0] - definitely |0⟩
-
-q = Qx.Qubit.x(q)
-Qx.Qubit.measure_probabilities(q)  # [0.0, 1.0] - definitely |1⟩
-
-q = Qx.Qubit.h(q)
-Qx.Qubit.measure_probabilities(q)  # [0.5, 0.5] - superposition!
+Qx.create_circuit(2)
+|> Qx.h(0)
+|> Qx.cx(0, 1)
+|> Qx.steps()
+|> Enum.each(&IO.inspect/1)
+# #Qx.Step<0: h(0)  0.707|00⟩ + 0.707|10⟩>
+# #Qx.Step<1: cx(0, 1)  0.707|00⟩ + 0.707|11⟩>
 ```
 
-Qubits can be created from various starting points: `Qx.Qubit.new()` for |0⟩, `Qx.Qubit.one()` for |1⟩, `Qx.Qubit.plus()` / `Qx.Qubit.minus()` for superposition states, or `Qx.Qubit.from_bloch(theta, phi)` for arbitrary Bloch sphere coordinates.
+See [Step Through a Circuit](#step-through-a-circuit) for measurements,
+trajectories, and seeding. `Qx.Step.show/1` gives the full display map
+of any step: Dirac string, amplitudes, probabilities.
 
-#### Pipeline Patterns & Debugging
+### Upgrading from calc mode
 
-**Transformation operations** return qubits and continue the pipeline:
-```elixir
-result = Qx.Qubit.new()
-  |> Qx.Qubit.h()
-  |> Qx.Qubit.x()
-  |> Qx.Qubit.ry(:math.pi() / 4)
-```
-
-**`tap_state/2`** inspects state without breaking the chain:
-```elixir
-result = Qx.Qubit.new()
-  |> Qx.Qubit.h()
-  |> Qx.Qubit.tap_state(label: "After Hadamard")  # Prints state, returns qubit
-  |> Qx.Qubit.x()
-  |> Qx.Qubit.tap_state(label: "After X gate")    # Prints state, returns qubit
-```
-
-**Terminal operations** return data and end the pipeline:
-```elixir
-state_info = Qx.Qubit.new()
-  |> Qx.Qubit.h()
-  |> Qx.Qubit.x()
-  |> Qx.Qubit.show_state()  # Returns map with state data
-
-IO.puts(state_info.state)  # "0.707|0⟩ - 0.707|1⟩"
-```
-
-### Multi-Qubit Registers (Qx.Register)
-
-Registers support multi-qubit gates and entanglement with the same immediate-apply behavior:
+Earlier releases documented a second, eager way to apply gates (calc
+mode: Qx.Qubit / Qx.Register). Those modules still work, so old
+notebooks keep running. But they're internal now: hidden from the docs,
+no stability guarantee. The stepper covers the same ground:
 
 ```elixir
-# Create a Bell state in real-time
-reg = Qx.Register.new(2)
-  |> Qx.Register.h(0)
-  |> Qx.Register.cx(0, 1)
+# before (calc mode)
+Qx.Qubit.new() |> Qx.Qubit.h() |> Qx.Qubit.show_state()
 
-Qx.Register.show_state(reg)
-# Output shows entangled state:
-# %{
-#   state: "0.707|00⟩ + 0.707|11⟩",
-#   amplitudes: [{"|00⟩", "0.707+0.000i"}, {"|01⟩", "0.000+0.000i"}, ...],
-#   probabilities: [{"|00⟩", 0.5}, {"|01⟩", 0.0}, {"|10⟩", 0.0}, {"|11⟩", 0.5}]
-# }
-
-# Create from basis states
-reg = Qx.Register.from_basis_states([0, 1, 0])  # |010⟩ state
-
-# Create in equal superposition
-reg = Qx.Register.from_superposition(3)  # All 8 states equally likely
-
-# Create register from existing qubits
-q1 = Qx.Qubit.new(0.6, 0.8)  # Custom state
-q2 = Qx.Qubit.plus()          # |+⟩ state
-reg = Qx.Register.new([q1, q2])
-  |> Qx.Register.h(0)
+# now (circuit mode + stepper)
+Qx.create_circuit(1) |> Qx.h(0) |> Qx.steps() |> Enum.at(-1) |> Qx.Step.show()
 ```
 
 ## Circuit Mode
@@ -406,28 +331,21 @@ probs = Qx.get_probabilities(ghz_circuit)
 Qx.draw_histogram(probs)
 ```
 
-**Calculation Mode:**
+**Step by step:**
 ```elixir
-# Create and inspect qubit states in real-time
-q = Qx.Qubit.new()
-  |> Qx.Qubit.h()
-  |> Qx.Qubit.z()
+# Watch the state change after each gate
+qc = Qx.create_circuit(1)
+     |> Qx.h(0)
+     |> Qx.z(0)
 
-state_info = Qx.Qubit.show_state(q)
+qc |> Qx.steps() |> Enum.each(&IO.inspect/1)
+# #Qx.Step<0: h(0)  0.707|0⟩ + 0.707|1⟩>
+# #Qx.Step<1: z(0)  0.707|0⟩ - 0.707|1⟩>
+
+# Full display map of the final state
+state_info = qc |> Qx.steps() |> Enum.at(-1) |> Qx.Step.show()
 IO.puts(state_info.state)  # "0.707|0⟩ - 0.707|1⟩"
 IO.inspect(state_info.probabilities)  # [{"|0⟩", 0.5}, {"|1⟩", 0.5}]
-
-# Create from Bloch sphere (theta=π/2, phi=0 gives |+⟩)
-q = Qx.Qubit.from_bloch(:math.pi() / 2, 0)
-Qx.Qubit.show_state(q)
-
-# Chain rotation gates
-q = Qx.Qubit.new()
-  |> Qx.Qubit.rx(:math.pi() / 4)
-  |> Qx.Qubit.ry(:math.pi() / 3)
-  |> Qx.Qubit.rz(:math.pi() / 6)
-
-Qx.Qubit.show_state(q)
 ```
 
 ## Visualization
@@ -459,10 +377,10 @@ File.write!("bell_state.svg", svg)
 
 Circuit diagrams support all quantum gates with proper IEEE notation, parametric gates with displayed angles, multi-qubit gates, barriers, and measurements with classical bit connections.
 
-**Bloch sphere (Calculation Mode):**
+**Bloch sphere (single qubit):**
 
 ```elixir
-Qx.Qubit.new() |> Qx.Qubit.h() |> Qx.Qubit.draw_bloch()
+Qx.create_circuit(1) |> Qx.h(0) |> Qx.get_state() |> Qx.draw_bloch()
 ```
 
 **Probability histograms:**

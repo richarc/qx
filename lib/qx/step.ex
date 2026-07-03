@@ -4,7 +4,7 @@ defmodule Qx.Step do
   circuit, and the state right after it.
 
   The struct is raw data. `inspect/1` gives you the readable one-liner,
-  and `show/1` the same display map `Qx.Register.show_state/1` returns,
+  and `show/1` a display map (Dirac string, amplitudes, probabilities),
   so printing each step of `Qx.steps(qc)` is already a usable circuit
   walkthrough.
 
@@ -21,9 +21,9 @@ defmodule Qx.Step do
   so what you see differs from the ensemble probabilities `Qx.run/2`
   reports. That's the point of stepping, but don't confuse the two.
 
-  Displaying a step reads all `2^n` amplitudes host-side, the same cost
-  as `Qx.Register.show_state/1`. Cheap at teaching scale; noticeable
-  when you print steps of a 20-qubit circuit in a tight loop.
+  Displaying a step reads all `2^n` amplitudes host-side. Cheap at
+  teaching scale; noticeable when you print steps of a 20-qubit circuit
+  in a tight loop.
 
   ## Fields
 
@@ -63,7 +63,7 @@ defmodule Qx.Step do
   Returns the display map for a step's state: a Dirac string plus
   per-basis amplitudes and probabilities.
 
-  Same shape `Qx.Register.show_state/1` returns:
+  The shape is
   `%{state: dirac, amplitudes: [{basis, "a+bi"}], probabilities: [{basis, p}]}`.
 
   For steps after a measurement the Dirac string shows the collapsed

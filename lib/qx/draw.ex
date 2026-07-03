@@ -157,11 +157,11 @@ defmodule Qx.Draw do
 
   ## Examples
 
-      q = Qx.Qubit.new() |> Qx.Qubit.h()
-      Qx.Draw.bloch_sphere(q)
+      state = Qx.create_circuit(1) |> Qx.h(0) |> Qx.get_state()
+      Qx.Draw.bloch_sphere(state)
 
       # SVG output
-      Qx.Draw.bloch_sphere(q, format: :svg)
+      Qx.Draw.bloch_sphere(state, format: :svg)
   """
   def bloch_sphere(qubit, options \\ []) do
     format = Keyword.get(options, :format, :vega_lite)
@@ -238,7 +238,8 @@ defmodule Qx.Draw do
   Shows basis states with their complex amplitudes and probabilities.
 
   ## Parameters
-    * `register_or_state` - Either a `Qx.Register` struct or an `Nx.Tensor` state vector
+    * `register_or_state` - An `Nx.Tensor` state vector (an internal
+      calc-engine register struct also works)
     * `options` - Optional formatting parameters (default: [])
 
   ## Options
@@ -248,11 +249,11 @@ defmodule Qx.Draw do
 
   ## Examples
 
-      register = Qx.Register.new(2)
-      Qx.Draw.state_table(register)
+      state = Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1) |> Qx.get_state()
+      Qx.Draw.state_table(state)
 
       # Custom format
-      Qx.Draw.state_table(register, format: :html, precision: 4)
+      Qx.Draw.state_table(state, format: :html, precision: 4)
   """
   def state_table(register_or_state, options \\ []) do
     Tables.render(register_or_state, options)

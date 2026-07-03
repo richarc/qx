@@ -81,11 +81,13 @@ defmodule Qx.MixProject do
         "README.md",
         "CHANGELOG.md"
       ],
+      # Old changelog entries name modules that were later hidden
+      # (e.g. the calc engine); history stays as written.
+      skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
       groups_for_modules: [
         "Core API": [Qx],
         "Circuit Building": [Qx.QuantumCircuit, Qx.Operations],
         "Composite Patterns": [Qx.Patterns],
-        "Calculation Mode": [Qx.Qubit, Qx.Register],
         "Simulation & Results": [
           Qx.Simulation,
           Qx.SimulationResult

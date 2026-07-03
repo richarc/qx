@@ -1,48 +1,10 @@
 defmodule Qx.Register do
-  @moduledoc """
-  Multi-qubit quantum register for calculation mode.
-
-  This module provides functionality for creating and manipulating quantum registers
-  containing multiple qubits. Gates are applied immediately in real-time, similar to
-  `Qx.Qubit` but for multi-qubit systems.
-
-  ## Calculation Mode - Multi-Qubit
-
-  Calculation mode with registers allows you to work with multiple qubits directly,
-  applying gates in real-time and seeing results immediately. This is perfect for:
-  - Creating entangled states (Bell states, GHZ states)
-  - Multi-qubit gate exploration
-  - Learning quantum algorithms
-  - Interactive debugging
-
-  ## Example Workflows
-
-      # Create a 2-qubit register and make a Bell state
-      reg = Qx.Register.new(2)
-        |> Qx.Register.h(0)
-        |> Qx.Register.cx(0, 1)
-        |> Qx.Register.show_state()
-
-      # Create register from existing qubits
-      q1 = Qx.Qubit.new(0.6, 0.8)
-      q2 = Qx.Qubit.new()
-      reg = Qx.Register.new([q1, q2])
-        |> Qx.Register.h(0)
-
-      # Inspect state at any point
-      reg = Qx.Register.new(3)
-        |> Qx.Register.h(0)
-        |> Qx.Register.h(1)
-        |> Qx.Register.h(2)
-
-      probs = Qx.Register.get_probabilities(reg)
-      # All 8 basis states have equal probability
-
-  ## See Also
-
-  - `Qx.Qubit` - Single qubit calculation mode
-  - `Qx.QuantumCircuit` - Circuit mode for building quantum circuits
-  """
+  # Internal calc engine (multi-qubit state, immediate gate application).
+  # Demoted from the public surface in v0.10 — see
+  # spec/unified-circuit-stepper-design.md §"Reposition calc mode".
+  # The documented path is circuit mode + Qx.steps/2 / Qx.Step.show/1.
+  # Still functional, no stability guarantee; removal deferred to v1.0.
+  @moduledoc false
 
   @behaviour Qx.Behaviours.QuantumState
 

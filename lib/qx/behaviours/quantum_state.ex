@@ -3,18 +3,17 @@ defmodule Qx.Behaviours.QuantumState do
   Behaviour for **multi-qubit** quantum state manipulation.
 
   Enforces a consistent gate-application API across modules whose state
-  is indexed by qubit number — currently `Qx.Register` (calc-mode
-  multi-qubit) and, by convention, `Qx.QuantumCircuit` via `Qx.Operations`.
-  Implementing modules must provide the standard gate set + state
-  inspection.
+  is indexed by qubit number: the internal calc-engine register
+  implements it directly, and `Qx.QuantumCircuit` follows the same shape
+  by convention via `Qx.Operations`. Implementing modules must provide
+  the standard gate set + state inspection.
 
   ## Single-qubit modules
 
-  `Qx.Qubit` is **intentionally not** an implementor — its gate functions
-  take a single-state argument (`Qx.Qubit.h(qubit)`) rather than the
-  `(state, qubit_index)` shape this behaviour requires. Unifying both
-  paradigms under one behaviour would force a structural redesign of
-  `Qx.Qubit` and is deferred to a future major version.
+  The internal single-qubit calc module is **intentionally not** an
+  implementor. Its gate functions take a single-state argument rather
+  than the `(state, qubit_index)` shape this behaviour requires, and
+  unifying the two paradigms is deferred to a future major version.
 
   ## Optional callbacks
 

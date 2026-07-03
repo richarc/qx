@@ -63,8 +63,8 @@ defmodule Qx.RegisterError do
     * `:empty` — the input list was empty.
     * `{:invalid_qubit, qubit}` — a list element was not a normalized
       2-element qubit tensor.
-    * `{:invalid_input, value}` — a renderer expected a `Qx.Register` or
-      `Nx.Tensor` and got something else.
+    * `{:invalid_input, value}` — a renderer expected a register struct
+      or `Nx.Tensor` and got something else.
   """
   defexception [:reason, :message]
 
