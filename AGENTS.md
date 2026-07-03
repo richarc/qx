@@ -403,6 +403,8 @@ mix compile --warnings-as-errors && mix format --check-formatted && mix credo --
 
 Offer `mix test` after meaningful changes. Offer `mix bench` (alias in `mix.exs`) after touching `lib/qx/calc*.ex`, `lib/qx/gates.ex`, or `lib/qx/simulation.ex`.
 
+Doc-surface demotions (`@moduledoc false` on a public module, or removing public docs) gate on the `mix docs` warning count: record the baseline before the flip, require ≤ baseline after, and treat the grouped warning sites as the worklist. A source grep of doc strings undercounts — it misses doctest bodies, `@spec` types, and README/CHANGELOG extras, which all autolink. See `.claude/solutions/architecture-issues/hidden-module-doc-refs-warning-sweep-qx-calc-mode-20260703.md`.
+
 Do NOT present code as complete until verification passes.
 
 ## POST-ACTION — Offer follow-ups
