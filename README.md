@@ -284,6 +284,36 @@ result = Qx.run(qc, 1000)
 # Qubit 2 now contains the teleported state!
 ```
 
+### Step Through a Circuit
+
+`Qx.steps/1` turns a circuit into a lazy stream of `Qx.Step` structs, one per
+executed operation: the operation, the statevector right after it, and the
+classical bits so far. Printing the steps of the teleportation circuit above
+shows the whole story, collapse and corrections included:
+
+```elixir
+qc |> Qx.steps(seed: 42) |> Enum.each(fn step -> IO.puts(inspect(step)) end)
+# #Qx.Step<0: x(0)  1.000|100⟩  cbits: [0, 0, 0]>
+# #Qx.Step<1: h(1)  0.707|100⟩ + 0.707|110⟩  cbits: [0, 0, 0]>
+# #Qx.Step<2: cx(1, 2)  0.707|100⟩ + 0.707|111⟩  cbits: [0, 0, 0]>
+# #Qx.Step<3: cx(0, 1)  0.707|101⟩ + 0.707|110⟩  cbits: [0, 0, 0]>
+# #Qx.Step<4: h(0)  0.500|001⟩ + 0.500|010⟩ - 0.500|101⟩ - 0.500|110⟩  cbits: [0, 0, 0]>
+# #Qx.Step<5: measure q0 → c0 ⇒ 0.707|001⟩ + 0.707|010⟩  cbits: [0, 0, 0]>
+# #Qx.Step<6: measure q1 → c1 ⇒ 1.000|010⟩  cbits: [0, 1, 0]>
+# #Qx.Step<7: c_if(c1==1) x(2) taken  1.000|011⟩  cbits: [0, 1, 0]>
+# #Qx.Step<8: c_if(c0==1) not_taken  1.000|011⟩  cbits: [0, 1, 0]>
+# #Qx.Step<9: measure q2 → c2 ⇒ 1.000|011⟩  cbits: [0, 1, 1]>
+```
+
+Measurement makes a circuit stochastic, so each pass through the stream
+samples one fresh trajectory. The `seed:` option pins the trajectory down
+for slides, tests, and teaching material; it never touches your process's
+random state.
+
+For the full display map of any step (Dirac string, amplitudes,
+probabilities), use `Qx.Step.show/1`. See `Qx.steps/2` for the trajectory
+semantics and options.
+
 ## Examples
 
 ### Bell State

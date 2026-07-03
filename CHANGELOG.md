@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Qx.steps/1,2` and `%Qx.Step{}`: a lazy stream of per-operation steps for
+  walking through a circuit's execution. Works on circuits with mid-circuit
+  measurement and `c_if` (one stochastic trajectory per materialisation;
+  `seed:` reproduces a trajectory without touching the caller's process
+  `:rand` state). Each step carries the operation, the statevector after it,
+  its probabilities, the classical bits so far, and a taken/not-taken flag on
+  conditional steps.
+- `Qx.Step.show/1`: the `Qx.Register.show_state/1` display map (Dirac string,
+  amplitudes, probabilities) for any step, plus a readable single-line
+  `Inspect` rendering.
+- `Qx.tap_state/2` and `Qx.tap_probabilities/2` now share the stepper's
+  execution path internally. No behaviour change: same values, same
+  `Qx.MeasurementError` contract on measured/conditional prefixes.
+
 ### Fixed
 
 - `Qx.tap_state/2` and `Qx.tap_probabilities/2` (and their `Qx.Operations`

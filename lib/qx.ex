@@ -59,6 +59,8 @@ defmodule Qx do
     indices (sub-register) — e.g. `Qx.h_all(qc, 0..2)`.
   - `Qx.Simulation` - Circuit execution and simulation
   - `Qx.SimulationResult` - Struct returned by `Qx.run/2` (statevector + counts)
+  - `Qx.Step` - One executed operation from `Qx.steps/2` (step-through
+    inspection of a running circuit, mid-circuit measurement included)
   - `Qx.Draw` - Visualization of results
   - `Qx.Math` - Core mathematical functions for quantum mechanics
   - `Qx.StateInit` - State-vector constructors (basis, Bell, GHZ, W states)
@@ -1004,6 +1006,72 @@ defmodule Qx do
   def get_probabilities(circuit, options \\ []) do
     Simulation.get_probabilities(circuit, options)
   end
+
+  @doc """
+  Steps through a circuit: a lazy stream of `Qx.Step` structs, one per
+  executed operation.
+
+  Each step carries the operation just applied, the statevector right
+  after it, its probabilities, and the classical bits so far. Print a
+  step to get a readable one-liner; call `Qx.Step.show/1` for the full
+  display map.
+
+  Unlike `get_state/2`, stepping works on circuits with mid-circuit
+  measurement and `c_if`, so you can walk through teleportation:
+
+      Qx.create_circuit(3, 3)
+      |> Qx.x(0)                                # the state to teleport
+      |> Qx.h(1)
+      |> Qx.cx(1, 2)                            # Bell pair
+      |> Qx.cx(0, 1)
+      |> Qx.h(0)                                # Bell measurement basis
+      |> Qx.measure(0, 0)
+      |> Qx.measure(1, 1)
+      |> Qx.c_if(1, 1, fn c -> Qx.x(c, 2) end)  # corrections
+      |> Qx.c_if(0, 1, fn c -> Qx.z(c, 2) end)
+      |> Qx.measure(2, 2)
+      |> Qx.steps()
+      |> Enum.to_list()
+      # one readable line per step, e.g.
+      # #Qx.Step<5: measure q0 → c0 ⇒ 0.707|010⟩ + 0.707|011⟩  cbits: [0, 0, 0]>
+
+  Measurement steps show the collapsed state and record the outcome in
+  `classical_bits`; each gate inside a taken `c_if` block yields its own
+  step, and a block that doesn't run yields one step flagged
+  `:not_taken`.
+
+  ## One trajectory at a time
+
+  A circuit with measurements is stochastic. Each materialisation of the
+  stream samples one fresh trajectory, so two `Enum.to_list/1` calls can
+  collapse differently, and a single trajectory is a different thing
+  from the 1024-shot ensemble `run/2` reports. Pass `seed:` when you
+  need the same trajectory every time (slides, doctests, regression
+  tests). Seeding never touches your process's `:rand` state.
+
+  One caveat for `measure_x/3` and `measure_y/3`: they lower to
+  basis-change gates plus a Z-measurement, and the post-measurement
+  state deliberately stays Z-aligned. Mid-circuit that means a step
+  shows `|1⟩` where the math says `|−⟩`. See `Qx.Operations.measure_x/3`.
+
+  ## Options
+
+    * `:seed` - integer; reproduces the trajectory (default: fresh
+      entropy per materialisation)
+    * `:backend` - Nx backend, same pass-through as `run/2`
+    * `:renormalize` - same contract as `run/2` (default: `false`)
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1)
+      iex> steps = qc |> Qx.steps() |> Enum.to_list()
+      iex> Enum.map(steps, & &1.operation)
+      [{:h, [0], []}, {:cx, [0, 1], []}]
+      iex> steps |> List.last() |> Qx.Step.show() |> Map.get(:state)
+      "0.707|00⟩ + 0.707|11⟩"
+  """
+  @spec steps(circuit(), keyword()) :: Enumerable.t()
+  defdelegate steps(circuit, opts \\ []), to: Simulation
 
   @doc """
   Visualizes probability distribution from simulation results.

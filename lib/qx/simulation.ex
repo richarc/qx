@@ -7,7 +7,7 @@ defmodule Qx.Simulation do
   All quantum states and operations properly support complex number arithmetic.
   """
 
-  alias Qx.{Calc, Gates, Math, QuantumCircuit, SimulationResult, Validation}
+  alias Qx.{Calc, Gates, Math, QuantumCircuit, SimulationResult, Step, Validation}
 
   @type simulation_result :: SimulationResult.t()
 
@@ -26,6 +26,11 @@ defmodule Qx.Simulation do
            | {:measurement, measurement()}
            # conditional payload: {classical-bit index, expected bit value, body}
            | {:conditional, {non_neg_integer(), bit(), [instruction()]}}
+  @typep rand_state :: :rand.state()
+  # One step to be emitted by steps/2: {kind, operation, condition,
+  # state-after, cbits-after}. The per-shot run path ignores these.
+  @typep emission ::
+           {Step.kind(), Step.operation() | nil, Step.condition() | nil, state(), cbits()}
 
   # Dev/test-only norm-drift guard, compile-time gated. In :prod
   # `@assert_norm` is false (config/config.exs) so `assert_norm/1`'s
@@ -285,7 +290,103 @@ defmodule Qx.Simulation do
     end
   end
 
+  @doc """
+  Returns a lazy stream of `%Qx.Step{}` structs, one per executed
+  operation.
+
+  Unlike `get_state/2`, this works on circuits with mid-circuit
+  measurement and `c_if`: measurements collapse the state and record
+  their outcome in `classical_bits`, and each gate inside a taken
+  `c_if` block yields its own step. A block that doesn't run yields a
+  single step flagged `:not_taken`.
+
+  A circuit with measurements is stochastic, so each materialisation of
+  the stream samples one fresh trajectory. Pass `seed:` to reproduce a
+  trajectory. Seeding never touches the caller's process `:rand` state.
+
+  ## Options
+
+    * `:seed` - integer seed for the trajectory's random measurement
+      outcomes (default: fresh entropy per materialisation)
+    * `:backend` - Nx backend to use for computation, same pass-through
+      as `run/2` (default: current Nx default)
+    * `:renormalize` - same contract as `run/2`; the every-`n` cadence
+      counts gates inside `c_if` blocks exactly like `run/2` does
+      (default: `false`)
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1)
+      iex> steps = Qx.Simulation.steps(qc) |> Enum.to_list()
+      iex> length(steps)
+      2
+      iex> Enum.map(steps, & &1.operation)
+      [{:h, [0], []}, {:cx, [0, 1], []}]
+
+  ## Raises
+
+  Materialising the stream raises the same typed errors `run/2` raises:
+  `Qx.GateError` on an unsupported instruction, `Qx.OptionError` on a
+  bad `:renormalize` value.
+  """
+  @spec steps(QuantumCircuit.t(), keyword()) :: Enumerable.t()
+  def steps(%QuantumCircuit{} = circuit, options \\ []) do
+    backend = Keyword.get(options, :backend)
+    renorm = resolve_renormalize(options)
+    seed = Keyword.get(options, :seed)
+    num_qubits = circuit.num_qubits
+    initial_cbits = List.duplicate(0, circuit.num_classical_bits)
+    timeline = create_instruction_timeline(circuit)
+
+    Stream.transform(
+      timeline,
+      fn ->
+        state = with_backend(backend, fn -> real_state_to_complex(circuit.state) end)
+        {state, initial_cbits, 0, 0, seed_rand(seed)}
+      end,
+      fn item, {state, cbits, count, step_index, rand} ->
+        {emissions, new_state, new_cbits, new_count, new_rand} =
+          with_backend(backend, fn ->
+            step_timeline_item(item, state, cbits, count, rand, num_qubits, renorm)
+          end)
+
+        steps =
+          emissions
+          |> Enum.with_index(step_index)
+          |> Enum.map(&to_step(&1, backend))
+
+        {steps, {new_state, new_cbits, new_count, step_index + length(emissions), new_rand}}
+      end,
+      fn _acc -> :ok end
+    )
+  end
+
   # Private functions
+
+  @spec with_backend(module() | nil, (-> result)) :: result when result: var
+  defp with_backend(nil, fun), do: fun.()
+  defp with_backend(backend, fun), do: Nx.with_default_backend(backend, fun)
+
+  # Explicit :rand state for measurement sampling; never the process
+  # dict, so seeding a stream can't clobber the caller's RNG.
+  @spec seed_rand(integer() | nil) :: rand_state()
+  defp seed_rand(nil), do: :rand.seed_s(:exsss)
+  defp seed_rand(seed), do: :rand.seed_s(:exsss, seed)
+
+  @spec to_step({emission(), non_neg_integer()}, module() | nil) :: Step.t()
+  defp to_step({{kind, operation, condition, state, cbits}, index}, backend) do
+    probabilities = with_backend(backend, fn -> Math.probabilities(state) end)
+
+    %Step{
+      kind: kind,
+      operation: operation,
+      index: index,
+      state: state,
+      probabilities: probabilities,
+      classical_bits: cbits,
+      condition: condition
+    }
+  end
 
   @spec execute_circuit(QuantumCircuit.t(), renorm()) :: state()
   defp execute_circuit(%QuantumCircuit{} = circuit, renorm) do
@@ -568,10 +669,19 @@ defmodule Qx.Simulation do
     # gate applications — including gates *inside* a c_if block
     # (W1 fix). Measurements do not advance the counter (a measurement
     # is not a unitary gate; collapse already renormalizes).
-    {final_state, final_classical_bits, _count} =
-      Enum.reduce(timeline, {initial_state, classical_bits, 0}, fn item, {state, cbits, count} ->
-        process_timeline_item(item, state, cbits, count, circuit.num_qubits, renorm)
-      end)
+    # RNG state is threaded explicitly (fresh entropy per shot) and the
+    # per-item emissions are discarded — steps/2 is the consumer.
+    {final_state, final_classical_bits, _count, _rand} =
+      Enum.reduce(
+        timeline,
+        {initial_state, classical_bits, 0, seed_rand(nil)},
+        fn item, {state, cbits, count, rand} ->
+          {_emissions, new_state, new_cbits, new_count, new_rand} =
+            step_timeline_item(item, state, cbits, count, rand, circuit.num_qubits, renorm)
+
+          {new_state, new_cbits, new_count, new_rand}
+        end
+      )
 
     {final_state, final_classical_bits}
   end
@@ -597,19 +707,23 @@ defmodule Qx.Simulation do
     end)
   end
 
-  # Perform a single measurement and collapse the state
-  @spec perform_single_measurement(state(), qubit(), non_neg_integer()) :: {state(), bit()}
-  defp perform_single_measurement(state, qubit, num_qubits) do
+  # Perform a single measurement and collapse the state. Takes and
+  # returns explicit :rand state (:rand.uniform_s/1) so measurement
+  # sampling never reads or writes the process dict.
+  @spec perform_single_measurement(state(), qubit(), non_neg_integer(), rand_state()) ::
+          {state(), bit(), rand_state()}
+  defp perform_single_measurement(state, qubit, num_qubits, rand) do
     # Calculate probability of measuring |0⟩
     prob_0 = calculate_measurement_probability(state, qubit, 0, num_qubits)
 
     # Random measurement outcome
-    measured_value = if :rand.uniform() < prob_0, do: 0, else: 1
+    {uniform, new_rand} = :rand.uniform_s(rand)
+    measured_value = if uniform < prob_0, do: 0, else: 1
 
     # Collapse state to measured outcome
     collapsed_state = collapse_to_measurement(state, qubit, measured_value, num_qubits)
 
-    {collapsed_state, measured_value}
+    {collapsed_state, measured_value, new_rand}
   end
 
   # Calculate probability of measuring a specific value for a qubit
@@ -664,53 +778,72 @@ defmodule Qx.Simulation do
     Nx.tensor(collapsed_data, type: :c64)
   end
 
-  @spec process_timeline_item(
+  # Process one timeline item and return the steps it emits alongside
+  # the threaded accumulator. Single execution path shared by run/2's
+  # per-shot reduce (emissions discarded) and steps/2 (emissions become
+  # %Qx.Step{} structs).
+  @spec step_timeline_item(
           timeline_item(),
           state(),
           cbits(),
           non_neg_integer(),
+          rand_state(),
           non_neg_integer(),
           renorm()
-        ) :: {state(), cbits(), non_neg_integer()}
-  defp process_timeline_item(item, state, cbits, count, num_qubits, renorm) do
+        ) :: {[emission()], state(), cbits(), non_neg_integer(), rand_state()}
+  defp step_timeline_item(item, state, cbits, count, rand, num_qubits, renorm) do
     case item do
       {:instruction, instruction} ->
         {new_state, next} = apply_gate_step(state, instruction, count, num_qubits, renorm)
-        {new_state, cbits, next}
+        {[{:gate, instruction, nil, new_state, cbits}], new_state, cbits, next, rand}
 
       {:measurement, {qubit, cbit}} ->
-        {new_state, measured_value} =
-          perform_single_measurement(state, qubit, num_qubits)
+        {new_state, measured_value, new_rand} =
+          perform_single_measurement(state, qubit, num_qubits, rand)
 
-        {new_state, List.replace_at(cbits, cbit, measured_value), count}
+        new_cbits = List.replace_at(cbits, cbit, measured_value)
+        emission = {:measurement, {:measure, [qubit, cbit], []}, nil, new_state, new_cbits}
+        {[emission], new_state, new_cbits, count, new_rand}
 
-      {:conditional, {cbit, value, instructions}} ->
-        process_conditional(cbits, cbit, value, instructions, state, count, num_qubits, renorm)
+      {:conditional, condition} ->
+        step_conditional(condition, state, cbits, count, rand, num_qubits, renorm)
     end
   end
 
-  @spec process_conditional(
+  @spec step_conditional(
+          {non_neg_integer(), bit(), [instruction()]},
+          state(),
           cbits(),
           non_neg_integer(),
-          bit(),
-          [instruction()],
-          state(),
-          non_neg_integer(),
+          rand_state(),
           non_neg_integer(),
           renorm()
-        ) :: {state(), cbits(), non_neg_integer()}
-  defp process_conditional(cbits, cbit, value, instructions, state, count, num_qubits, renorm) do
+        ) :: {[emission()], state(), cbits(), non_neg_integer(), rand_state()}
+  defp step_conditional(
+         {cbit, value, instructions},
+         state,
+         cbits,
+         count,
+         rand,
+         num_qubits,
+         renorm
+       ) do
     if Enum.at(cbits, cbit) == value do
       # c_if sub-gates advance the SAME gate counter, so renormalize: N
-      # spans the conditional block consistently (W1 fix).
-      {new_state, new_count} =
-        Enum.reduce(instructions, {state, count}, fn instr, {s, c} ->
-          apply_gate_step(s, instr, c, num_qubits, renorm)
+      # spans the conditional block consistently (W1 fix). One emission
+      # per inner gate, each flagged :taken.
+      {emissions, new_state, new_count} =
+        Enum.reduce(instructions, {[], state, count}, fn instr, {acc, s, c} ->
+          {stepped, next} = apply_gate_step(s, instr, c, num_qubits, renorm)
+          {[{:conditional, instr, {cbit, value, :taken}, stepped, cbits} | acc], stepped, next}
         end)
 
-      {new_state, cbits, new_count}
+      {Enum.reverse(emissions), new_state, cbits, new_count, rand}
     else
-      {state, cbits, count}
+      # A block that doesn't run still emits one flagged step, so the
+      # step count matches what a reader sees in the drawing.
+      emission = {:conditional, nil, {cbit, value, :not_taken}, state, cbits}
+      {[emission], state, cbits, count, rand}
     end
   end
 end

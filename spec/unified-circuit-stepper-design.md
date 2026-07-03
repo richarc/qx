@@ -1,6 +1,8 @@
 # Design note: unify circuit/calc modes with a step-through stepper
 
-**Status:** Research / proposal (not yet committed to an implementation plan).
+**Status:** Implemented (2026-07-03) — `Qx.steps/1,2` + `%Qx.Step{}`, plan
+`.claude/plans/circuit-stepper/plan.md`. Calc-mode demotion (the "still
+open" question below) stays open; it's a separate v0.10 item.
 **Date:** 2026-06-29. Amended 2026-07-03 after review: corrected the
 `tap_state` premise (it is broken, worse than inefficient) and added the
 mid-circuit measurement section, which retargets the stepper at the timeline

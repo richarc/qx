@@ -869,8 +869,14 @@ defmodule Qx.Operations do
   """
   @spec tap_state(QuantumCircuit.t(), (Nx.Tensor.t() -> any())) :: QuantumCircuit.t()
   def tap_state(%QuantumCircuit{} = circuit, fun) when is_function(fun, 1) do
-    state = Simulation.get_state(circuit)
-    fun.(state)
+    case final_step(
+           circuit,
+           "Cannot get pure state from circuit with measurements or conditionals. Use run/2 instead."
+         ) do
+      %Qx.Step{state: state} -> fun.(state)
+      nil -> fun.(Simulation.get_state(circuit))
+    end
+
     circuit
   end
 
@@ -924,8 +930,32 @@ defmodule Qx.Operations do
   """
   @spec tap_probabilities(QuantumCircuit.t(), (Nx.Tensor.t() -> any())) :: QuantumCircuit.t()
   def tap_probabilities(%QuantumCircuit{} = circuit, fun) when is_function(fun, 1) do
-    probs = Simulation.get_probabilities(circuit)
-    fun.(probs)
+    case final_step(
+           circuit,
+           "Cannot get probabilities from circuit with measurements or conditionals. Use run/2 instead."
+         ) do
+      %Qx.Step{probabilities: probs} -> fun.(probs)
+      nil -> fun.(Simulation.get_probabilities(circuit))
+    end
+
     circuit
+  end
+
+  # Taps observe the circuit-so-far through the stepper, the single
+  # execution path for step-wise inspection. The raise contract on
+  # measured/conditional prefixes is frozen (shipped in 24cd1cf): a tap
+  # is a pure-state probe; Qx.steps/2 is how you observe a measured
+  # circuit. Returns nil for a circuit with no instructions (the tap
+  # then falls back to the initial state).
+  @spec final_step(QuantumCircuit.t(), String.t()) :: Qx.Step.t() | nil
+  defp final_step(%QuantumCircuit{} = circuit, error_message) do
+    measured? = circuit.measurements != []
+    conditional? = Enum.any?(circuit.instructions, &match?({:c_if, _, _}, &1))
+
+    if measured? or conditional? do
+      raise Qx.MeasurementError, error_message
+    end
+
+    circuit |> Simulation.steps() |> Enum.at(-1)
   end
 end
