@@ -1144,15 +1144,6 @@ defmodule Qx do
   @spec draw_histogram(Nx.Tensor.t(), keyword()) :: VegaLite.t() | String.t()
   defdelegate draw_histogram(probabilities, options \\ []), to: Draw, as: :histogram
 
-  # Deprecated: use `Qx.draw_histogram/2` for naming consistency
-  # with the rest of the `Qx.draw*` family (draw, draw_counts,
-  # draw_bloch, draw_state). This alias is kept callable for the
-  # 0.8.x deprecation window only and will be removed in v1.0.
-  @deprecated "Use Qx.draw_histogram/2"
-  @doc false
-  @spec histogram(Nx.Tensor.t(), keyword()) :: VegaLite.t() | String.t()
-  defdelegate histogram(probabilities, options \\ []), to: Draw
-
   @doc """
   Visualizes a single qubit state on the Bloch sphere.
 

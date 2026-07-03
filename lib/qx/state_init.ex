@@ -309,15 +309,6 @@ defmodule Qx.StateInit do
     )
   end
 
-  # Deprecated: use `Qx.StateInit.bell_state_vector/2` — the `_vector` suffix
-  # signals the state-vector return type, disambiguating from the
-  # circuit-returning `Qx.bell_state/1`. Kept callable for the 0.8.x window.
-  @deprecated "Use Qx.StateInit.bell_state_vector/2"
-  @doc false
-  def bell_state(which \\ :phi_plus, type \\ :c64) do
-    bell_state_vector(which, type)
-  end
-
   @doc """
   Creates a GHZ state for n qubits: (|00...0⟩ + |11...1⟩)/√2
 
@@ -371,15 +362,6 @@ defmodule Qx.StateInit do
       end
 
     Nx.tensor(state_data, type: type)
-  end
-
-  # Deprecated: use `Qx.StateInit.ghz_state_vector/2` — the `_vector` suffix
-  # signals the state-vector return type, disambiguating from the
-  # circuit-returning `Qx.ghz_state/0`. Kept callable for the 0.8.x window.
-  @deprecated "Use Qx.StateInit.ghz_state_vector/2"
-  @doc false
-  def ghz_state(num_qubits, type \\ :c64) do
-    ghz_state_vector(num_qubits, type)
   end
 
   @doc """

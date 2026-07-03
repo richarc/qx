@@ -163,7 +163,7 @@ Qx.create_circuit(2)
 |> Qx.x(0)
 |> Qx.cx(0, 1)
 |> Qx.get_probabilities()
-|> Qx.histogram(title: "CX: |10⟩ → |11⟩")
+|> Qx.draw_histogram(title: "CX: |10⟩ → |11⟩")
 ```
 
 #### Bell state: H⊗I → CX → (|00⟩ + |11⟩)/√2
@@ -174,7 +174,7 @@ Qx.create_circuit(2)
 |> Qx.h(0)
 |> Qx.cx(0, 1)
 |> Qx.get_probabilities()
-|> Qx.histogram(title: "CX: Bell state Φ⁺ = (|00⟩ + |11⟩)/√2")
+|> Qx.draw_histogram(title: "CX: Bell state Φ⁺ = (|00⟩ + |11⟩)/√2")
 ```
 
 ### CZ — Controlled-Z (controlled phase flip)
@@ -191,7 +191,7 @@ Qx.create_circuit(2)
 |> Qx.cz(0, 1)
 |> Qx.h(0)
 |> Qx.get_probabilities()
-|> Qx.histogram(title: "CZ (H-sandwich): phase flip revealed as |11⟩")
+|> Qx.draw_histogram(title: "CZ (H-sandwich): phase flip revealed as |11⟩")
 ```
 
 ### SWAP
@@ -204,7 +204,7 @@ Qx.create_circuit(2)
 |> Qx.x(0)
 |> Qx.swap(0, 1)
 |> Qx.get_probabilities()
-|> Qx.histogram(title: "SWAP: |10⟩ → |01⟩")
+|> Qx.draw_histogram(title: "SWAP: |10⟩ → |01⟩")
 ```
 
 ### iSWAP
@@ -217,7 +217,7 @@ Qx.create_circuit(2)
 |> Qx.x(0)
 |> Qx.iswap(0, 1)
 |> Qx.get_probabilities()
-|> Qx.histogram(title: "iSWAP: |10⟩ → i|01⟩ (i phase invisible)")
+|> Qx.draw_histogram(title: "iSWAP: |10⟩ → i|01⟩ (i phase invisible)")
 ```
 
 ### CP(π/2) — Controlled phase
@@ -236,7 +236,7 @@ Qx.create_circuit(2)
 |> Qx.h(0)
 |> Qx.h(1)
 |> Qx.get_probabilities()
-|> Qx.histogram(title: "CP(π/2): interference pattern")
+|> Qx.draw_histogram(title: "CP(π/2): interference pattern")
 ```
 
 ---
@@ -261,7 +261,7 @@ qc =
   |> Qx.x(1)
   |> Qx.ccx(0, 1, 2)
 
-Qx.get_probabilities(qc) |> Qx.histogram(title: "CCX: |110⟩ → |111⟩ (both controls active)")
+Qx.get_probabilities(qc) |> Qx.draw_histogram(title: "CCX: |110⟩ → |111⟩ (both controls active)")
 ```
 
 #### One control inactive: |100⟩ → unchanged
@@ -273,7 +273,7 @@ qc =
   |> Qx.x(0)
   |> Qx.ccx(0, 1, 2)
 
-Qx.get_probabilities(qc) |> Qx.histogram(title: "CCX: |100⟩ unchanged (control 1 inactive)")
+Qx.get_probabilities(qc) |> Qx.draw_histogram(title: "CCX: |100⟩ unchanged (control 1 inactive)")
 ```
 
 ### CSWAP — Fredkin (controlled-SWAP)
@@ -292,7 +292,7 @@ qc =
   |> Qx.x(2)
   |> Qx.cswap(0, 1, 2)
 
-Qx.get_probabilities(qc) |> Qx.histogram(title: "CSWAP: |101⟩ → |110⟩ (control active, targets swapped)")
+Qx.get_probabilities(qc) |> Qx.draw_histogram(title: "CSWAP: |101⟩ → |110⟩ (control active, targets swapped)")
 ```
 
 #### Control inactive: |001⟩ → unchanged
@@ -304,7 +304,7 @@ qc =
   |> Qx.x(2)
   |> Qx.cswap(0, 1, 2)
 
-Qx.get_probabilities(qc) |> Qx.histogram(title: "CSWAP: |001⟩ unchanged (control inactive)")
+Qx.get_probabilities(qc) |> Qx.draw_histogram(title: "CSWAP: |001⟩ unchanged (control inactive)")
 ```
 
 ---
@@ -333,7 +333,7 @@ Qx.create_circuit(2)
 |> Qx.h(0)
 |> Qx.cx(0, 1)
 |> Qx.get_probabilities()
-|> Qx.histogram(title: "Bell Φ⁺: (|00⟩ + |11⟩)/√2")
+|> Qx.draw_histogram(title: "Bell Φ⁺: (|00⟩ + |11⟩)/√2")
 ```
 
 #### Φ− (phi_minus): (|00⟩ − |11⟩)/√2
@@ -346,7 +346,7 @@ Qx.create_circuit(2)
 |> Qx.h(0)
 |> Qx.cx(0, 1)
 |> Qx.get_probabilities()
-|> Qx.histogram(title: "Bell Φ⁻: (|00⟩ − |11⟩)/√2")
+|> Qx.draw_histogram(title: "Bell Φ⁻: (|00⟩ − |11⟩)/√2")
 ```
 
 #### Ψ+ (psi_plus): (|01⟩ + |10⟩)/√2
@@ -358,7 +358,7 @@ Qx.create_circuit(2)
 |> Qx.h(0)
 |> Qx.cx(0, 1)
 |> Qx.get_probabilities()
-|> Qx.histogram(title: "Bell Ψ⁺: (|01⟩ + |10⟩)/√2")
+|> Qx.draw_histogram(title: "Bell Ψ⁺: (|01⟩ + |10⟩)/√2")
 ```
 
 #### Ψ− (psi_minus): (|01⟩ − |10⟩)/√2
@@ -372,7 +372,7 @@ Qx.create_circuit(2)
 |> Qx.h(0)
 |> Qx.cx(0, 1)
 |> Qx.get_probabilities()
-|> Qx.histogram(title: "Bell Ψ⁻: (|01⟩ − |10⟩)/√2")
+|> Qx.draw_histogram(title: "Bell Ψ⁻: (|01⟩ − |10⟩)/√2")
 ```
 
 ### GHZ State
@@ -386,7 +386,7 @@ Qx.create_circuit(3)
 |> Qx.cx(0, 1)
 |> Qx.cx(1, 2)
 |> Qx.get_probabilities()
-|> Qx.histogram(title: "GHZ: (|000⟩ + |111⟩)/√2")
+|> Qx.draw_histogram(title: "GHZ: (|000⟩ + |111⟩)/√2")
 ```
 
 ### Preset State Helpers

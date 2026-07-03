@@ -207,125 +207,6 @@ defmodule Qx.StateInitTest do
     end
   end
 
-  describe "bell_state/2" do
-    test "defaults to |Φ+⟩" do
-      state = StateInit.bell_state()
-      probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
-
-      # |Φ+⟩ = (|00⟩ + |11⟩)/√2
-      assert approx_equal?(Enum.at(probs, 0), 0.5)
-      assert approx_equal?(Enum.at(probs, 1), 0.0)
-      assert approx_equal?(Enum.at(probs, 2), 0.0)
-      assert approx_equal?(Enum.at(probs, 3), 0.5)
-    end
-
-    test ":phi_plus has amplitude in |00⟩ and |11⟩" do
-      probs = StateInit.bell_state(:phi_plus) |> Qx.Math.probabilities() |> Nx.to_flat_list()
-      assert approx_equal?(Enum.at(probs, 0), 0.5)
-      assert approx_equal?(Enum.at(probs, 1), 0.0)
-      assert approx_equal?(Enum.at(probs, 2), 0.0)
-      assert approx_equal?(Enum.at(probs, 3), 0.5)
-    end
-
-    test ":phi_minus has amplitude in |00⟩ and |11⟩" do
-      probs = StateInit.bell_state(:phi_minus) |> Qx.Math.probabilities() |> Nx.to_flat_list()
-      assert approx_equal?(Enum.at(probs, 0), 0.5)
-      assert approx_equal?(Enum.at(probs, 1), 0.0)
-      assert approx_equal?(Enum.at(probs, 2), 0.0)
-      assert approx_equal?(Enum.at(probs, 3), 0.5)
-    end
-
-    test ":psi_plus has amplitude in |01⟩ and |10⟩" do
-      probs = StateInit.bell_state(:psi_plus) |> Qx.Math.probabilities() |> Nx.to_flat_list()
-      assert approx_equal?(Enum.at(probs, 0), 0.0)
-      assert approx_equal?(Enum.at(probs, 1), 0.5)
-      assert approx_equal?(Enum.at(probs, 2), 0.5)
-      assert approx_equal?(Enum.at(probs, 3), 0.0)
-    end
-
-    test ":psi_minus has amplitude in |01⟩ and |10⟩" do
-      probs = StateInit.bell_state(:psi_minus) |> Qx.Math.probabilities() |> Nx.to_flat_list()
-      assert approx_equal?(Enum.at(probs, 0), 0.0)
-      assert approx_equal?(Enum.at(probs, 1), 0.5)
-      assert approx_equal?(Enum.at(probs, 2), 0.5)
-      assert approx_equal?(Enum.at(probs, 3), 0.0)
-    end
-
-    test "all variants are normalized" do
-      for which <- [:phi_plus, :phi_minus, :psi_plus, :psi_minus] do
-        total =
-          StateInit.bell_state(which) |> Qx.Math.probabilities() |> Nx.sum() |> Nx.to_number()
-
-        assert approx_equal?(total, 1.0, 1.0e-6), "#{which} is not normalized"
-      end
-    end
-
-    test "phi_plus and phi_minus differ in sign on |11⟩ amplitude" do
-      # |11⟩ is index 3; real parts should be +1/√2 and -1/√2 respectively
-      r3_plus = StateInit.bell_state(:phi_plus) |> Nx.real() |> Nx.to_flat_list() |> Enum.at(3)
-      r3_minus = StateInit.bell_state(:phi_minus) |> Nx.real() |> Nx.to_flat_list() |> Enum.at(3)
-
-      assert r3_plus > 0
-      assert r3_minus < 0
-    end
-
-    test "psi_plus and psi_minus differ in sign on |10⟩ amplitude" do
-      # |10⟩ is index 2; real parts should be +1/√2 and -1/√2 respectively
-      r2_plus = StateInit.bell_state(:psi_plus) |> Nx.real() |> Nx.to_flat_list() |> Enum.at(2)
-      r2_minus = StateInit.bell_state(:psi_minus) |> Nx.real() |> Nx.to_flat_list() |> Enum.at(2)
-
-      assert r2_plus > 0
-      assert r2_minus < 0
-    end
-  end
-
-  describe "ghz_state/2" do
-    test "creates GHZ state for 2 qubits (same as Bell)" do
-      state = StateInit.ghz_state(2)
-      probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
-
-      assert approx_equal?(Enum.at(probs, 0), 0.5)
-      assert approx_equal?(Enum.at(probs, 3), 0.5)
-      assert Enum.at(probs, 1) + Enum.at(probs, 2) == 0.0
-    end
-
-    test "creates GHZ state for 3 qubits" do
-      state = StateInit.ghz_state(3)
-      probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
-
-      # (|000⟩ + |111⟩)/√2
-      # |000⟩
-      assert approx_equal?(Enum.at(probs, 0), 0.5)
-      # |111⟩
-      assert approx_equal?(Enum.at(probs, 7), 0.5)
-
-      # All others are zero
-      assert Enum.sum(Enum.slice(probs, 1..6)) == 0.0
-    end
-
-    test "creates GHZ state for 4 qubits" do
-      state = StateInit.ghz_state(4)
-      probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
-
-      # (|0000⟩ + |1111⟩)/√2
-      # |0000⟩
-      assert approx_equal?(Enum.at(probs, 0), 0.5)
-      # |1111⟩
-      assert approx_equal?(Enum.at(probs, 15), 0.5)
-
-      # All others are zero
-      assert Enum.sum(Enum.slice(probs, 1..14)) == 0.0
-    end
-
-    test "is normalized" do
-      state = StateInit.ghz_state(5)
-      probs = Qx.Math.probabilities(state)
-      total = Nx.sum(probs) |> Nx.to_number()
-
-      assert approx_equal?(total, 1.0, 1.0e-6)
-    end
-  end
-
   describe "w_state/2" do
     test "creates W state for 3 qubits" do
       state = StateInit.w_state(3)
@@ -399,8 +280,8 @@ defmodule Qx.StateInitTest do
     end
 
     test "Bell state creation matches H + CNOT" do
-      # Method 1: Use StateInit.bell_state()
-      bell_direct = StateInit.bell_state()
+      # Method 1: Use StateInit.bell_state_vector()
+      bell_direct = StateInit.bell_state_vector()
       probs_direct = Qx.Math.probabilities(bell_direct) |> Nx.to_flat_list()
 
       # Method 2: Create with gates
@@ -419,8 +300,8 @@ defmodule Qx.StateInitTest do
     end
 
     test "GHZ state creation matches H + multiple CNOTs" do
-      # Method 1: Use StateInit.ghz_state()
-      ghz_direct = StateInit.ghz_state(3)
+      # Method 1: Use StateInit.ghz_state_vector()
+      ghz_direct = StateInit.ghz_state_vector(3)
       probs_direct = Qx.Math.probabilities(ghz_direct) |> Nx.to_flat_list()
 
       # Method 2: Create with gates

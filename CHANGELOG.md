@@ -40,6 +40,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Both modules still compile, run, and pass their tests, so existing
   notebooks keep working. Removal or restructuring is deferred to v1.0.
 
+### Removed
+
+- `Qx.StateInit.bell_state/0,1,2` and `Qx.StateInit.ghz_state/1,2`, the
+  deprecated state-vector aliases: use `bell_state_vector/0,1,2` and
+  `ghz_state_vector/1,2`. The circuit-returning `Qx.bell_state/0,1` and
+  `Qx.ghz_state/0` facades are unaffected. Deprecated through 0.8.x;
+  window closed.
+- `Qx.Math.basis_state/2`, the f32 shim deprecated in 0.8.x: use
+  `Qx.StateInit.basis_state/3` (c64, matching the quantum-state surface).
+- `Qx.histogram/1,2`: use `Qx.draw_histogram/1,2`, in place since one
+  minor before this release.
+
 ### Fixed
 
 - Circuits containing a barrier no longer raise

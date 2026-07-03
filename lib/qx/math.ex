@@ -217,16 +217,6 @@ defmodule Qx.Math do
     Nx.eye(n)
   end
 
-  # Deprecated: use `Qx.StateInit.basis_state/3` — it returns c64 (complex)
-  # matching the rest of the quantum-state surface; this f32 (real) version
-  # is kept callable for the 0.8.x deprecation window only.
-  @deprecated "Use Qx.StateInit.basis_state/3"
-  @doc false
-  def basis_state(index, dimension) do
-    state = Nx.broadcast(0.0, {dimension})
-    Nx.put_slice(state, [index], Nx.tensor([1.0]))
-  end
-
   @doc """
   Checks if a matrix is unitary (U† U = I).
 

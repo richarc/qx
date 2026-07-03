@@ -84,28 +84,6 @@ defmodule Qx.StateInitVectorTest do
     end
   end
 
-  # The deprecated `bell_state/2` / `ghz_state/2` are single-line delegators
-  # (`def bell_state(w, t), do: bell_state_vector(w, t)`), so comparing their
-  # output to `bell_state_vector/2` is tautological. Instead assert the
-  # deprecated names still produce the documented result against independent
-  # references — live coverage that the shim path keeps working through 0.8.x.
-  describe "deprecated names still produce correct results" do
-    test "bell_state/2 returns the documented Bell vectors" do
-      assert approx_equal?(Enum.at(probs(StateInit.bell_state(:phi_plus)), 0), 0.5)
-      assert real_at(StateInit.bell_state(:phi_plus), 3) > 0
-      assert real_at(StateInit.bell_state(:phi_minus), 3) < 0
-      assert real_at(StateInit.bell_state(:psi_plus), 2) > 0
-      assert real_at(StateInit.bell_state(:psi_minus), 2) < 0
-    end
-
-    test "ghz_state/2 returns the documented GHZ vector" do
-      p = probs(StateInit.ghz_state(3))
-      assert approx_equal?(Enum.at(p, 0), 0.5)
-      assert approx_equal?(Enum.at(p, 7), 0.5)
-      assert approx_equal?(Enum.sum(Enum.slice(p, 1..6)), 0.0)
-    end
-  end
-
   describe "tensor type parameter" do
     test "bell_state_vector honours :c128" do
       assert Nx.type(StateInit.bell_state_vector(:phi_plus, :c128)) == {:c, 128}
