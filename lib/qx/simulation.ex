@@ -406,8 +406,18 @@ defmodule Qx.Simulation do
   # per-gate renorm + dev/test norm guard. Single source of the
   # every-n cadence so the non-conditional path, the conditional
   # timeline, and gates *inside* a `c_if` block all count identically.
+  #
+  # A barrier is a visual separator, not a unitary op: state unchanged
+  # and the counter does NOT advance, so the renormalize: n cadence
+  # ignores it. {:barrier, qubits, []} always carries the spanned
+  # qubit list (Operations.barrier/2, Patterns.barrier_all, OpenQASM
+  # import), so this head must match every arity.
   @spec apply_gate_step(state(), instruction(), non_neg_integer(), non_neg_integer(), renorm()) ::
           {state(), non_neg_integer()}
+  defp apply_gate_step(state, {:barrier, _qubits, _params}, count, _num_qubits, _renorm) do
+    {state, count}
+  end
+
   defp apply_gate_step(state, instruction, count, num_qubits, renorm) do
     next = count + 1
 
@@ -465,11 +475,9 @@ defmodule Qx.Simulation do
   defp apply_instruction({gate_name, qubits, params}, state, num_qubits) do
     case length(qubits) do
       0 ->
-        # Handle 0-qubit gates like :barrier
-        case gate_name do
-          :barrier -> state
-          _ -> raise Qx.GateError, {:unsupported_gate, gate_name}
-        end
+        # Barriers never reach here (intercepted in apply_gate_step);
+        # no other 0-qubit instruction exists.
+        raise Qx.GateError, {:unsupported_gate, gate_name}
 
       1 ->
         apply_single_qubit_op(gate_name, qubits, params, state, num_qubits)

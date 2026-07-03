@@ -25,6 +25,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Circuits containing a barrier no longer raise
+  `Qx.GateError: Unsupported gate: :barrier` when executed. Every
+  barrier producer (`Qx.barrier/2`, `Qx.barrier_all/1,2`, OpenQASM
+  import) stores the instruction with the spanned qubit list, but the
+  simulation engine only treated the 0-qubit shape (which nothing
+  produces) as a no-op, so `run/2`, `get_state/2`, and `steps/2` all
+  raised. Barriers are now a no-op at any arity and do not advance the
+  `renormalize: n` gate counter; `Qx.steps/2` still yields a step for
+  them with the state unchanged.
+
 - `Qx.tap_state/2` and `Qx.tap_probabilities/2` (and their `Qx.Operations`
   counterparts) now execute the circuit's instructions before invoking the
   inspection function. Previously they read the circuit's stored initial
