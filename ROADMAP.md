@@ -85,8 +85,9 @@ the breaking removals are allowed in this minor; the deprecation windows
 ("through 0.8.x", and "one minor after `draw_histogram` shipped") are all
 satisfied here.
 
-- [ ] Add a first-class step-through API so circuit mode can be inspected one operation at a time (the calc-mode feel inside circuit mode): e.g. `Qx.steps/1` returning a lazy `Stream` of `%{gate, state, probabilities}`, or a `Qx.run(qc, trace: true)` option. Thin lazy stream over the existing `Qx.Simulation.execute_circuit/2` reduce, so it threads the state ONCE (not the O(gates²) prefix re-run that `tap_state`/`tap_probabilities` do today). Re-implement the taps on top of it. Additive; the public-API cleanup below builds on it (design: `spec/unified-circuit-stepper-design.md`)
-- [ ] Reposition calc mode (`Qx.Register` / `Qx.Qubit`) out of the co-equal public surface now the step-through API above covers "inspect the state after each operation" inside circuit mode. Make them an internal engine (`@moduledoc false`) or a clearly-demoted "operate on a raw state vector" advanced escape hatch. Removes the "Which `h` am I calling?" cognitive load (the four `h` entry points collapse toward `Qx.h/2`). Breaking if removed from the public surface; CHANGELOG entry (design: `spec/unified-circuit-stepper-design.md`; depends on the step-through API above)
+- [ ] Fix `Qx.tap_state/2` / `Qx.tap_probabilities/2` showing the initial state instead of the circuit-so-far: they read `QuantumCircuit.get_state/1`, which returns the stored initial-state field (`quantum_circuit.ex:198`), so the tap fn always sees `|0...0⟩` regardless of preceding gates, contradicting the taps' own doc examples. Verified 2026-07-03 (`h(0) |> tap_state(...)` prints `[1.0+0.0i, 0.0+0.0i]`). Live bug in a released public API, so it can ship ahead of the stepper as a small `fix/` patch (compute the prefix state properly); the stepper item below then rebuilds the taps on the streaming substrate (review: unified-circuit-stepper-design, 2026-07-03)
+- [ ] Add a first-class step-through API so circuit mode can be inspected one operation at a time (the calc-mode feel inside circuit mode): `Qx.steps/1` returning a lazy `Stream` of step structs (kind `:gate | :measurement | :conditional`, operation, state, probabilities, `classical_bits`, position, taken/not-taken flag on conditional steps). Build it over the timeline reduce (`execute_single_shot/2` / `process_timeline_item/6`) rather than the unitary `execute_circuit/2` reduce, which no-ops `:measure` and raises `Qx.GateError` on `{:c_if, ...}`; the timeline substrate is what lets teleportation and error correction (the flagship `c_if` circuits) be stepped through. Mid-circuit measurement makes each materialisation of the stream one stochastic trajectory; add a `seed:` option for reproducible teaching material. No `Qx.run(qc, trace: true)` variant (ill-defined for shot-by-shot conditional circuits). Threads the state once; re-implement the taps on top (fix above). Display: `Inspect` impl on `%Qx.Step{}` (Dirac string, cbits, taken-flag in the inspect line) plus `Qx.Step.show/1` returning the `show_state`-style display map, rehomed from `Register.show_state/1` over the existing mode-neutral `Qx.Format` internals; this is what replaces `Qubit.show_state/1` / `Register.show_state/1` when calc mode is demoted below. Additive; the public-API cleanup below builds on it (design: `spec/unified-circuit-stepper-design.md`, amended 2026-07-03)
+- [ ] Reposition calc mode (`Qx.Register` / `Qx.Qubit`) out of the co-equal public surface now the step-through API above covers "inspect the state after each operation" inside circuit mode. Make them an internal engine (`@moduledoc false`) or a clearly-demoted "operate on a raw state vector" advanced escape hatch. Removes the "Which `h` am I calling?" cognitive load (the four `h` entry points collapse toward `Qx.h/2`). Breaking if removed from the public surface; CHANGELOG entry. Preconditions: audit `qxportal` and `kino_qx` for `Register`/`Qubit` usage first (downstream bumps are separate per-repo commits after a Qx release, workspace §4), and note `Qx.Qubit.measure_x/y/z` are today the only eager-collapse APIs, so the stepper must land first to cover that observability (design: `spec/unified-circuit-stepper-design.md`; depends on the step-through API above)
 - [ ] Remove the v0.8.1-deprecated `Qx.StateInit.bell_state/2` and `Qx.StateInit.ghz_state/1` aliases (the state-vector returners): `_vector`-suffixed names become canonical. CHANGELOG `### Removed` entry required; deprecation window closes here (audit: public-api S1 CRIT, removal phase)
 - [ ] Remove the deprecated `Qx.Math.basis_state/2` shim (`lib/qx/math.ex:225`): already `@deprecated` in 0.8.x, only internal callers remain. CHANGELOG `### Removed` entry (audit: public-api MED)
 - [ ] Remove the deprecated `Qx.histogram/2` alias now `Qx.draw_histogram/2` has shipped for one minor (audit: public-api LOW naming)
@@ -152,6 +153,21 @@ These have no commitment and no scheduled version. They may move up, move down, 
   without the cap, plain streaming saves little (the Sampler result is still
   JSON-parsed to an in-memory map) and the source (IBM Quantum) is trusted.
   Revisit if result sizes or the threat model change.
+- Interactive step-through widget: scrub through a circuit drawing while
+  phase circles (Quirk-style amplitude disks: radius = |amplitude|, needle =
+  arg) update per step. Three pieces, in dependency order: (1) the v0.10
+  stepper as specced — `Enum.to_list(Qx.steps(qc, seed: s))` gives the widget
+  a scrubbable, consistent trajectory (backward stepping needs the seed;
+  memory at teaching scale is trivial, ~400 KB at n=10 × 50 steps); (2) new
+  Qx work — a phase-circle SVG renderer in `Qx.Draw` taking a raw state
+  tensor (settle the global-phase convention: raw arg vs normalising the
+  first nonzero amplitude to real-positive), plus gate-position metadata from
+  `Qx.Draw.circuit/2` so the highlight can sync with `step.index` (note the
+  index runs over the flattened timeline, measurements and `c_if` inner gates
+  included); (3) the interactive Kino widget itself, in `kino_qx`, consuming
+  the published Qx release (workspace §4). The renderer fits the v0.11
+  visualization theme if pulled forward (review: unified-circuit-stepper-design,
+  2026-07-03)
 - Symbolic / algebraic simulation (exact fractions, no floating point)
 - Circuit-level visualization improvements (multi-qubit gate boxes, measurement symbols)
 - Cirq circuit import adapter (Qiskit/IBM Quantum import already covered by OpenQASM 3.0)
