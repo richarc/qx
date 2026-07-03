@@ -53,21 +53,16 @@ returns a `defmodule`), which are backward-incompatible behaviour changes
 in the 0.x line. (Numbered 0.9, skipping 0.8.2: the config-URL change
 already shipped to `main`, so the next release is a minor regardless.)
 
-> **Release status — HELD (2026-07-01).** v0.9.0 is version-bumped (`mix.exs`),
-> `CHANGELOG`-finalized, and tagged (`v0.9.0`) on `main`, but publishing is
-> **held**. The release workflow aborted at `mix hex.audit` (also failing CI on
-> `main`): a newly-disclosed, unpatched advisory in `cowlib`
-> (`CVE-2026-43966` MEDIUM + `CVE-2026-43969` LOW) affects every released
-> version. `cowlib` is **test-only** (`bypass → cowboy → cowlib`, `only: :test`)
-> and is **not** in the shipped `qx_sim` package, so consumers are unaffected.
-> Nothing is on Hex. **Un-hold (2026-07-03):** the audit gate is now scoped to
-> shipped deps (`scripts/audit_shipped.sh`, branch `fix/audit-gate-scope`):
-> `mix hex.audit` advisories confined to dev/test-only deps warn instead of
-> fail, so the test-only cowlib advisory (still unpatched as of cowlib 2.18.0)
-> no longer blocks. Once merged to `main`, re-run the release via
-> `workflow_dispatch` on `main` with version `0.9.0` (`mix.exs` on `main` is
-> already 0.9.0 and the `v0.9.0` tag exists; the tag-triggered run used the
-> old gate and aborted).
+> **Release status — RELEASED (2026-07-03).** `qx_sim 0.9.0` is on Hex and the
+> GitHub release is published. The original tag-triggered run (2026-07-01)
+> aborted at `mix hex.audit` on an unpatched, test-only `cowlib` advisory
+> (`CVE-2026-43966` MEDIUM + `CVE-2026-43969` LOW; `bypass → cowboy → cowlib`,
+> `only: :test`, never in the shipped package). Resolved by scoping the audit
+> gate to shipped deps (`scripts/audit_shipped.sh`, commit `94aaf24`):
+> dev/test-only advisories warn, shipped-dep advisories still fail, and the
+> release was re-run via `workflow_dispatch` on `main` with version `0.9.0`.
+> The cowlib advisory itself remains unpatched upstream (all versions since
+> 2.9.0 affected); the gate will keep warning until upstream ships a fix.
 
 - [x] Reject plaintext `http://` for `QX_PORTAL_URL`: `lib/qx/hardware/config.ex:237` `validate_portal_url/1` currently accepts both schemes, so a misconfigured environment sends the portal bearer token over cleartext (audit: security MED) (done: config-url-validation — loopback allowlist: https required for remote hosts, http allowed only for localhost/127.0.0.1/::1)
 - [x] Validate `:base_url` / `:iam_url` test-hook overrides: `lib/qx/hardware/config.ex:42,112–113` accept any scheme/host without sanity checks; a caller setting `base_url: "http://attacker/api/v1"` routes IAM token exchange to an attacker host. Allowlist hosts or require `https://` (audit: security MED) (done: config-url-validation — both validated via the shared loopback-allowlist `validate_url/2`, only when non-nil; raises typed `Qx.Hardware.ConfigError`)
