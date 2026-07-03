@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `Qx.tap_state/2` and `Qx.tap_probabilities/2` (and their `Qx.Operations`
+  counterparts) now execute the circuit's instructions before invoking the
+  inspection function. Previously they read the circuit's stored initial
+  state, so the tap always saw `|0...0⟩` regardless of the gates applied
+  before it, contradicting their documentation. Both taps now raise
+  `Qx.MeasurementError` when the circuit so far contains measurements or
+  conditionals, matching `Qx.Simulation.get_state/2`; tap before the first
+  `measure/3` or `c_if/4` in the pipeline.
+
 ## [0.9.0] - 2026-07-01
 
 ### Changed

@@ -12,7 +12,7 @@ defmodule Qx.Operations do
   `Qx.Patterns`.
   """
 
-  alias Qx.{QuantumCircuit, Validation}
+  alias Qx.{QuantumCircuit, Simulation, Validation}
 
   @doc """
   Applies a Hadamard gate to the specified qubit.
@@ -857,13 +857,19 @@ defmodule Qx.Operations do
       Probabilities: [0.5, 0.5, 0.0, 0.0]
       %Qx.QuantumCircuit{...}
 
+  ## Raises
+
+    * `Qx.MeasurementError` - If the circuit so far contains measurements or
+      conditionals (same contract as `Qx.Simulation.get_state/2`). Tap before
+      the first `measure/3` or `c_if/4` in the pipeline.
+
   ## See Also
     * `tap_circuit/2` - Inspect circuit metadata
     * `tap_probabilities/2` - Inspect measurement probabilities directly
   """
   @spec tap_state(QuantumCircuit.t(), (Nx.Tensor.t() -> any())) :: QuantumCircuit.t()
   def tap_state(%QuantumCircuit{} = circuit, fun) when is_function(fun, 1) do
-    state = QuantumCircuit.get_state(circuit)
+    state = Simulation.get_state(circuit)
     fun.(state)
     circuit
   end
@@ -873,6 +879,9 @@ defmodule Qx.Operations do
 
   Convenience function that computes probabilities and passes them
   to your inspection function.
+
+  **Important:** This executes all instructions so far to get the
+  current probabilities. Use sparingly in performance-critical code.
 
   ## Parameters
     * `circuit` - The quantum circuit
@@ -903,14 +912,19 @@ defmodule Qx.Operations do
       # P(|0⟩) = 0.5
       # P(|1⟩) = 0.5
 
+  ## Raises
+
+    * `Qx.MeasurementError` - If the circuit so far contains measurements or
+      conditionals (same contract as `Qx.Simulation.get_probabilities/2`).
+      Tap before the first `measure/3` or `c_if/4` in the pipeline.
+
   ## See Also
     * `tap_state/2` - Inspect full quantum state
     * `tap_circuit/2` - Inspect circuit metadata
   """
   @spec tap_probabilities(QuantumCircuit.t(), (Nx.Tensor.t() -> any())) :: QuantumCircuit.t()
   def tap_probabilities(%QuantumCircuit{} = circuit, fun) when is_function(fun, 1) do
-    state = QuantumCircuit.get_state(circuit)
-    probs = Qx.Math.probabilities(state)
+    probs = Simulation.get_probabilities(circuit)
     fun.(probs)
     circuit
   end
