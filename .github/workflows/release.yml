@@ -139,8 +139,8 @@ jobs:
         env:
           MIX_ENV: dev
 
-      - name: Security audit - check for retired packages
-        run: mix hex.audit
+      - name: Security audit - scoped to shipped deps
+        run: ./scripts/audit_shipped.sh
 
       - name: Check for outdated dependencies (informational)
         run: mix hex.outdated

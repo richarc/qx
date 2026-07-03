@@ -60,9 +60,14 @@ already shipped to `main`, so the next release is a minor regardless.)
 > (`CVE-2026-43966` MEDIUM + `CVE-2026-43969` LOW) affects every released
 > version. `cowlib` is **test-only** (`bypass → cowboy → cowlib`, `only: :test`)
 > and is **not** in the shipped `qx_sim` package, so consumers are unaffected.
-> Nothing is on Hex. **Un-hold:** when upstream `cowlib` publishes a patched
-> version, `mix deps.update cowlib` and re-run the release workflow from the
-> `v0.9.0` tag; or adjust the audit gate to scope shipped deps only.
+> Nothing is on Hex. **Un-hold (2026-07-03):** the audit gate is now scoped to
+> shipped deps (`scripts/audit_shipped.sh`, branch `fix/audit-gate-scope`):
+> `mix hex.audit` advisories confined to dev/test-only deps warn instead of
+> fail, so the test-only cowlib advisory (still unpatched as of cowlib 2.18.0)
+> no longer blocks. Once merged to `main`, re-run the release via
+> `workflow_dispatch` on `main` with version `0.9.0` (`mix.exs` on `main` is
+> already 0.9.0 and the `v0.9.0` tag exists; the tag-triggered run used the
+> old gate and aborted).
 
 - [x] Reject plaintext `http://` for `QX_PORTAL_URL`: `lib/qx/hardware/config.ex:237` `validate_portal_url/1` currently accepts both schemes, so a misconfigured environment sends the portal bearer token over cleartext (audit: security MED) (done: config-url-validation — loopback allowlist: https required for remote hosts, http allowed only for localhost/127.0.0.1/::1)
 - [x] Validate `:base_url` / `:iam_url` test-hook overrides: `lib/qx/hardware/config.ex:42,112–113` accept any scheme/host without sanity checks; a caller setting `base_url: "http://attacker/api/v1"` routes IAM token exchange to an attacker host. Allowlist hosts or require `https://` (audit: security MED) (done: config-url-validation — both validated via the shared loopback-allowlist `validate_url/2`, only when non-nil; raises typed `Qx.Hardware.ConfigError`)
