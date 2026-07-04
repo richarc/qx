@@ -236,7 +236,7 @@ defmodule QxTest do
       result = Qx.run(qc, 100)
 
       # All shots should measure classical bits as [1, 1]
-      assert result.counts[[1, 1]] == 100
+      assert result.counts["11"] == 100
     end
 
     test "skips conditional gate when condition is false" do
@@ -251,7 +251,7 @@ defmodule QxTest do
       result = Qx.run(qc, 100)
 
       # All shots should measure classical bits as [0, 0]
-      assert result.counts[[0, 0]] == 100
+      assert result.counts["00"] == 100
     end
 
     test "conditional gate with value == 0" do
@@ -266,7 +266,7 @@ defmodule QxTest do
       result = Qx.run(qc, 100)
 
       # All shots should measure classical bits as [0, 1]
-      assert result.counts[[0, 1]] == 100
+      assert result.counts["01"] == 100
     end
 
     test "handles probabilistic conditionals correctly" do
@@ -281,8 +281,8 @@ defmodule QxTest do
       result = Qx.run(qc, 1000)
 
       # Should get roughly 50% [0,0] and 50% [1,1]
-      count_00 = Map.get(result.counts, [0, 0], 0)
-      count_11 = Map.get(result.counts, [1, 1], 0)
+      count_00 = Map.get(result.counts, "00", 0)
+      count_11 = Map.get(result.counts, "11", 0)
 
       assert_in_delta count_00, 500, 100
       assert_in_delta count_11, 500, 100
@@ -313,7 +313,7 @@ defmodule QxTest do
       # Qubit 2 should always measure |1⟩
       total_measure_1 =
         Enum.reduce(result.counts, 0, fn {bits, count}, acc ->
-          if Enum.at(bits, 2) == 1, do: acc + count, else: acc
+          if String.at(bits, 2) == "1", do: acc + count, else: acc
         end)
 
       assert total_measure_1 == 100
@@ -334,7 +334,7 @@ defmodule QxTest do
 
       # Both conditionals fire, so X applied twice (no net effect)
       # Qubit 2 should measure |0⟩
-      assert result.counts[[1, 1, 0]] == 100
+      assert result.counts["110"] == 100
     end
 
     # Nested-conditional test moved to

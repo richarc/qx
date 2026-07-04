@@ -28,7 +28,7 @@ defmodule Qx.ConditionalOperationsTest do
         |> Qx.c_if(0, 1, fn c -> Qx.x(c, 1) end)
         |> Qx.measure(1, 1)
 
-      assert Qx.run(qc, 100).counts == %{[1, 0] => 100}
+      assert Qx.run(qc, 100).counts == %{"10" => 100}
     end
 
     test "mixed chain: one block fires, the next is skipped (deterministic)" do
@@ -42,7 +42,7 @@ defmodule Qx.ConditionalOperationsTest do
         |> Qx.c_if(1, 1, fn c -> Qx.x(c, 2) end)
         |> Qx.measure(2, 2)
 
-      assert Qx.run(qc, 100).counts == %{[1, 0, 1] => 100}
+      assert Qx.run(qc, 100).counts == %{"101" => 100}
     end
 
     test "mixed chain in the other order: skip then fire (deterministic)" do
@@ -57,7 +57,7 @@ defmodule Qx.ConditionalOperationsTest do
         |> Qx.c_if(1, 1, fn c -> Qx.x(c, 2) end)
         |> Qx.measure(2, 2)
 
-      assert Qx.run(qc, 100).counts == %{[0, 1, 1] => 100}
+      assert Qx.run(qc, 100).counts == %{"011" => 100}
     end
 
     test "chain of three conditionals on independent targets (fire/skip/fire)" do
@@ -76,7 +76,7 @@ defmodule Qx.ConditionalOperationsTest do
         |> Qx.measure(4, 4)
         |> Qx.measure(5, 5)
 
-      assert Qx.run(qc, 100).counts == %{[1, 0, 1, 1, 0, 1] => 100}
+      assert Qx.run(qc, 100).counts == %{"101101" => 100}
     end
 
     test "a multi-gate conditional block runs every gate when it fires" do
@@ -90,7 +90,7 @@ defmodule Qx.ConditionalOperationsTest do
         |> Qx.measure(1, 1)
         |> Qx.measure(2, 2)
 
-      assert Qx.run(qc, 100).counts == %{[1, 1, 1] => 100}
+      assert Qx.run(qc, 100).counts == %{"111" => 100}
     end
 
     test "probabilistic chain: both blocks track the same measured bit" do
@@ -107,8 +107,8 @@ defmodule Qx.ConditionalOperationsTest do
 
       shots = 1000
       counts = Qx.run(qc, shots).counts
-      count_000 = Map.get(counts, [0, 0, 0], 0)
-      count_111 = Map.get(counts, [1, 1, 1], 0)
+      count_000 = Map.get(counts, "000", 0)
+      count_111 = Map.get(counts, "111", 0)
 
       # The c_if-specific property: every shot lands in one of the two
       # correlated buckets — no partial outcome where only one block fired.

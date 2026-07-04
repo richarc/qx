@@ -56,8 +56,7 @@ measurement_circuit = Qx.create_circuit(2, 2)
 result4 = Qx.run(measurement_circuit, 100)  # 100 shots
 IO.puts("   Performed #{result4.shots} measurements")
 IO.puts("   Measurement outcomes:")
-Enum.each(result4.counts, fn {bits, count} ->
-  bit_string = Enum.join(bits, "")
+Enum.each(result4.counts, fn {bit_string, count} ->
   IO.puts("   #{bit_string}: #{count} times (#{Float.round(count/result4.shots*100, 1)}%)")
 end)
 IO.puts("")

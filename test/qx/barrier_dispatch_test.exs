@@ -48,7 +48,7 @@ defmodule Qx.BarrierDispatchTest do
 
       result = Qx.run(qc, shots: 16)
 
-      assert result.counts == %{[1, 1] => 16}
+      assert result.counts == %{"11" => 16}
     end
   end
 
@@ -121,7 +121,7 @@ defmodule Qx.BarrierDispatchTest do
 
       result = Qx.run(qc, shots: 16)
 
-      assert result.counts == %{[1, 1] => 16}
+      assert result.counts == %{"11" => 16}
 
       steps = Simulation.steps(qc) |> Enum.to_list()
       conditionals = Enum.filter(steps, &(&1.kind == :conditional))

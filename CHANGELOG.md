@@ -23,6 +23,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   execution path internally. No behaviour change: same values, same
   `Qx.MeasurementError` contract on measured/conditional prefixes.
 
+### Fixed
+
+- **`SimulationResult.counts` keys are now the binary strings the docs
+  always promised** (`%{"10" => 507}`), instead of the bit-lists
+  (`%{[1, 0] => 507}`) the simulator actually emitted since its first
+  release. The type, every doc, and every doctest specified string
+  keys; the engine never produced them, and helpers like
+  `Qx.SimulationResult.probability(result, "0")` could never match a
+  real result. Hardware (QPU) results already used string keys, so the
+  two run paths now share one contract. Keys join each shot's
+  classical bits in measurement order — identical to the labels
+  `Qx.draw_counts/2` renders, so charts are unchanged. **Behaviour change:** code that
+  pattern-matches list keys out of `result.counts` must switch to
+  strings (`counts[[1, 0]]` → `counts["10"]`). `result.classical_bits`
+  still holds per-shot bit lists, as documented.
+
 ### Changed
 
 - The docs and README now teach one path: build a circuit, run it, and

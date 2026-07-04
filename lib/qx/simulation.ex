@@ -20,7 +20,7 @@ defmodule Qx.Simulation do
   @typep instruction :: {gate_name(), [qubit()], [number()]}
   @typep measurement :: {qubit(), non_neg_integer()}
   @typep cbits :: [bit()]
-  @typep counts :: %{optional([bit()]) => pos_integer()}
+  @typep counts :: %{optional(String.t()) => pos_integer()}
   @typep timeline_item ::
            {:instruction, instruction()}
            | {:measurement, measurement()}
@@ -176,8 +176,9 @@ defmodule Qx.Simulation do
     # Extract classical bits from all shots
     classical_bits = Enum.map(results, fn {_state, cbits} -> cbits end)
 
-    # Count occurrences
-    counts = Enum.frequencies(classical_bits)
+    # Count occurrences, keyed by outcome string (classical bits in
+    # measurement order, same labels Draw renders)
+    counts = Enum.frequencies_by(classical_bits, &Enum.join/1)
 
     # Calculate average probabilities (from final states)
     # Note: For conditional circuits, we can't provide a single final state
@@ -623,8 +624,9 @@ defmodule Qx.Simulation do
       # Extract classical bit values from samples based on measurements
       classical_bits = extract_classical_bits(samples, measurements, circuit.num_qubits)
 
-      # Count occurrences of classical bit strings
-      counts = Enum.frequencies(classical_bits)
+      # Count occurrences, keyed by outcome string (classical bits in
+      # measurement order, same labels Draw renders)
+      counts = Enum.frequencies_by(classical_bits, &Enum.join/1)
 
       {classical_bits, counts}
     end

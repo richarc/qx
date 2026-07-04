@@ -171,6 +171,5 @@ defmodule Qx.Draw.SVG.Charts do
     """
   end
 
-  defp counts_key_to_label(key) when is_list(key), do: Enum.join(key, "")
   defp counts_key_to_label(key) when is_binary(key), do: key
 end

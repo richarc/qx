@@ -126,7 +126,7 @@ IO.puts("   Measuring qubit 2 (should always be |1⟩):")
 
 total_measure_1 =
   Enum.reduce(result5.counts, 0, fn {bits, count}, acc ->
-    if Enum.at(bits, 2) == 1, do: acc + count, else: acc
+    if String.at(bits, 2) == "1", do: acc + count, else: acc
   end)
 
 IO.puts("   Qubit 2 measured as |1⟩: #{total_measure_1}/1000 shots")
@@ -134,7 +134,7 @@ IO.puts("   Teleportation success rate: #{Float.round(total_measure_1 / 10, 1)}%
 
 IO.puts("\n   Measurement distribution:")
 Enum.each(result5.counts, fn {bits, count} ->
-  [m0, m1, final] = bits
+  [m0, m1, final] = String.graphemes(bits)
   percentage = Float.round(count / 10, 1)
   IO.puts("   M0=#{m0}, M1=#{m1} → Final=#{final}: #{count} times (~#{percentage}%)")
 end)

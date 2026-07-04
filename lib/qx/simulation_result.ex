@@ -16,16 +16,17 @@ defmodule Qx.SimulationResult do
   ## Examples
 
       iex> circuit = Qx.create_circuit(2, 2)
-      ...> |> Qx.h(0)
-      ...> |> Qx.cx(0, 1)
+      ...> |> Qx.x(0)
       ...> |> Qx.measure(0, 0)
       ...> |> Qx.measure(1, 1)
-      iex> result = Qx.run(circuit, 1000)
+      iex> result = Qx.run(circuit, shots: 1000)
       iex> result.shots
       1000
       iex> Qx.SimulationResult.most_frequent(result)
-      {"00", 503}
+      {"10", 1000}
 
+  Keys of `:counts` are outcome strings joining each shot's classical
+  bits in measurement order, the same labels `Qx.draw_counts/2` renders.
   """
 
   @type t :: %__MODULE__{
@@ -165,8 +166,8 @@ defmodule Qx.SimulationResult do
       ...>   counts: %{"0" => 1}
       ...> }
       iex> map = Qx.SimulationResult.to_map(result)
-      iex> Map.keys(map)
-      [:probabilities, :classical_bits, :state, :shots, :counts]
+      iex> map |> Map.keys() |> Enum.sort()
+      [:classical_bits, :counts, :probabilities, :shots, :state]
 
   """
   @spec to_map(t()) :: map()

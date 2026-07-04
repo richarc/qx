@@ -32,13 +32,13 @@ defmodule Qx.PartialMeasurementTest do
         |> Qx.measure(2, 2)
         |> Qx.run(shots: @shots)
 
-      assert MapSet.subset?(outcomes(result), MapSet.new([[0, 0, 0], [1, 1, 1]]))
-      assert Map.get(result.counts, [0, 0, 0], 0) > 0
-      assert Map.get(result.counts, [1, 1, 1], 0) > 0
+      assert MapSet.subset?(outcomes(result), MapSet.new(["000", "111"]))
+      assert Map.get(result.counts, "000", 0) > 0
+      assert Map.get(result.counts, "111", 0) > 0
 
       half = div(@shots, 2)
-      assert_in_delta Map.get(result.counts, [0, 0, 0], 0), half, @tol
-      assert_in_delta Map.get(result.counts, [1, 1, 1], 0), half, @tol
+      assert_in_delta Map.get(result.counts, "000", 0), half, @tol
+      assert_in_delta Map.get(result.counts, "111", 0), half, @tol
     end
 
     test "gate applied to qubit 2 after measuring qubit 0 still produces the correct joint distribution" do
@@ -58,10 +58,10 @@ defmodule Qx.PartialMeasurementTest do
         |> Qx.measure(2, 2)
         |> Qx.run(shots: @shots)
 
-      expected = MapSet.new([[0, 0, 0], [0, 0, 1], [1, 1, 0], [1, 1, 1]])
+      expected = MapSet.new(["000", "001", "110", "111"])
       assert MapSet.equal?(outcomes(result), expected)
 
-      forbidden = MapSet.new([[0, 1, 0], [0, 1, 1], [1, 0, 0], [1, 0, 1]])
+      forbidden = MapSet.new(["010", "011", "100", "101"])
       assert MapSet.disjoint?(outcomes(result), forbidden)
 
       quarter = div(@shots, 4)
@@ -85,7 +85,7 @@ defmodule Qx.PartialMeasurementTest do
         |> Qx.measure(2, 2)
         |> Qx.run(shots: @shots)
 
-      expected = MapSet.new([[0, 0, 0], [0, 0, 1], [1, 0, 0], [1, 0, 1]])
+      expected = MapSet.new(["000", "001", "100", "101"])
       assert MapSet.equal?(outcomes(result), expected)
 
       quarter = div(@shots, 4)

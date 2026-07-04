@@ -46,7 +46,7 @@ defmodule Qx.OperationsBasisMeasurementTest do
         |> Qx.run(shots: 100)
 
       counts = Map.fetch!(result, :counts)
-      assert Map.get(counts, [0], 0) == 100
+      assert Map.get(counts, "0", 0) == 100
     end
 
     test "on |−⟩ deterministically yields classical 1" do
@@ -60,7 +60,7 @@ defmodule Qx.OperationsBasisMeasurementTest do
         |> Qx.run(shots: 100)
 
       counts = Map.fetch!(result, :counts)
-      assert Map.get(counts, [1], 0) == 100
+      assert Map.get(counts, "1", 0) == 100
     end
 
     test "on |0⟩ yields ~50/50 split" do
@@ -70,8 +70,8 @@ defmodule Qx.OperationsBasisMeasurementTest do
         |> Qx.run(shots: 1000)
 
       counts = Map.fetch!(result, :counts)
-      zeros = Map.get(counts, [0], 0)
-      ones = Map.get(counts, [1], 0)
+      zeros = Map.get(counts, "0", 0)
+      ones = Map.get(counts, "1", 0)
 
       # within sampling tolerance
       assert zeros + ones == 1000
@@ -116,7 +116,7 @@ defmodule Qx.OperationsBasisMeasurementTest do
         |> Qx.run(shots: 100)
 
       counts = Map.fetch!(result, :counts)
-      assert Map.get(counts, [0], 0) == 100
+      assert Map.get(counts, "0", 0) == 100
     end
 
     test "on |−i⟩ deterministically yields classical 1" do
@@ -130,7 +130,7 @@ defmodule Qx.OperationsBasisMeasurementTest do
         |> Qx.run(shots: 100)
 
       counts = Map.fetch!(result, :counts)
-      assert Map.get(counts, [1], 0) == 100
+      assert Map.get(counts, "1", 0) == 100
     end
 
     test "on |0⟩ yields ~50/50 split" do
@@ -140,8 +140,8 @@ defmodule Qx.OperationsBasisMeasurementTest do
         |> Qx.run(shots: 1000)
 
       counts = Map.fetch!(result, :counts)
-      zeros = Map.get(counts, [0], 0)
-      ones = Map.get(counts, [1], 0)
+      zeros = Map.get(counts, "0", 0)
+      ones = Map.get(counts, "1", 0)
 
       assert zeros + ones == 1000
       assert zeros > 400 and zeros < 600
@@ -156,7 +156,7 @@ defmodule Qx.OperationsBasisMeasurementTest do
         |> Qx.run(shots: 100)
 
       counts = Map.fetch!(result, :counts)
-      assert Map.get(counts, [0], 0) == 100
+      assert Map.get(counts, "0", 0) == 100
     end
   end
 end

@@ -60,10 +60,9 @@ IO.puts("\n=== Simulation Results ===")
 IO.puts("Expected: High probability of measuring |11⟩ (state 3)")
 IO.inspect(result.counts, label: "Measurement counts")
 
-# Calculate success probability. `result.counts` is keyed by a list of
-# classical bits in declaration order — `[c[0], c[1]]` — so |11⟩ is
-# `[1, 1]`, not the string "11".
-success_count = Map.get(result.counts, [1, 1], 0)
+# Calculate success probability. `result.counts` is keyed by outcome
+# strings, so |11⟩ is "11".
+success_count = Map.get(result.counts, "11", 0)
 success_prob = success_count / 1000 * 100
 
 IO.puts("\nSuccess probability: #{Float.round(success_prob, 1)}%")
