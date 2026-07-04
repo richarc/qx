@@ -28,8 +28,9 @@ defmodule Qx.Draw do
   no dependency at all.
   """
 
-  alias Qx.Draw.SVG.{Bloch, Circuit}
   alias Qx.Draw.{Image, Tables}
+  alias Qx.Draw.SVG.{Bloch, Circuit}
+  alias Qx.Draw.VegaLite, as: VL
 
   # Qx.Draw.VegaLite only compiles when the optional :vega_lite dep is
   # present; every call is behind ensure_vega_lite!/0, so downstream
@@ -69,7 +70,7 @@ defmodule Qx.Draw do
     width = Keyword.get(options, :width, 400)
     height = Keyword.get(options, :height, 300)
 
-    Qx.Draw.VegaLite.plot(result, title, width, height)
+    VL.plot(result, title, width, height)
   end
 
   @doc """
@@ -108,7 +109,7 @@ defmodule Qx.Draw do
     width = Keyword.get(options, :width, 400)
     height = Keyword.get(options, :height, 300)
 
-    Qx.Draw.VegaLite.counts(result, title, width, height)
+    VL.counts(result, title, width, height)
   end
 
   @doc """
@@ -153,7 +154,7 @@ defmodule Qx.Draw do
         %{"state" => state_label, "probability" => prob}
       end)
 
-    Qx.Draw.VegaLite.histogram(data, title, width, height)
+    VL.histogram(data, title, width, height)
   end
 
   @doc """
