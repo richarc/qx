@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-07-04
+
+The "Step-Through API & Public-API Streamlining" minor: circuit mode
+becomes inspectable one operation at a time, and the public surface is
+cleaned up around it, including a clean-break rework of the Draw layer
+decided while v0.10 was still unpublished.
+
 ### Added
 
 - `Qx.draw_circuit/2`: facade delegate for circuit diagrams (the README
