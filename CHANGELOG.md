@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-07-04
+
+### Fixed
+
+- README corrected against the released 0.10 surface (docs-only
+  release; no code changes). The install snippets were broken outright
+  (`{:qx_sim, "~> 0.8.0"}` is the wrong app atom; Livebook cells
+  pinned `~> 0.6.0`), the Bell quick-start showed counts a
+  measurement-free circuit can never produce, the GHZ example showed
+  pre-0.10 list-shaped counts keys, and the `from_qasm_function/1`
+  recipe predated the 0.9 full-module source shape. Also: nonexistent
+  `RemoteError` replaced with `MissingDependencyError`, Nx floor
+  corrected to 0.12, VegaLite documented as optional, and the stale
+  QxServer naming replaced with `Qx.Hardware` + Qx Portal. Every
+  corrected example was executed against 0.10.0 before landing.
+
 ## [0.10.0] - 2026-07-04
 
 The "Step-Through API & Public-API Streamlining" minor: circuit mode

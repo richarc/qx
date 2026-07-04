@@ -169,3 +169,13 @@ empty; conditional-run `state`/`probabilities` ensemble semantics.
 bucket, which is the surface-stability list the backlog says 1.0 waits
 for. The principles doc gets its post-review edits (documented
 exceptions, new family rows) once Craig signs the adjudications.
+
+## Post-release addendum (2026-07-04, README v0.10 audit)
+
+`from_qasm_function/1` returns `module:` as a STRING
+("Qx.Generated.Bell_<hash>"), not an atom — callers can't invoke
+through it without `Code.eval_string`-capture or Module.concat. Found
+while fixing the README recipe (fix/readme-v010). Candidate v0.11
+non-breaking fix: return the atom (the module name is qx-generated,
+not user input, so `Module.concat/1` is safe). Full README audit:
+research/readme-v010-audit.md.

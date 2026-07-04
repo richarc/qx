@@ -21,7 +21,7 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 - **Measurements**: Quantum measurements with classical bit storage; basis-explicit `Qx.measure_x/3`, `Qx.measure_y/3`, `Qx.measure_z/3` for X/Y/Z-basis measurement
 - **Conditional Operations**: Mid-circuit measurement with classical feedback for quantum processes like teleportation and error correction
 - **OpenQASM 3.0 Round-Trip**: Export Qx circuits to OpenQASM 3.0 and import OpenQASM 3.0 source produced by Qx, Qiskit, or IBM Quantum (`Qx.Export.OpenQASM.to_qasm/1` and `from_qasm/1`)
-- **Remote Execution**: Run circuits on real quantum hardware via QxServer, a standalone backend service supporting IBM Quantum and other providers
+- **Remote Execution**: Run circuits on real IBM Quantum hardware via `Qx.Hardware`, with transpilation through the Qx Portal service
 - **LiveBook Integration**: Full support with interactive visualizations in LiveBook
 
 ## Installation
@@ -29,7 +29,7 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.8.0"}
+    {:qx, "~> 0.10", hex: :qx_sim}
   ]
 end
 ```
@@ -45,7 +45,7 @@ Or install from GitHub for the latest development version:
 ```elixir
 def deps do
   [
-    {:qx_sim, github: "richarc/qx", branch: "main"}
+    {:qx, github: "richarc/qx", branch: "main"}
   ]
 end
 ```
@@ -62,10 +62,15 @@ iex> qc = Qx.create_circuit(1) |> Qx.h(0)
 iex> Qx.get_probabilities(qc)
 #Nx.Tensor<[0.5, 0.5]>
 
-iex> # Build and run a Bell state circuit
-iex> result = Qx.bell_state() |> Qx.run()
+iex> # Build, measure, and run a Bell state circuit
+iex> result =
+...>   Qx.create_circuit(2, 2)
+...>   |> Qx.h(0)
+...>   |> Qx.cx(0, 1)
+...>   |> Qx.measure_all()
+...>   |> Qx.run()
 iex> IO.inspect(result.counts)
-%{"00" => 512, "11" => 512}
+%{"00" => 502, "11" => 522}
 
 iex> # Visualize the results
 iex> Qx.draw(result)
@@ -79,7 +84,7 @@ For the complete API, see the [hexdocs](https://hexdocs.pm/qx_sim/Qx.html).
 
 ```elixir
 Mix.install([
-  {:qx, "~> 0.6.0", hex: :qx_sim},
+  {:qx, "~> 0.10", hex: :qx_sim},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
   {:kino_vega_lite, "~> 0.1.11"}
@@ -244,7 +249,13 @@ semantics and options.
 ### Bell State
 
 ```elixir
-result = Qx.bell_state() |> Qx.run(1000)
+result =
+  Qx.create_circuit(2, 2)
+  |> Qx.h(0)
+  |> Qx.cx(0, 1)
+  |> Qx.measure_all()
+  |> Qx.run(shots: 1000)
+
 IO.inspect(result.counts)
 # => %{"00" => ~500, "11" => ~500}
 Qx.draw_counts(result)
@@ -261,7 +272,7 @@ qc = Qx.create_circuit(3, 3)
 
 result = Qx.run(qc, 1000)
 IO.inspect(result.counts)
-# => %{[0, 0, 0] => ~500, [1, 1, 1] => ~500}
+# => %{"000" => ~500, "111" => ~500}
 ```
 
 ### Quantum Teleportation
@@ -461,16 +472,18 @@ gate bell a, b {
 {:ok, %{name: "bell", arity: 3, source: source}} =
   Qx.Export.OpenQASM.from_qasm_function(qasm)
 
-# source is an Elixir `def …` string:
-#   def bell(circuit, a, b) do
-#     circuit
-#     |> Qx.h(a)
-#     |> Qx.cx(a, b)
+# source is a self-contained module, e.g.
+#   defmodule Qx.Generated.Bell_a1b2c3 do
+#     def bell(circuit, a, b) do
+#       circuit
+#       |> Qx.h(a)
+#       |> Qx.cx(a, b)
+#     end
 #   end
 
 # Compile and call it:
-[{module, _bin}] = Code.compile_string("defmodule MyGates do\n  #{source}\nend")
-new_circuit = MyGates.bell(Qx.create_circuit(2), 0, 1)
+{{:module, mod, _bin, _}, _binding} = Code.eval_string(source)
+new_circuit = mod.bell(Qx.create_circuit(2), 0, 1)
 ```
 
 The signature is `(circuit, params…, qubits…)` — circuit first, then declared parameters in source order, then qubit arguments in source order.
@@ -584,7 +597,7 @@ EXLA provides significant speedup through XLA's LLVM optimizations.
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.8.0"},
+    {:qx, "~> 0.10", hex: :qx_sim},
     {:exla, "~> 0.12"}  # Add this line (match Qx's Nx version)
   ]
 end
@@ -678,7 +691,7 @@ config :nx, :default_backend, {EXLA.Backend, client: :rocm}
 ```elixir
 def deps do
   [
-    {:qx_sim, "~> 0.8.0"},
+    {:qx, "~> 0.10", hex: :qx_sim},
     {:emlx, github: "elixir-nx/emlx", branch: "main"}  # Add this line
   ]
 end
@@ -732,7 +745,7 @@ For LiveBook, add the acceleration backend to your `Mix.install` call:
 **EXLA CPU (all platforms):**
 ```elixir
 Mix.install([
-  {:qx, "~> 0.6.0", hex: :qx_sim},
+  {:qx, "~> 0.10", hex: :qx_sim},
   {:exla, "~> 0.12"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -745,7 +758,7 @@ Application.put_env(:nx, :default_backend, EXLA.Backend)
 **EMLX GPU (Apple Silicon):**
 ```elixir
 Mix.install([
-  {:qx, "~> 0.6.0", hex: :qx_sim},
+  {:qx, "~> 0.10", hex: :qx_sim},
   {:emlx, github: "elixir-nx/emlx", branch: "main"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -758,7 +771,7 @@ Application.put_env(:nx, :default_backend, {EMLX.Backend, device: :gpu})
 **EXLA CUDA (NVIDIA GPU):** Requires `XLA_TARGET` env var set (see [CUDA setup](#exla--nvidia-gpu-cuda)).
 ```elixir
 Mix.install([
-  {:qx, "~> 0.6.0", hex: :qx_sim},
+  {:qx, "~> 0.10", hex: :qx_sim},
   {:exla, "~> 0.12"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -781,12 +794,12 @@ rescue
 end
 ```
 
-Exception types include `QubitIndexError`, `StateNormalizationError`, `MeasurementError`, `ConditionalError`, `ClassicalBitError`, `GateError`, `QubitCountError`, and `RemoteError`. See the [hexdocs](https://hexdocs.pm/qx_sim/Qx.html) for details.
+Exception types include `QubitIndexError`, `StateNormalizationError`, `MeasurementError`, `ConditionalError`, `ClassicalBitError`, `GateError`, `QubitCountError`, and `MissingDependencyError`. See the [hexdocs](https://hexdocs.pm/qx_sim/Qx.html) for details.
 
 ## Requirements & Limitations
 
-- Elixir 1.18+, Nx 0.10+, VegaLite 0.1+
-- Optional: EXLA 0.10+ or EMLX 0.2+ for acceleration
+- Elixir 1.18+, Nx 0.12+
+- Optional: VegaLite 0.1+ (chart functions only), EXLA 0.12+ or EMLX for acceleration
 - Maximum 20 qubits
 - Statevector simulation only (no density matrix or noise modeling)
 
@@ -816,6 +829,6 @@ This project is licensed under the Apache License 2.0.
 
 ## Version
 
-Current version: 0.6.0
+Current version: 0.10.1
 
 For detailed API documentation, see the [hexdocs](https://hexdocs.pm/qx_sim/Qx.html).
