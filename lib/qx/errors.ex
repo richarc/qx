@@ -497,3 +497,25 @@ defmodule Qx.QasmUnsupportedError do
   defp format_location(line, nil), do: " at line #{line}"
   defp format_location(line, column), do: " at line #{line}, column #{column}"
 end
+
+defmodule Qx.MissingDependencyError do
+  @moduledoc """
+  Raised when a Qx function needs an optional dependency that the host
+  application hasn't added.
+
+  Carries the `:dependency` atom so callers can pattern-match on the
+  cause. The message names the exact `mix.exs` line that fixes it.
+  """
+
+  defexception [:dependency, :message]
+
+  @impl true
+  def exception({dependency, requirement}) do
+    %__MODULE__{
+      dependency: dependency,
+      message:
+        "the optional dependency #{inspect(dependency)} is not available. " <>
+          "Add {#{inspect(dependency)}, \"#{requirement}\"} to your deps to use this function."
+    }
+  end
+end

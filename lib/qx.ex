@@ -1068,50 +1068,71 @@ defmodule Qx do
   from the result map.
 
   For plotting raw probability tensors (e.g., from `get_probabilities/1`),
-  use `histogram/2` instead.
+  use `draw_histogram/2` instead.
+
+  Returns a `VegaLite.t()` chart spec in every environment; Livebook
+  renders it via kino_vega_lite, standalone apps feed it to any Vega
+  renderer.
 
   ## Parameters
     * `result` - Simulation result from `run/1` or `run/2`
     * `options` - Optional plotting parameters
 
   ## Options
-    * `:format` - `:vega_lite` (default) or `:svg`
     * `:title` - Plot title
     * `:width` - Plot width (default: 400)
     * `:height` - Plot height (default: 300)
+
+  ## Returns
+  A `VegaLite.t()` chart specification.
+
+  ## Raises
+    * `Qx.MissingDependencyError` - if the optional `:vega_lite`
+      dependency is not available
 
   ## Examples
 
       iex> qc = Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1)
       iex> result = Qx.run(qc)
       iex> plot = Qx.draw(result)
-      iex> is_map(plot) or is_binary(plot)
+      iex> is_struct(plot, VegaLite)
       true
 
   ## See Also
-    * `histogram/2` - For plotting raw probability tensors
+    * `draw_histogram/2` - For plotting raw probability tensors
     * `draw_counts/2` - For plotting measurement counts
   """
-  @spec draw(simulation_result(), keyword()) :: VegaLite.t() | String.t()
+  @spec draw(simulation_result(), keyword()) :: VegaLite.t()
   defdelegate draw(result, options \\ []), to: Draw, as: :plot
 
   @doc """
   Visualizes measurement counts as a bar chart.
 
+  Returns a `VegaLite.t()` chart spec in every environment; Livebook
+  renders it via kino_vega_lite. Works with results from both local
+  simulation and `Qx.Hardware` execution.
+
   ## Parameters
     * `result` - Simulation result containing measurement data
-    * `options` - Optional plotting parameters
+    * `options` - Optional plotting parameters (`:title`, `:width`, `:height`)
+
+  ## Returns
+  A `VegaLite.t()` chart specification.
+
+  ## Raises
+    * `Qx.MissingDependencyError` - if the optional `:vega_lite`
+      dependency is not available
 
   ## Examples
 
       iex> qc = Qx.create_circuit(2, 2) |> Qx.h(0) |> Qx.measure(0, 0)
       iex> result = Qx.run(qc)
       iex> plot = Qx.draw_counts(result)
-      iex> is_map(plot) or is_binary(plot)
+      iex> is_struct(plot, VegaLite)
       true
   """
-  @spec draw_counts(simulation_result(), keyword()) :: VegaLite.t() | String.t()
-  defdelegate draw_counts(result, options \\ []), to: Draw, as: :plot_counts
+  @spec draw_counts(simulation_result(), keyword()) :: VegaLite.t()
+  defdelegate draw_counts(result, options \\ []), to: Draw, as: :counts
 
   @doc """
   Creates a histogram from a raw probability tensor.
@@ -1134,14 +1155,14 @@ defmodule Qx do
       iex> qc = Qx.create_circuit(2) |> Qx.h(0)
       iex> probs = Qx.get_probabilities(qc)
       iex> hist = Qx.draw_histogram(probs)
-      iex> is_map(hist) or is_binary(hist)
+      iex> is_struct(hist, VegaLite)
       true
 
   ## See Also
     * `draw/2` - For plotting from simulation results
     * `get_probabilities/1` - To obtain probability tensors
   """
-  @spec draw_histogram(Nx.Tensor.t(), keyword()) :: VegaLite.t() | String.t()
+  @spec draw_histogram(Nx.Tensor.t(), keyword()) :: VegaLite.t()
   defdelegate draw_histogram(probabilities, options \\ []), to: Draw, as: :histogram
 
   @doc """
@@ -1155,31 +1176,37 @@ defmodule Qx do
       `Qx.get_state/1` on a 1-qubit circuit or from a `Qx.Step`
     * `options` - Optional plotting parameters
 
+  Returns a `Qx.Draw.Image` artifact in every environment: Livebook
+  renders it inline (via `Kino.Render`), standalone applications read
+  the SVG from `image.svg`.
+
   ## Options
-    * `:format` - `:vega_lite` (default) or `:svg`
     * `:title` - Plot title (default: "Bloch Sphere")
     * `:size` - Sphere size (default: 400)
+
+  ## Returns
+  A `Qx.Draw.Image` struct carrying the SVG.
 
   ## Examples
 
       # Visualize |0⟩ state
       iex> state = Qx.create_circuit(1) |> Qx.get_state()
-      iex> plot = Qx.draw_bloch(state)
-      iex> is_map(plot) or is_binary(plot)
+      iex> image = Qx.draw_bloch(state)
+      iex> is_struct(image, Qx.Draw.Image)
       true
 
       # Visualize superposition state
       iex> state = Qx.create_circuit(1) |> Qx.h(0) |> Qx.get_state()
-      iex> plot = Qx.draw_bloch(state, title: "Superposition State")
-      iex> is_map(plot) or is_binary(plot)
+      iex> image = Qx.draw_bloch(state, title: "Superposition State")
+      iex> String.contains?(image.svg, "<svg")
       true
 
   ## See Also
     * `draw_state/2` - Display multi-qubit state as table
     * `Qx.steps/2` - State after each operation of a circuit
   """
-  @spec draw_bloch(Nx.Tensor.t(), keyword()) :: VegaLite.t() | String.t()
-  defdelegate draw_bloch(qubit, options \\ []), to: Draw, as: :bloch_sphere
+  @spec draw_bloch(Nx.Tensor.t(), keyword()) :: Qx.Draw.Image.t()
+  defdelegate draw_bloch(qubit, options \\ []), to: Draw, as: :bloch
 
   @doc """
   Displays a quantum state as a formatted table.
@@ -1187,36 +1214,70 @@ defmodule Qx do
   Shows basis states with their amplitudes and probabilities. Useful for
   inspecting a multi-qubit state without running the full circuit.
 
+  Returns a `Qx.Draw.StateTable` artifact in every environment:
+  Livebook renders the markdown table (via `Kino.Render`), IEx prints
+  the text form, and the `:text`/`:markdown`/`:html` fields carry the
+  renderings for standalone use.
+
   ## Parameters
-    * `register_or_state` - state tensor, e.g. from `Qx.get_state/1`
-      (an internal calc-engine register struct also works)
+    * `state` - state tensor, e.g. from `Qx.get_state/1`
     * `options` - Optional display parameters
 
   ## Options
-    * `:format` - `:text` (default) or `:html`
     * `:precision` - Decimal places (default: 3)
     * `:hide_zeros` - Hide zero-amplitude states (default: false)
+
+  ## Returns
+  A `Qx.Draw.StateTable` struct.
 
   ## Examples
 
       # Display Bell state
       iex> state = Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1) |> Qx.get_state()
       iex> table = Qx.draw_state(state)
-      iex> is_binary(table)
+      iex> table.text =~ "Basis State"
       true
 
       # Hide zero states
       iex> state = Qx.create_circuit(3) |> Qx.h(0) |> Qx.get_state()
       iex> table = Qx.draw_state(state, hide_zeros: true)
-      iex> is_binary(table)
-      true
+      iex> table.text =~ "|111⟩"
+      false
 
   ## See Also
     * `draw_bloch/2` - Bloch sphere visualization for single qubits
     * `Qx.Step.show/1` - The same view for one step of `Qx.steps/2`
   """
-  @spec draw_state(Nx.Tensor.t() | struct(), keyword()) :: String.t()
+  @spec draw_state(Nx.Tensor.t(), keyword()) :: Qx.Draw.StateTable.t()
   defdelegate draw_state(register_or_state, options \\ []), to: Draw, as: :state_table
+
+  @doc """
+  Draws a quantum circuit diagram.
+
+  Returns a `Qx.Draw.Image` artifact in every environment: Livebook
+  renders the diagram inline (via `Kino.Render` — a cell that simply
+  returns a circuit already renders it), standalone applications read
+  the SVG from `image.svg`.
+
+  ## Parameters
+    * `circuit` - The quantum circuit to visualize
+    * `title` - Optional diagram title (default: `nil`)
+
+  ## Returns
+  A `Qx.Draw.Image` struct carrying the SVG diagram.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1)
+      iex> image = Qx.draw_circuit(qc, "Bell")
+      iex> String.contains?(image.svg, "<svg")
+      true
+
+  ## See Also
+    * `draw_state/2` - The state the circuit produces, as a table
+  """
+  @spec draw_circuit(circuit(), String.t() | nil) :: Qx.Draw.Image.t()
+  defdelegate draw_circuit(circuit, title \\ nil), to: Draw, as: :circuit
 
   # Convenience functions for creating common quantum states and circuits
 

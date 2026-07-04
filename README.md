@@ -350,17 +350,22 @@ IO.inspect(state_info.probabilities)  # [{"|0⟩", 0.5}, {"|1⟩", 0.5}]
 
 ## Visualization
 
-Qx provides several visualization functions that work in both LiveBook (VegaLite) and standalone (SVG) environments.
+Qx's visualization functions each return one artifact type that works everywhere: VegaLite chart specs, and SVG/table artifact structs that render themselves in Livebook (see "Using Qx outside Livebook" below for standalone use).
 
 **Results visualization:**
 
 ```elixir
 result = Qx.bell_state() |> Qx.run(1000)
 
-Qx.draw(result)                  # Probability distribution (VegaLite)
-Qx.draw(result, format: :svg)    # Probability distribution (SVG)
-Qx.draw_counts(result)           # Measurement counts
+Qx.draw(result)                  # Probability distribution (VegaLite spec)
+Qx.draw_counts(result)           # Measurement counts (VegaLite spec)
 ```
+
+Every draw function returns one static artifact type in every
+environment. Livebook renders charts through kino_vega_lite and the
+SVG/table artifacts through `Kino.Render`; a standalone application
+uses the returned value directly (see "Using Qx outside Livebook"
+below).
 
 **Circuit diagrams:**
 
@@ -371,9 +376,12 @@ circuit = Qx.create_circuit(2, 2)
           |> Qx.measure(0, 0)
           |> Qx.measure(1, 1)
 
-svg = Qx.Draw.circuit(circuit, "Bell State")
-File.write!("bell_state.svg", svg)
+image = Qx.draw_circuit(circuit, "Bell State")
+File.write!("bell_state.svg", image.svg)
 ```
+
+In Livebook a cell that simply returns a circuit renders the diagram
+automatically.
 
 Circuit diagrams support all quantum gates with proper IEEE notation, parametric gates with displayed angles, multi-qubit gates, barriers, and measurements with classical bit connections.
 
@@ -387,8 +395,25 @@ Qx.create_circuit(1) |> Qx.h(0) |> Qx.get_state() |> Qx.draw_bloch()
 
 ```elixir
 probs = Qx.get_probabilities(circuit)
-Qx.draw_histogram(probs)
+Qx.draw_histogram(probs)     # VegaLite spec
 ```
+
+### Using Qx outside Livebook
+
+Everything above works identically in a Mix application or a plain
+script; the difference is what you do with the returned artifact:
+
+| You have | In Livebook | Standalone |
+|---|---|---|
+| `VegaLite.t()` (charts) | renders via kino_vega_lite | feed it to any Vega renderer |
+| `Qx.Draw.Image` (Bloch, circuit) | renders inline | `File.write!("out.svg", image.svg)` |
+| `Qx.Draw.StateTable` | renders as a table | `table.text` / `.markdown` / `.html` |
+
+The chart functions need the optional `:vega_lite` dependency and
+raise `Qx.MissingDependencyError` naming the fix when it's absent.
+You never add `:kino` yourself outside Livebook — the rich rendering
+comes from `Kino.Render` implementations that activate only when
+Livebook's runtime provides Kino.
 
 ## Importing OpenQASM
 

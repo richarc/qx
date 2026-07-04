@@ -9,6 +9,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `Qx.draw_circuit/2`: facade delegate for circuit diagrams (the README
+  no longer needs tier-2 `Qx.Draw.circuit/2`). Returns a
+  `Qx.Draw.Image`.
+- `Qx.Draw.Image` and `Qx.Draw.StateTable`: artifact structs returned
+  by `draw_bloch`/`draw_circuit` and `draw_state`. Plain data with one
+  static shape everywhere — `Inspect` for IEx, raw SVG/text/markdown/
+  HTML fields for standalone use, and rich Livebook rendering via
+  `Kino.Render`.
+- `Kino.Render` implementations (active only when Livebook provides
+  the optional `kino` dependency) for `Qx.QuantumCircuit` (a cell
+  returning a circuit renders its diagram), `Qx.SimulationResult`
+  (counts table), `Qx.Step` (state table), `Qx.Draw.Image`, and
+  `Qx.Draw.StateTable`.
+- `Qx.MissingDependencyError`: typed error naming the exact deps line
+  to add when an optional dependency is required.
+
+### Changed
+
+- **Breaking (pre-release, v0.10 never shipped):** every draw function
+  now returns one static type in every environment. `Qx.draw/2`,
+  `draw_counts/2`, `draw_histogram/2` return `VegaLite.t()` only;
+  `draw_bloch/2` returns `Qx.Draw.Image`; `draw_state/2` returns
+  `Qx.Draw.StateTable`. The `:format` option is gone everywhere, and
+  `draw_state` no longer sniffs for Kino at runtime (the same call
+  returned `%Kino.Markdown{}` in Livebook and a string in a release).
+- **Breaking:** tier-2 `Qx.Draw` names now follow the facade
+  (`Qx.draw_X` delegates to `Qx.Draw.X`): `plot_counts` is now
+  `counts`, `bloch_sphere` is now `bloch`.
+- `vega_lite` is now an optional dependency: only the three
+  VegaLite-returning chart functions need it, and they raise
+  `Qx.MissingDependencyError` when it's absent.
+- The docs and README now teach one path: build a circuit, run it, and
+  step through it with `Qx.steps/2` / `Qx.Step.show/1` when you want to
+  see the state evolve. The "Which `h` am I calling?" grid, the
+  two-modes framing, and the calc-mode README sections are gone; a
+  short migration note in the README maps old calc-mode pipelines onto
+  the stepper.
+- **Breaking (pre-release):** `Qx.Draw.circuit/2` (and the new
+  `Qx.draw_circuit/2`) returns a `Qx.Draw.Image` instead of a raw SVG
+  string. Where 0.8.x docs said `File.write!(path, svg)`, write
+  `image.svg`.
+
+### Deprecated
+
+- `Qx.Qubit` and `Qx.Register` (calc mode) are demoted to an internal
+  engine: hidden from the generated docs, dropped from the declared
+  public surface, and carrying no stability guarantee from here on.
+  Both modules still compile, run, and pass their tests, so existing
+  notebooks keep working. Removal or restructuring is deferred to v1.0.
+
+### Removed
+
+- The hand-rolled SVG chart renderer (`format: :svg` on
+  `draw`/`draw_counts`/`draw_histogram`): a usage inventory found no
+  consumer anywhere. SVG remains the artifact for Bloch spheres and
+  circuit diagrams via `Qx.Draw.Image`.
+- The VegaLite Bloch-sphere projection: the SVG Bloch renderer is the
+  single Bloch path (its visual upgrade is scheduled for v0.11).
+
+
 - `Qx.steps/1,2` and `%Qx.Step{}`: a lazy stream of per-operation steps for
   walking through a circuit's execution. Works on circuits with mid-circuit
   measurement and `c_if` (one stochastic trajectory per materialisation;
@@ -22,6 +82,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Qx.tap_state/2` and `Qx.tap_probabilities/2` now share the stepper's
   execution path internally. No behaviour change: same values, same
   `Qx.MeasurementError` contract on measured/conditional prefixes.
+- `Qx.StateInit.bell_state/0,1,2` and `Qx.StateInit.ghz_state/1,2`, the
+  deprecated state-vector aliases: use `bell_state_vector/0,1,2` and
+  `ghz_state_vector/1,2`. The circuit-returning `Qx.bell_state/0,1` and
+  `Qx.ghz_state/0` facades are unaffected. Deprecated through 0.8.x;
+  window closed.
+- `Qx.Math.basis_state/2`, the f32 shim deprecated in 0.8.x: use
+  `Qx.StateInit.basis_state/3` (c64, matching the quantum-state surface).
+- `Qx.histogram/1,2`: use `Qx.draw_histogram/1,2`, in place since one
+  minor before this release.
 
 ### Fixed
 
@@ -38,38 +107,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pattern-matches list keys out of `result.counts` must switch to
   strings (`counts[[1, 0]]` → `counts["10"]`). `result.classical_bits`
   still holds per-shot bit lists, as documented.
-
-### Changed
-
-- The docs and README now teach one path: build a circuit, run it, and
-  step through it with `Qx.steps/2` / `Qx.Step.show/1` when you want to
-  see the state evolve. The "Which `h` am I calling?" grid, the
-  two-modes framing, and the calc-mode README sections are gone; a
-  short migration note in the README maps old calc-mode pipelines onto
-  the stepper.
-
-### Deprecated
-
-- `Qx.Qubit` and `Qx.Register` (calc mode) are demoted to an internal
-  engine: hidden from the generated docs, dropped from the declared
-  public surface, and carrying no stability guarantee from here on.
-  Both modules still compile, run, and pass their tests, so existing
-  notebooks keep working. Removal or restructuring is deferred to v1.0.
-
-### Removed
-
-- `Qx.StateInit.bell_state/0,1,2` and `Qx.StateInit.ghz_state/1,2`, the
-  deprecated state-vector aliases: use `bell_state_vector/0,1,2` and
-  `ghz_state_vector/1,2`. The circuit-returning `Qx.bell_state/0,1` and
-  `Qx.ghz_state/0` facades are unaffected. Deprecated through 0.8.x;
-  window closed.
-- `Qx.Math.basis_state/2`, the f32 shim deprecated in 0.8.x: use
-  `Qx.StateInit.basis_state/3` (c64, matching the quantum-state surface).
-- `Qx.histogram/1,2`: use `Qx.draw_histogram/1,2`, in place since one
-  minor before this release.
-
-### Fixed
-
 - Circuits containing a barrier no longer raise
   `Qx.GateError: Unsupported gate: :barrier` when executed. Every
   barrier producer (`Qx.barrier/2`, `Qx.barrier_all/1,2`, OpenQASM

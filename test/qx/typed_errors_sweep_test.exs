@@ -74,36 +74,19 @@ defmodule Qx.TypedErrorsSweepTest do
       e = assert_raise Qx.RegisterError, fn -> Tables.render(:not_a_register) end
       assert {:invalid_input, :not_a_register} = e.reason
     end
-
-    test "rejects an unsupported format with Qx.OptionError" do
-      reg = Qx.Register.new(1)
-      e = assert_raise Qx.OptionError, fn -> Tables.render(reg, format: :bogus) end
-      assert e.option == :format
-      assert e.value == :bogus
-    end
   end
 
-  describe "Qx.Draw format options" do
-    test "plot/2 rejects an unsupported format with Qx.OptionError" do
-      e = assert_raise Qx.OptionError, fn -> Qx.Draw.plot(%{}, format: :bogus) end
-      assert e.option == :format
-    end
-
-    test "plot_counts/2 rejects an unsupported format with Qx.OptionError" do
-      e = assert_raise Qx.OptionError, fn -> Qx.Draw.plot_counts(%{}, format: :bogus) end
-      assert e.option == :format
-    end
-
-    test "bloch_sphere/2 rejects an unsupported format with Qx.OptionError" do
-      qubit = Qx.Qubit.new()
-      e = assert_raise Qx.OptionError, fn -> Qx.Draw.bloch_sphere(qubit, format: :bogus) end
-      assert e.option == :format
-    end
-
-    test "histogram/2 rejects an unsupported format with Qx.OptionError" do
-      probs = Nx.tensor([0.5, 0.5])
-      e = assert_raise Qx.OptionError, fn -> Qx.Draw.histogram(probs, format: :bogus) end
-      assert e.option == :format
+  # The :format option was removed by the draw-rework (one static
+  # return type per function); the OptionError tests for it went with
+  # the option. The MissingDependencyError raise site is unreachable
+  # while the optional deps are present (qx's own dev/test env always
+  # fetches them), so only the exception contract is testable here.
+  describe "Qx.MissingDependencyError" do
+    test "message names the dependency and the deps line that fixes it" do
+      e = Qx.MissingDependencyError.exception({:vega_lite, "~> 0.1"})
+      assert e.dependency == :vega_lite
+      assert e.message =~ ":vega_lite"
+      assert e.message =~ ~s({:vega_lite, "~> 0.1"})
     end
   end
 

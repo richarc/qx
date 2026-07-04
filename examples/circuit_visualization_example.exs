@@ -12,7 +12,7 @@ bell_circuit = Qx.QuantumCircuit.new(2, 2)
   |> Qx.Operations.measure(0, 0)
   |> Qx.Operations.measure(1, 1)
 
-svg = Qx.Draw.circuit(bell_circuit, "Bell State")
+svg = Qx.draw_circuit(bell_circuit, "Bell State").svg
 File.write!("examples/bell_state.svg", svg)
 IO.puts("→ Generated: examples/bell_state.svg")
 
@@ -33,7 +33,7 @@ teleport_circuit = Qx.QuantumCircuit.new(3, 3)
   |> Qx.Operations.cz(0, 2)
   |> Qx.Operations.measure(2, 2)
 
-svg = Qx.Draw.circuit(teleport_circuit, "Quantum Teleportation Protocol")
+svg = Qx.draw_circuit(teleport_circuit, "Quantum Teleportation Protocol").svg
 File.write!("examples/teleportation.svg", svg)
 IO.puts("→ Generated: examples/teleportation.svg")
 
@@ -57,7 +57,7 @@ grover_circuit = Qx.QuantumCircuit.new(2, 2)
   |> Qx.Operations.measure(0, 0)
   |> Qx.Operations.measure(1, 1)
 
-svg = Qx.Draw.circuit(grover_circuit, "Grover's Algorithm")
+svg = Qx.draw_circuit(grover_circuit, "Grover's Algorithm").svg
 File.write!("examples/grover.svg", svg)
 IO.puts("→ Generated: examples/grover.svg")
 

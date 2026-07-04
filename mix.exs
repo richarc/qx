@@ -55,7 +55,13 @@ defmodule Qx.MixProject do
       # Acceleration backends (EXLA / EMLX) are NOT deps of Qx — users add them
       # to their own project and set `config :nx, :default_backend`. See the
       # "Performance & Acceleration" section of README.md.
-      {:vega_lite, "~> 0.1"},
+      # Optional: needed only for the VegaLite-returning chart functions
+      # (Qx.draw/draw_counts/draw_histogram); they raise a typed
+      # Qx.MissingDependencyError when it's absent.
+      {:vega_lite, "~> 0.1", optional: true},
+      # Optional: enables rich Livebook rendering via Kino.Render impls
+      # for Qx structs. Qx never calls Kino APIs outside those impls.
+      {:kino, "~> 0.12", optional: true},
       {:complex, "~> 0.7"},
       {:nimble_parsec, "~> 1.4"},
       {:req, "~> 0.6"},
@@ -92,7 +98,7 @@ defmodule Qx.MixProject do
           Qx.Simulation,
           Qx.SimulationResult
         ],
-        Visualization: [Qx.Draw],
+        Visualization: [Qx.Draw, Qx.Draw.Image, Qx.Draw.StateTable],
         "Hardware Execution": [
           Qx.Hardware,
           Qx.Hardware.Config,
@@ -113,7 +119,8 @@ defmodule Qx.MixProject do
           Qx.Hardware.NoMeasurementsError,
           Qx.Hardware.ConfigError,
           Qx.QasmParseError,
-          Qx.QasmUnsupportedError
+          Qx.QasmUnsupportedError,
+          Qx.MissingDependencyError
         ],
         Utilities: [
           Qx.Math,

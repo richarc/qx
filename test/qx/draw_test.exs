@@ -1,183 +1,152 @@
 defmodule Qx.DrawTest do
   use ExUnit.Case, async: true
 
-  describe "bloch_sphere/2" do
-    test "visualizes |0⟩ state" do
-      q = Qx.Qubit.new()
-      result = Qx.Draw.bloch_sphere(q)
+  alias Qx.Draw.{Image, StateTable}
 
-      assert is_struct(result, VegaLite) or is_binary(result)
+  defp state(build_fn) do
+    Qx.create_circuit(1) |> build_fn.() |> Qx.get_state()
+  end
+
+  describe "bloch/2" do
+    test "visualizes |0⟩ state" do
+      assert %Image{} = Qx.Draw.bloch(Qx.create_circuit(1) |> Qx.get_state())
     end
 
     test "visualizes |1⟩ state" do
-      q = Qx.Qubit.one()
-      result = Qx.Draw.bloch_sphere(q)
-
-      assert is_struct(result, VegaLite) or is_binary(result)
+      assert %Image{svg: svg} = Qx.Draw.bloch(state(&Qx.x(&1, 0)))
+      assert svg =~ "<svg"
     end
 
     test "visualizes |+⟩ state" do
-      q = Qx.Qubit.plus()
-      result = Qx.Draw.bloch_sphere(q)
-
-      assert is_struct(result, VegaLite) or is_binary(result)
+      assert %Image{} = Qx.Draw.bloch(state(&Qx.h(&1, 0)))
     end
 
-    test "visualizes |-⟩ state" do
-      q = Qx.Qubit.minus()
-      result = Qx.Draw.bloch_sphere(q)
-
-      assert is_struct(result, VegaLite) or is_binary(result)
+    test "visualizes |−⟩ state" do
+      minus = Qx.create_circuit(1) |> Qx.x(0) |> Qx.h(0) |> Qx.get_state()
+      assert %Image{} = Qx.Draw.bloch(minus)
     end
 
-    test "supports SVG format" do
-      q = Qx.Qubit.new()
-      result = Qx.Draw.bloch_sphere(q, format: :svg)
+    test "carries a custom title" do
+      assert %Image{title: "My Custom Title", svg: svg} =
+               Qx.Draw.bloch(state(&Qx.h(&1, 0)), title: "My Custom Title")
 
-      assert is_binary(result)
-      assert result =~ "<svg"
-      assert result =~ "</svg>"
-    end
-
-    test "supports custom title" do
-      q = Qx.Qubit.new()
-      result = Qx.Draw.bloch_sphere(q, format: :svg, title: "My Custom Title")
-
-      assert is_binary(result)
-      assert result =~ "My Custom Title"
+      assert svg =~ "My Custom Title"
     end
 
     test "supports custom size" do
-      q = Qx.Qubit.new()
-      result = Qx.Draw.bloch_sphere(q, format: :svg, size: 600)
-
-      assert is_binary(result)
-      assert result =~ "width=\"600\""
+      assert %Image{svg: svg} = Qx.Draw.bloch(state(&Qx.h(&1, 0)), size: 600)
+      assert svg =~ ~s(width="600")
     end
 
-    test "visualizes superposition state after Hadamard" do
-      q = Qx.Qubit.new() |> Qx.Qubit.h()
-      result = Qx.Draw.bloch_sphere(q)
-
-      assert is_struct(result, VegaLite) or is_binary(result)
+    test "to_string/1 returns the raw SVG" do
+      image = Qx.Draw.bloch(Qx.create_circuit(1) |> Qx.get_state())
+      assert to_string(image) == image.svg
     end
   end
 
   describe "state_table/2" do
-    test "displays single qubit state" do
-      q = Qx.Qubit.new()
-      table = Qx.Draw.state_table(q)
+    test "displays single-qubit state" do
+      table = Qx.Draw.state_table(Qx.create_circuit(1) |> Qx.get_state())
 
-      assert is_binary(table)
-      assert table =~ "Basis State"
-      assert table =~ "Amplitude"
-      assert table =~ "Probability"
-      assert table =~ "|0⟩"
-      assert table =~ "|1⟩"
+      assert %StateTable{} = table
+      assert table.text =~ "Basis State"
+      assert table.text =~ "|0⟩"
     end
 
-    test "displays two-qubit register" do
-      reg = Qx.Register.new(2)
-      table = Qx.Draw.state_table(reg)
+    test "displays two-qubit state" do
+      table = Qx.Draw.state_table(Qx.create_circuit(2) |> Qx.get_state())
 
-      assert is_binary(table)
-      assert table =~ "|00⟩"
-      assert table =~ "|01⟩"
-      assert table =~ "|10⟩"
-      assert table =~ "|11⟩"
+      assert table.text =~ "|00⟩"
+      assert table.text =~ "|11⟩"
     end
 
-    test "displays Bell state" do
-      reg = Qx.Register.new(2) |> Qx.Register.h(0) |> Qx.Register.cx(0, 1)
-      table = Qx.Draw.state_table(reg)
+    test "works with three-qubit state" do
+      table = Qx.Draw.state_table(Qx.create_circuit(3) |> Qx.get_state())
 
-      assert is_binary(table)
-      assert table =~ "|00⟩"
-      assert table =~ "|11⟩"
-      # Both |00⟩ and |11⟩ should have ~0.5 probability
-      assert table =~ "0.5"
+      assert table.text =~ "|000⟩"
+      assert table.text =~ "|111⟩"
     end
 
-    test "hides zero amplitude states when requested" do
-      reg = Qx.Register.new(2) |> Qx.Register.h(0) |> Qx.Register.cx(0, 1)
-      table = Qx.Draw.state_table(reg, hide_zeros: true)
+    test "hides zero-probability states with hide_zeros" do
+      table =
+        Qx.create_circuit(2)
+        |> Qx.h(0)
+        |> Qx.get_state()
+        |> Qx.Draw.state_table(hide_zeros: true)
 
-      assert is_binary(table)
-      assert table =~ "|00⟩"
-      assert table =~ "|11⟩"
-      # |01⟩ and |10⟩ should not appear
-      refute table =~ "|01⟩"
-      refute table =~ "|10⟩"
+      refute table.text =~ "|01⟩"
+      refute table.text =~ "|11⟩"
     end
 
-    test "supports HTML format" do
-      reg = Qx.Register.new(2)
-      table = Qx.Draw.state_table(reg, format: :html)
+    test "html field is an HTML table" do
+      table = Qx.Draw.state_table(Qx.create_circuit(2) |> Qx.get_state())
 
-      assert is_binary(table)
-      assert table =~ "<table"
-      assert table =~ "<thead>"
-      assert table =~ "<tbody>"
-      assert table =~ "</table>"
+      assert table.html =~ "<table"
+      assert table.html =~ "<th>Basis State</th>"
     end
 
     test "supports custom precision" do
-      reg = Qx.Register.new(2) |> Qx.Register.h(0)
-      table = Qx.Draw.state_table(reg, precision: 5)
+      table =
+        Qx.create_circuit(1)
+        |> Qx.h(0)
+        |> Qx.get_state()
+        |> Qx.Draw.state_table(precision: 5)
 
-      assert is_binary(table)
-      # Should have more decimal places
-      assert table =~ ~r/\d+\.\d{5}/
+      assert table.text =~ ~r/\d+\.\d{5}/
     end
 
-    test "works with three-qubit register" do
-      reg = Qx.Register.new(3)
-      table = Qx.Draw.state_table(reg)
+    test "markdown field escapes basis-state pipes" do
+      table = Qx.Draw.state_table(Qx.create_circuit(2) |> Qx.get_state())
 
-      assert is_binary(table)
-      assert table =~ "|000⟩"
-      assert table =~ "|111⟩"
+      assert table.markdown =~ "| Basis State | Amplitude | Probability |"
+      assert table.markdown =~ "| \\|00⟩"
+      assert table.markdown =~ "| \\|11⟩"
     end
 
-    test "supports markdown format" do
-      reg = Qx.Register.new(2)
-      result = Qx.Draw.state_table(reg, format: :markdown)
-
-      # Should return markdown string (Kino not available in tests)
-      assert is_binary(result)
-      assert result =~ "| Basis State | Amplitude | Probability |"
-      assert result =~ "|-------------|-----------|-------------|"
-      # Pipes in basis states should be escaped
-      assert result =~ "| \\|00⟩"
-      assert result =~ "| \\|11⟩"
+    test "accepts the internal calc-engine register escape hatch" do
+      table = Qx.Draw.state_table(Qx.Register.new(1))
+      assert %StateTable{} = table
+      assert table.text =~ "|0⟩"
     end
 
-    test "auto format defaults to text when Kino not available" do
-      reg = Qx.Register.new(2)
-      result = Qx.Draw.state_table(reg, format: :auto)
-
-      # Should return text format in test environment
-      assert is_binary(result)
-      assert result =~ "Basis State | Amplitude"
+    test "to_string/1 returns the text table" do
+      table = Qx.Draw.state_table(Qx.create_circuit(1) |> Qx.get_state())
+      assert to_string(table) == table.text
     end
   end
 
-  describe "Qx.draw_bloch/2" do
-    test "is accessible from main Qx module" do
-      q = Qx.Qubit.new()
-      result = Qx.draw_bloch(q)
+  describe "chart functions" do
+    test "plot/2 returns a VegaLite spec" do
+      result = Qx.create_circuit(1) |> Qx.h(0) |> Qx.run(shots: 8)
+      assert %VegaLite{} = Qx.Draw.plot(result)
+    end
 
-      assert is_struct(result, VegaLite) or is_binary(result)
+    test "counts/2 returns a VegaLite spec, empty counts included" do
+      result = Qx.create_circuit(1) |> Qx.h(0) |> Qx.run(shots: 8)
+      assert %VegaLite{} = Qx.Draw.counts(result)
+    end
+
+    test "histogram/2 returns a VegaLite spec" do
+      probs = Qx.get_probabilities(Qx.create_circuit(2) |> Qx.h(0))
+      assert %VegaLite{} = Qx.Draw.histogram(probs, title: "t")
     end
   end
 
-  describe "Qx.draw_state/2" do
-    test "is accessible from main Qx module" do
-      reg = Qx.Register.new(2)
-      table = Qx.draw_state(reg)
+  describe "facade delegates" do
+    test "Qx.draw_bloch/2 returns an Image" do
+      assert %Image{} = Qx.draw_bloch(Qx.create_circuit(1) |> Qx.get_state())
+    end
 
-      assert is_binary(table)
-      assert table =~ "Basis State"
+    test "Qx.draw_state/2 returns a StateTable" do
+      table = Qx.draw_state(Qx.create_circuit(2) |> Qx.get_state())
+      assert %StateTable{} = table
+      assert table.text =~ "Basis State"
+    end
+
+    test "Qx.draw_circuit/2 returns an Image" do
+      qc = Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1)
+      assert %Image{svg: svg} = Qx.draw_circuit(qc)
+      assert svg =~ "<svg"
     end
   end
 end

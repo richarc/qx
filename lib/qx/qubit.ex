@@ -26,28 +26,22 @@ defmodule Qx.Qubit do
   ## Parameters
     * `qubit` - The qubit state to visualize
     * `options` - Optional visualization parameters
-      * `:format` - Output format (`:svg`, `:vega_lite`) (default: `:vega_lite`)
       * `:title` - Title of the plot (default: "Bloch Sphere")
       * `:size` - Size of the visualization in pixels (default: 400)
 
   ## Examples
 
       iex> q = Qx.Qubit.new() |> Qx.Qubit.h()
-      iex> result = Qx.Qubit.draw_bloch(q)
-      iex> is_struct(result) or is_binary(result)
-      true
-
-      iex> q = Qx.Qubit.new() |> Qx.Qubit.h()
-      iex> svg = Qx.Qubit.draw_bloch(q, format: :svg)
-      iex> is_binary(svg)
+      iex> image = Qx.Qubit.draw_bloch(q)
+      iex> is_struct(image, Qx.Draw.Image)
       true
 
   ## Pipeline Usage
 
-  ⚠️ This is a terminal operation that returns an SVG string or VegaLite struct, not a qubit.
+  ⚠️ This is a terminal operation that returns a `Qx.Draw.Image`, not a qubit.
   For pipeline-friendly state inspection, use `tap_state/2`.
   """
-  defdelegate draw_bloch(qubit, options \\ []), to: Qx.Draw, as: :bloch_sphere
+  defdelegate draw_bloch(qubit, options \\ []), to: Qx.Draw, as: :bloch
 
   # ============================================================================
   # STATE CREATION

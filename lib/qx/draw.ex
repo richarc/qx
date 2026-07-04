@@ -1,63 +1,42 @@
 defmodule Qx.Draw do
   @moduledoc """
-  Visualization functions for quantum simulation results.
+  Visualization for quantum simulation results.
 
-  This module provides a clean API facade for all visualization capabilities,
-  delegating to specialized sub-modules:
+  Utility module: reached from `Qx.*` in normal use — every function
+  here has a `Qx.draw_*` facade delegate (`Qx.draw/2` fronts `plot/2`).
 
-  - `Qx.Draw.VegaLite` - VegaLite chart generation (LiveBook integration)
-  - `Qx.Draw.SVG.Charts` - SVG histogram and bar charts
-  - `Qx.Draw.SVG.Bloch` - Bloch sphere visualization
-  - `Qx.Draw.SVG.Circuit` - Quantum circuit diagrams
-  - `Qx.Draw.Tables` - State table formatting
+  Every function returns one static artifact type in every
+  environment (`spec/api-design-principles.md` §6):
 
-  ## Visualization Types
+  | Function | Returns | Livebook renders via |
+  |---|---|---|
+  | `plot/2` | `VegaLite.t()` | kino_vega_lite |
+  | `counts/2` | `VegaLite.t()` | kino_vega_lite |
+  | `histogram/2` | `VegaLite.t()` | kino_vega_lite |
+  | `bloch/2` | `Qx.Draw.Image` | `Kino.Render` |
+  | `circuit/2` | `Qx.Draw.Image` | `Kino.Render` |
+  | `state_table/2` | `Qx.Draw.StateTable` | `Kino.Render` |
 
-  ### Probability Plots
-  - `plot/2` - Plot probability distribution from simulation results
-  - `histogram/2` - Plot raw probability tensors
+  Nothing here requires Livebook. In a standalone application the
+  VegaLite specs feed any Vega renderer, and the `Image`/`StateTable`
+  artifacts expose their raw SVG/text/markdown as fields — write them
+  to files, serve them, or print them.
 
-  ### Measurement Counts
-  - `plot_counts/2` - Visualize measurement outcome frequencies (works with both local simulation and `Qx.Hardware` hardware results)
-
-  ### Bloch Sphere
-  - `bloch_sphere/2` - Visualize single-qubit states geometrically
-
-  ### Circuit Diagrams
-  - `circuit/2` - Generate SVG circuit diagrams with IEEE notation
-
-  ### State Tables
-  - `state_table/2` - Display quantum states in tabular format
-
-  ## Output Formats
-
-  Most functions support multiple output formats via the `:format` option:
-  - `:vega_lite` - Interactive charts for LiveBook (default for plots)
-  - `:svg` - Standalone SVG (works everywhere)
-  - `:auto` - Auto-detect best format (for tables)
-  - `:text` - Plain text tables
-  - `:html` - HTML tables
-  - `:markdown` - Markdown tables with Kino support
-
-  ## Examples
-
-      # VegaLite plot in LiveBook
-      result = Qx.run(circuit)
-      Qx.Draw.plot(result)
-
-      # SVG output for saving to file
-      Qx.Draw.plot(result, format: :svg)
-
-      # Circuit diagram
-      svg = Qx.Draw.circuit(circuit, "My Circuit")
-      File.write!("circuit.svg", svg)
-
-      # State table
-      Qx.Draw.state_table(register, precision: 4, hide_zeros: true)
+  The three VegaLite-returning functions need the optional
+  `:vega_lite` dependency and raise `Qx.MissingDependencyError`
+  naming the fix when it's absent. The SVG and table artifacts have
+  no dependency at all.
   """
 
-  alias Qx.Draw.SVG.{Bloch, Charts, Circuit}
-  alias Qx.Draw.{Tables, VegaLite}
+  alias Qx.Draw.SVG.{Bloch, Circuit}
+  alias Qx.Draw.{Image, Tables}
+
+  # Qx.Draw.VegaLite only compiles when the optional :vega_lite dep is
+  # present; every call is behind ensure_vega_lite!/0, so downstream
+  # no-vega_lite compiles must not warn on the references.
+  @compile {:no_warn_undefined, Qx.Draw.VegaLite}
+
+  @vega_lite_requirement "~> 0.1"
 
   @doc """
   Plots the probability distribution from a simulation result.
@@ -67,36 +46,30 @@ defmodule Qx.Draw do
     * `options` - Optional plotting parameters (default: [])
 
   ## Options
-    * `:format` - Output format (`:svg`, `:vega_lite`) (default: `:vega_lite`)
     * `:title` - Plot title (default: "Quantum State Probabilities")
     * `:width` - Plot width (default: 400)
     * `:height` - Plot height (default: 300)
+
+  ## Returns
+  A `VegaLite.t()` chart specification.
+
+  ## Raises
+    * `Qx.MissingDependencyError` - if the optional `:vega_lite`
+      dependency is not available
 
   ## Examples
 
       qc = Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1)
       result = Qx.run(qc)
-      Qx.Draw.plot(result)
-
-      # SVG output
-      Qx.Draw.plot(result, format: :svg, title: "Bell State")
+      Qx.Draw.plot(result, title: "Bell State")
   """
   def plot(result, options \\ []) do
-    format = Keyword.get(options, :format, :vega_lite)
+    ensure_vega_lite!()
     title = Keyword.get(options, :title, "Quantum State Probabilities")
     width = Keyword.get(options, :width, 400)
     height = Keyword.get(options, :height, 300)
 
-    case format do
-      :vega_lite ->
-        VegaLite.plot(result, title, width, height)
-
-      :svg ->
-        Charts.plot(result, title, width, height)
-
-      _ ->
-        raise Qx.OptionError, {:format, format, "Use :vega_lite or :svg."}
-    end
+    Qx.Draw.VegaLite.plot(result, title, width, height)
   end
 
   @doc """
@@ -110,10 +83,16 @@ defmodule Qx.Draw do
     * `options` - Optional plotting parameters (default: [])
 
   ## Options
-    * `:format` - Output format (`:svg`, `:vega_lite`) (default: `:vega_lite`)
     * `:title` - Plot title (default: "Measurement Counts")
     * `:width` - Plot width (default: 400)
     * `:height` - Plot height (default: 300)
+
+  ## Returns
+  A `VegaLite.t()` chart specification.
+
+  ## Raises
+    * `Qx.MissingDependencyError` - if the optional `:vega_lite`
+      dependency is not available
 
   ## Examples
 
@@ -121,66 +100,15 @@ defmodule Qx.Draw do
       |> Qx.h(0) |> Qx.cx(0, 1)
       |> Qx.measure(0, 0) |> Qx.measure(1, 1)
       result = Qx.run(qc)
-      Qx.Draw.plot_counts(result)
+      Qx.Draw.counts(result)
   """
-  def plot_counts(result, options \\ []) do
-    format = Keyword.get(options, :format, :vega_lite)
+  def counts(result, options \\ []) do
+    ensure_vega_lite!()
     title = Keyword.get(options, :title, "Measurement Counts")
     width = Keyword.get(options, :width, 400)
     height = Keyword.get(options, :height, 300)
 
-    case format do
-      :vega_lite ->
-        VegaLite.plot_counts(result, title, width, height)
-
-      :svg ->
-        Charts.plot_counts(result, title, width, height)
-
-      _ ->
-        raise Qx.OptionError, {:format, format, "Use :vega_lite or :svg."}
-    end
-  end
-
-  @doc """
-  Visualizes a single qubit state on the Bloch sphere.
-
-  The Bloch sphere is a geometrical representation of pure qubit states.
-
-  ## Parameters
-    * `qubit` - Single qubit state tensor (2-element c64 tensor)
-    * `options` - Optional plotting parameters (default: [])
-
-  ## Options
-    * `:format` - Output format (`:svg`, `:vega_lite`) (default: `:vega_lite`)
-    * `:title` - Plot title (default: "Bloch Sphere")
-    * `:size` - Sphere size (default: 400)
-
-  ## Examples
-
-      state = Qx.create_circuit(1) |> Qx.h(0) |> Qx.get_state()
-      Qx.Draw.bloch_sphere(state)
-
-      # SVG output
-      Qx.Draw.bloch_sphere(state, format: :svg)
-  """
-  def bloch_sphere(qubit, options \\ []) do
-    format = Keyword.get(options, :format, :vega_lite)
-    title = Keyword.get(options, :title, "Bloch Sphere")
-    size = Keyword.get(options, :size, 400)
-
-    # Convert qubit state to Bloch coordinates
-    coords = Bloch.qubit_to_bloch_coordinates(qubit)
-
-    case format do
-      :vega_lite ->
-        VegaLite.bloch_sphere(coords, title, size)
-
-      :svg ->
-        Bloch.render(coords, title, size)
-
-      _ ->
-        raise Qx.OptionError, {:format, format, "Use :vega_lite or :svg."}
-    end
+    Qx.Draw.VegaLite.counts(result, title, width, height)
   end
 
   @doc """
@@ -191,10 +119,16 @@ defmodule Qx.Draw do
     * `options` - Optional plotting parameters (default: [])
 
   ## Options
-    * `:format` - Output format (`:svg`, `:vega_lite`) (default: `:vega_lite`)
     * `:title` - Plot title (default: "Probability Histogram")
     * `:width` - Plot width (default: 400)
     * `:height` - Plot height (default: 300)
+
+  ## Returns
+  A `VegaLite.t()` chart specification.
+
+  ## Raises
+    * `Qx.MissingDependencyError` - if the optional `:vega_lite`
+      dependency is not available
 
   ## Examples
 
@@ -203,12 +137,11 @@ defmodule Qx.Draw do
       Qx.Draw.histogram(probs)
   """
   def histogram(probabilities, options \\ []) do
-    format = Keyword.get(options, :format, :vega_lite)
+    ensure_vega_lite!()
     title = Keyword.get(options, :title, "Probability Histogram")
     width = Keyword.get(options, :width, 400)
     height = Keyword.get(options, :height, 300)
 
-    # Convert probabilities to data format
     probabilities_list = Nx.to_flat_list(probabilities)
     num_states = length(probabilities_list)
 
@@ -220,16 +153,36 @@ defmodule Qx.Draw do
         %{"state" => state_label, "probability" => prob}
       end)
 
-    case format do
-      :vega_lite ->
-        VegaLite.histogram(data, title, width, height)
+    Qx.Draw.VegaLite.histogram(data, title, width, height)
+  end
 
-      :svg ->
-        Charts.histogram(data, title, width, height)
+  @doc """
+  Visualizes a single qubit state on the Bloch sphere.
 
-      _ ->
-        raise Qx.OptionError, {:format, format, "Use :vega_lite or :svg."}
-    end
+  ## Parameters
+    * `qubit` - Single qubit state tensor (2-element c64 tensor)
+    * `options` - Optional plotting parameters (default: [])
+
+  ## Options
+    * `:title` - Plot title (default: "Bloch Sphere")
+    * `:size` - Sphere size (default: 400)
+
+  ## Returns
+  A `Qx.Draw.Image` artifact carrying the SVG. Livebook renders it
+  inline; standalone applications read `image.svg`.
+
+  ## Examples
+
+      state = Qx.create_circuit(1) |> Qx.h(0) |> Qx.get_state()
+      image = Qx.Draw.bloch(state, title: "Plus state")
+      File.write!("bloch.svg", image.svg)
+  """
+  def bloch(qubit, options \\ []) do
+    title = Keyword.get(options, :title, "Bloch Sphere")
+    size = Keyword.get(options, :size, 400)
+
+    coords = Bloch.qubit_to_bloch_coordinates(qubit)
+    %Image{svg: Bloch.render(coords, title, size), title: title}
   end
 
   @doc """
@@ -243,31 +196,36 @@ defmodule Qx.Draw do
     * `options` - Optional formatting parameters (default: [])
 
   ## Options
-    * `:format` - Output format (`:auto`, `:text`, `:html`, `:markdown`) (default: `:auto`)
     * `:precision` - Number of decimal places (default: 3)
     * `:hide_zeros` - Hide states with near-zero probability (default: `false`)
+
+  ## Returns
+  A `Qx.Draw.StateTable` artifact with `:text`, `:markdown`, and
+  `:html` renderings as fields. Livebook renders the markdown;
+  `to_string/1` gives the text table.
 
   ## Examples
 
       state = Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1) |> Qx.get_state()
-      Qx.Draw.state_table(state)
-
-      # Custom format
-      Qx.Draw.state_table(state, format: :html, precision: 4)
+      table = Qx.Draw.state_table(state)
+      table.text
+      # => "Basis State | Amplitude ..."
   """
   def state_table(register_or_state, options \\ []) do
     Tables.render(register_or_state, options)
   end
 
   @doc """
-  Draws a quantum circuit diagram as SVG.
+  Draws a quantum circuit diagram.
 
   ## Parameters
     * `circuit` - `Qx.QuantumCircuit` struct to visualize
     * `title` - Optional circuit title (default: `nil`)
 
   ## Returns
-  SVG string representing the complete circuit diagram.
+  A `Qx.Draw.Image` artifact carrying the SVG diagram (IEEE notation).
+  Livebook renders it inline; standalone applications read
+  `image.svg`.
 
   ## Examples
 
@@ -277,10 +235,20 @@ defmodule Qx.Draw do
       |> Qx.measure(0, 0)
       |> Qx.measure(1, 1)
 
-      svg = Qx.Draw.circuit(qc, "Bell State Circuit")
-      File.write!("bell.svg", svg)
+      image = Qx.Draw.circuit(qc, "Bell State Circuit")
+      File.write!("bell.svg", image.svg)
   """
   def circuit(%Qx.QuantumCircuit{} = circuit, title \\ nil) do
-    Circuit.render(circuit, title)
+    %Image{svg: Circuit.render(circuit, title), title: title}
+  end
+
+  # The three chart functions need the optional :vega_lite dep; fail
+  # fast with the fix in the message instead of an UndefinedFunctionError.
+  defp ensure_vega_lite! do
+    if !Code.ensure_loaded?(VegaLite) do
+      raise Qx.MissingDependencyError, {:vega_lite, @vega_lite_requirement}
+    end
+
+    :ok
   end
 end

@@ -13,7 +13,7 @@ defmodule Qx.Draw.CircuitTest do
     # inspect the rendered SVG polygon coordinates.
     setup do
       qc = Qx.create_circuit(1, 1) |> Qx.measure(0, 0)
-      svg = Qx.Draw.circuit(qc)
+      svg = Qx.Draw.circuit(qc).svg
       {:ok, svg: svg}
     end
 
