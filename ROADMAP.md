@@ -1,131 +1,61 @@
 # Roadmap
 
 What's planned for Qx, by release version. Released versions and the
-changes they shipped are in [`CHANGELOG.md`](CHANGELOG.md).
+changes they shipped live in [`CHANGELOG.md`](CHANGELOG.md) — shipped
+milestone sections are removed from this file once they're on Hex.
+
+Last updated: 2026-07-05, after the v0.10.x releases (stepper,
+calc-mode demotion, counts contract fix, Draw rework) and the API
+consistency review. The review's yardstick is
+`spec/api-design-principles.md`; its findings and triage buckets are
+in `.claude/plans/api-consistency-review/findings.md`.
 
 ---
 
-## v0.8.1: Test Coverage & Quality
+## v0.11: Simulation Refactor, Performance & API Follow-Through
 
-Raise test coverage to the v0.8 target and harden the simulator's
-quality: error-path tests, missing `@spec`s, and inline documentation
-for the bit-manipulation hot paths.
+Two thrusts. First, the audit's simulation-engine refactor and
+performance work: clarify the Calc / CalcFast split, kill the host-side
+loops, polish the Bloch renderer, broaden hardware support beyond IBM.
+Second, the API consistency review's non-breaking follow-through: the
+typed-error and docs sweeps, the additive surface the review called
+for, and the deprecations whose window opens this minor. A minor
+release: additive and internal, no breaking changes (those wait for
+the 1.0 gate list in the Backlog).
 
-- [x] Test coverage to 80%+ — confirmed 82.1% total on 2026-06-26 (`mix test --cover`, 895 tests + 245 doctests green). Target met; the "~66%" baseline predated the v0.8.1 test work (qx-d1f, qx-eb1, the `:c64`-tolerance widening, and the `basis_state` migration)
-- [x] Add tests verifying partial measurement does not corrupt unmeasured qubits (qx-d1f)
-- [x] Add tests for nested and chained c_if conditional operations (qx-sso)
-- [x] Add error path tests for CalcFast edge cases and invalid inputs (qx-eb1)
-- [x] Add @spec to all defp functions in CalcFast and Simulation (qx-atv) (done: calcfast-simulation-specs — full @spec coverage of both files: 28 defp + 3 def in `simulation.ex` (10 shared `@typep` aliases) + 6 defn/defnp/def kernels in `calc_fast.ex`; review tightened cbits/counts/conditional to `bit()` and fixed a CSWAP/Toffoli doc mixup; no dialyzer yet so specs are doc-only)
-- [x] Add WHY comments to bit-manipulation logic in CalcFast Nx.Defn blocks (qx-8gf) (done: calcfast-why-comments — shared MSB/XOR-partner convention block + per-kernel WHY for the single-qubit pair action, CNOT control-gating, the CSWAP targets-differ fixed-point insight, and Toffoli; light review confirmed comment accuracy)
-- [x] Rename is_* private helpers to *? per Elixir naming convention (qx-mbv) — superseded by qx-7iw (commit 297a579, "Audit and enhance predicate function conventions"): all boolean-returning functions already end in `?`, no `defp is_*` helpers remain. The only residual `is_*` tokens are built-in Kernel guards and three local boolean variables (`is_first`/`is_conditional`/`is_valid`), which cannot take a `?` suffix. Verified 2026-06-26
-- [x] Iron Law #7 follow-on: route `Qx.Validation.validate_parameter!/1` through a typed `Qx.*Error` instead of raw `ArgumentError`. Affects every rotation gate (`rx`/`ry`/`rz`/`cp`/`crx`/`cry`/`crz`). Currently a visible inconsistency in the new QAAL-parity gates' `## Raises` sections. (plan: iron-law-7-followon — new `Qx.ParameterError`; `## Raises` docs fixed in `qx.ex` + `operations.ex`)
-- [x] Iron Law #7 stray: `Qx.Operations.u/5` (and `Qx.u/5`) still leak `FunctionClauseError` for an out-of-range qubit — the guard `when qubit >= 0 and qubit < circuit.num_qubits` fails with no fallback clause instead of routing through `Qx.Validation.validate_qubit_index!/2`. `lib/qx/operations.ex:290` documents the `FunctionClauseError` accurately, but it's a typed-error gap the predecessor `iron-law-7-critical` plan closed everywhere else; not covered by the `ArgumentError` sweep below (discovered: iron-law-7-followon) (done: iron-law-7-sweep — `u/5` guard relaxed to `is_integer(qubit)`, now routes through `add_gate/4` → `Qx.QubitIndexError`; `operations.ex` `## Raises` doc fixed)
-- [x] Widen `:c64` sub-ε test tolerances and add non-integer fixtures: `test/qx/cswap_iswap_matrix_test.exs:33` (`1.0e-12` → `1.0e-6`), `test/qx/export/openqasm/round_trip_test.exs:8` (`1.0e-10` → `1.0e-6`), and the boundary case at `test/qx/u_gate_convention_test.exs:24`. Currently pass only because fixtures use exactly-representable amplitudes; prerequisite for the v0.11 `CalcFast` rewrite (audit: test CRIT C5/C6; Iron Law #8)
-- [x] Migrate three deprecated `Qx.Math.basis_state/2` test calls. Resolved by deletion: the three tests at `test/qx/math_test.exs:301–325` were fully redundant with the five `basis_state/3` tests already in `test/qx/state_init_test.exs`. Test gate now runs cleanly under `--warnings-as-errors` (audit: test MED)
-- [x] Flip 16 pure-compute test files to `async: true` for ~10–15 % suite-runtime improvement (audit: test MED, listed in summary) (done: async-test-flip — 16 pure-compute files flipped; `config_from_env_test.exs` kept `async: false` (mutates `System` env); verified green across 3 seeds, ~27% faster: 1.1s→0.8s)
-- [x] Update stale `coveralls.json:16` `_comment` ("66.4 %" → actual 81.4 %). Confirmed by `mix test --cover` on 2026-06-21: total 81.4 %, target met; remaining low-coverage modules now named in the comment for the next coverage push (audit: test LOW)
-- [x] Expand the Iron Law #7 follow-on above to also route `Qx.Validation.validate_qubits_different!/2` and `validate_state_shape!/2` through `Qx.*Error`. Both still raise raw `ArgumentError` with in-source TODO markers at `lib/qx/validation.ex:127,152` (audit: arch HIGH) (plan: iron-law-7-followon — `Qx.QubitIndexError {:duplicate}` + `Qx.StateShapeError`)
-- [x] `ArgumentError` → typed `Qx.*Error` sweep across the rest of the public surface: `lib/qx/register.ex` (11 sites), `lib/qx/draw/svg/circuit.ex` (5 sites reached via public `Qx.Draw.circuit/2`), `lib/qx/qubit.ex:290` (`from_basis/1`), `lib/qx/draw.ex` (4 `:format`-option sites), `lib/qx/export/openqasm.ex:177`, `lib/qx/export/openqasm/parser.ex:568` (`String.to_float/1` on hostile input) (audit: arch HIGH cluster + security MED). Note: the `register.ex` distinctness raises (`569`/`704` "all indices different", `510`/`538`/`657`/`680`/`746` control≠target / distinct) are exactly what `Qx.Validation.validate_qubits_different!/1` was built for — wire that existing helper in to resolve several sites at once (discovered: iron-law-7-followon) (done: iron-law-7-sweep — new `Qx.RegisterError`/`Qx.BasisError`, reused existing types incl. `validate_qubits_different!/1`; `parser.ex:568` deferred to v0.9 parser hardening — confirmed it does not leak across the public boundary)
-- [x] Decide `Qx.StateInit` public/internal status: used by `examples/tutorials/systems_of_qubits_and_entanglement.livemd:534` but omitted from `Qx`'s public-module list. Pick one and document, currently at risk of a silent breaking change (audit: arch LOW) (done: public-surface-declaration — declared PUBLIC; added to Iron Law #6 surface + the `lib/qx.ex` `## Modules` list)
-- [x] Expand the Iron-Laws declared public surface in `AGENTS.md` / `CLAUDE.md` to match reality: add `Qx.Qubit`, `Qx.Register`, `Qx.StateInit`, `Qx.Patterns`, `Qx.Math`, `Qx.Hardware`, `Qx.Hardware.Config`, `Qx.Export.OpenQASM`, and `Qx.Draw`. README and every tutorial alias-import these as primary surface; a breaking change today would not trip Iron Law #6 (audit: public-api S2 HIGH) (done: public-surface-declaration — 9 modules added to Iron Law #6 + the complexity-score table; `lib/qx.ex` `## Modules` reconciled)
-- [x] Mark internals `@moduledoc false` so they stop reading as public: `Qx.Draw.SVG.Bloch`, `Qx.Draw.SVG.Charts`, `Qx.Draw.SVG.Circuit`, `Qx.Draw.Tables`, `Qx.Draw.VegaLite`, `Qx.Export.OpenQASM.{AST,Codegen,Expr,Lowering,Parser}`, `Qx.Hardware.Ibm`, `Qx.Hardware.Portal` (audit: public-api LOW × 3) (done: public-surface-declaration — all hidden; review caught the `Qx.Draw.SVG.Circuit` outer-module miss; `AST` taxonomy preserved as `#` comments)
-- [x] Add `defdelegate barrier(circuit, qubits), to: Operations` in `lib/qx.ex`. Public surface now exposes the primitive `Qx.barrier/2` alongside the existing `Qx.barrier_all/1,/2` delegates, closing the accidental gap from when `Qx.Patterns` landed (audit: public-api S4 MED)
-- [x] Fix `Qx.run/2` docstring at `lib/qx.ex:854-861`. `## Returns` block now describes the `Qx.SimulationResult` struct (with accurate field types), the doctest pattern-matches the struct shape, and the `@spec` uses `Qx.SimulationResult.t()` directly instead of the indirect `simulation_result()` alias for clearer HexDocs output (audit: public-api S5 MED)
-- [x] Deprecate `Qx.StateInit.bell_state/2` and `Qx.StateInit.ghz_state/1` in favour of `Qx.StateInit.bell_state_vector/2` and `ghz_state_vector/1`. Eliminates the type collision with `Qx.bell_state/1` / `Qx.ghz_state/1` (which return circuits, not state vectors). Add `@deprecated` to the old names, ship the `_vector` variants alongside; removal scheduled for v0.10 (audit: public-api S1 CRIT) (done: stateinit-vector-deprecation — shipped `bell_state_vector/2` + `ghz_state_vector/2` as canonical, old names now `@deprecated`+`@doc false` delegators; `### Added`/`### Deprecated` CHANGELOG entries; corrected an inherited docstring `:c32`→`:c128` since Nx has no `:c32`)
-- [x] Lead `Qx`'s moduledoc with a "Which `h` am I calling?" decision tree: single/multi × calc/circuit grid. `Qx.Qubit.h/1`, `Qx.Register.h/2`, `Qx.Operations.h/2`, `Qx.h/2` all exist for principled reasons but constitute the largest cognitive load in the API. Pull the `Qx.Behaviours.QuantumState` callout (`lib/qx/behaviours/quantum_state.ex:13`) about `Qx.Qubit` deliberately not implementing the behaviour up into the lead doc (audit: public-api MED) (done: which-h-decision-tree — calc/circuit × single/multi grid leads the moduledoc + the QuantumState non-implementor callout pulled up; light review verified the four signatures, em-dashes removed per anti-ai-writing-style)
-- [x] Rename `Qx.histogram/2` to `Qx.draw_histogram/2`. Canonical name now matches the rest of the `Qx.draw*` family (`draw`, `draw_counts`, `draw_bloch`, `draw_state`). Old name kept as a `@deprecated`, `@doc false` alias for the 0.8.x window; scheduled for removal in v0.10. CHANGELOG entry added under `[Unreleased]` (audit: public-api LOW naming) (done 2026-07-03: deprecated-alias-removal — 15 calls in test/qx_manual_test.livemd renamed to draw_histogram)
-- [x] Decide `Qx.Validation` public/internal: currently has a full `@moduledoc` with examples (suggests public, useful for downstream library extension) but isn't in the Iron-Laws list. Either add to the declared public surface or mark `@moduledoc false` and stop documenting examples (audit: public-api LOW) (done: public-surface-declaration — INTERNAL: `@moduledoc false`, moduledoc examples dropped; the public contract is the typed `Qx.*Error` types; 245→242 doctests)
-- [x] Mark `Qx.Patterns.ghz_state_circuit/1` (`lib/qx/patterns.ex:373`) `@doc false` or merge with `Qx.StateInit.ghz_state/1`. Currently three names for one concept once `Qx.ghz_state/1` is counted (audit: public-api MED) (done: ghz-naming-cleanup — `@doc false` on both `ghz_state_circuit/1` AND `bell_state_circuit/1` for consistency; `Qx.ghz_state/1`/`Qx.bell_state/1` are the documented facades; the return-type collision was already resolved by stateinit-vector-deprecation. Non-breaking, `### Changed` CHANGELOG note)
-- [x] Document `to_qasm/1` vs `from_qasm/1` return-shape asymmetry: `to_qasm` raises while `from_qasm` returns `{:ok, _} | {:error, _}`. Defensible (`to_qasm` failure modes are limited to version + unsupported instruction) but currently surprising. Add a one-paragraph note to `Qx.Export.OpenQASM`'s moduledoc (audit: public-api MED return-shape) (done: qasm-return-shape-doc — "Return shapes" section explains to_qasm raises caller-controlled errors vs from_qasm's recoverable tuple on external input, with from_qasm!/1 as the raising variant)
-
----
-
-## v0.9: Security & Hardening
-
-Hardening pass over the IBM Quantum client, the OpenQASM parser, and
-the runtime dependency surface. Items here come from the 2026-06-14
-project-health audit
-(`.claude/audit/summaries/project-health-2026-06-14.md`). A **minor**
-release, not a patch: several of these hardening fixes tighten validation
-in ways that reject previously-accepted input (remote-`http` config URLs,
-deeply nested QASM) or change output shape (`from_qasm_function/1` now
-returns a `defmodule`), which are backward-incompatible behaviour changes
-in the 0.x line. (Numbered 0.9, skipping 0.8.2: the config-URL change
-already shipped to `main`, so the next release is a minor regardless.)
-
-> **Release status — RELEASED (2026-07-03).** `qx_sim 0.9.0` is on Hex and the
-> GitHub release is published. The original tag-triggered run (2026-07-01)
-> aborted at `mix hex.audit` on an unpatched, test-only `cowlib` advisory
-> (`CVE-2026-43966` MEDIUM + `CVE-2026-43969` LOW; `bypass → cowboy → cowlib`,
-> `only: :test`, never in the shipped package). Resolved by scoping the audit
-> gate to shipped deps (`scripts/audit_shipped.sh`, commit `94aaf24`):
-> dev/test-only advisories warn, shipped-dep advisories still fail, and the
-> release was re-run via `workflow_dispatch` on `main` with version `0.9.0`.
-> The cowlib advisory itself remains unpatched upstream (all versions since
-> 2.9.0 affected); the gate will keep warning until upstream ships a fix.
-
-- [x] Reject plaintext `http://` for `QX_PORTAL_URL`: `lib/qx/hardware/config.ex:237` `validate_portal_url/1` currently accepts both schemes, so a misconfigured environment sends the portal bearer token over cleartext (audit: security MED) (done: config-url-validation — loopback allowlist: https required for remote hosts, http allowed only for localhost/127.0.0.1/::1)
-- [x] Validate `:base_url` / `:iam_url` test-hook overrides: `lib/qx/hardware/config.ex:42,112–113` accept any scheme/host without sanity checks; a caller setting `base_url: "http://attacker/api/v1"` routes IAM token exchange to an attacker host. Allowlist hosts or require `https://` (audit: security MED) (done: config-url-validation — both validated via the shared loopback-allowlist `validate_url/2`, only when non-nil; raises typed `Qx.Hardware.ConfigError`)
-- [x] Add a parenthesis-depth cap to the QASM expression grammar: `lib/qx/export/openqasm/parser.ex:180–243` is unbounded within the 1 MB source cap; deep `((((…))))` walks ~0.5 M parser frames and can `:enomem` before erroring (audit: security MED) (done: openqasm-hardening — `@max_paren_depth 64` + a tail-recursive `enforce_paren_depth/1` byte scan with early-exit, wired before the parser in both `from_qasm/1` and `from_qasm_function/1`; raises `Qx.QasmParseError`)
-- [x] Wrap generated `def …` from `Qx.Export.OpenQASM.from_qasm_function/1` in a `defmodule Qx.Generated.<id>` envelope so downstream users can't accidentally compile attacker-named helpers into a host module: `lib/qx/export/openqasm/codegen.ex:54–74` + `lib/qx/export/openqasm.ex:432` (audit: security LOW, defence in depth) (done: openqasm-hardening — `Codegen.generate/1` now emits `defmodule Qx.Generated.<Camelize(name)>_<8hex hash> do … end`; result map gains `:module`; content hash keeps distinct gates collision-free / async-safe)
-- [x] Harden the IBM Quantum client at `lib/qx/hardware/ibm.ex:91–93,432–434`: bump `/results` `receive_timeout` to 60 s, enable `retry: :safe_transient` on GETs, stream multi-MB Sampler V2 result bodies rather than buffering. Combines a perf HIGH with the security finding that test-hook misconfiguration compounds these failure paths (audit: perf HIGH + security correlation) (done: ibm-client-hardening — `/results` timeout → 60 s via a per-call `authed_request/5` opt; `retry: :safe_transient` on ibm + portal GETs (never retries POST/DELETE); **streaming deferred** — see Backlog, marginal benefit as the result is JSON-parsed to a map anyway and the source is trusted)
-- [x] Redact or trim `{:error, {:http, status, body}}` echoes: `ibm.ex:104–105,464–465` and `portal.ex:163–164` propagate the full decoded response body; downstreams that log errors verbatim leak response headers / request context (audit: security LOW) (done: ibm-client-hardening — shared `Qx.Hardware.Http.http_error/2` bounds the body to a recognised error field or a generic marker, ~256-char cap; wired at all three sites)
-- [x] Resolve the `exla` / `emlx` "optional" story in `mix.exs`: currently commented out with `optional: true`, but no `Code.ensure_loaded?` runtime detection anywhere; EXLA appears only in docstrings telling users to pass `EXLA.Backend` themselves. Pick one: (a) delete the commented lines and the docstring references, or (b) uncomment with `optional: true` and add the runtime guards (audit: deps LOW) (done: dependency-surface — option (a): Qx never *calls* EXLA/EMLX (only accepts a pass-through `:backend` value), so there is nothing to runtime-guard. Deleted the dead commented deps; clarified the EXLA docstring examples to note it is a user-added dependency; README stays the acceleration guide)
-- [x] Widen runtime dep specs: `nx ~> 0.10` → `~> 0.12` (2 minors behind; `defn` Iron-Law verification required), `complex ~> 0.6` → `~> 0.7`, `req ~> 0.5` → `~> 0.6`. Each is a deliberate spec widen + full `/phx:verify` cycle, not a blind bump (audit: deps MED) (done: dependency-surface — nx 0.10→0.12.1, complex 0.6→0.7.0 (mandatory: nx 0.12 requires `complex ~> 0.7`), req 0.5→0.6.2. Full suite + bench green; `defn` kernels unaffected. Only fallout: 2 `Qx.Math` doctests hard-coded Nx's old verbose f32 print format (identical values) and were updated to Nx 0.12's native-precision rendering)
-
----
-
-## v0.10: Step-Through API & Public-API Streamlining
-
-The "API" minor: make circuit mode inspectable one operation at a time, then
-clean up and streamline the public surface around it. Two thrusts: a
-first-class step-through API, then the public-API cleanup the stepper unlocks
-(demoting calc mode and removing the 0.8.x-deprecated aliases). Pre-1.0, so
-the breaking removals are allowed in this minor; the deprecation windows
-("through 0.8.x", and "one minor after `draw_histogram` shipped") are all
-satisfied here.
-
-- [x] Fix `Qx.tap_state/2` / `Qx.tap_probabilities/2` showing the initial state instead of the circuit-so-far: they read `QuantumCircuit.get_state/1`, which returns the stored initial-state field (`quantum_circuit.ex:198`), so the tap fn always sees `|0...0⟩` regardless of preceding gates, contradicting the taps' own doc examples. Verified 2026-07-03 (`h(0) |> tap_state(...)` prints `[1.0+0.0i, 0.0+0.0i]`). Live bug in a released public API; the stepper item below rebuilds the taps on the streaming substrate (review: unified-circuit-stepper-design, 2026-07-03) (done 2026-07-03: fix/tap-state-initial-state — taps delegate to `Simulation.get_state/1`/`get_probabilities/1`, raise `Qx.MeasurementError` on measured/conditional prefixes matching the `get_state` contract, `## Raises` docs added; 8 new tests incl. both raise predicates; review PASS WITH WARNINGS, both warnings resolved or deferred to release prep; ships with v0.10, no 0.9.1)
-- [x] Fix multi-qubit `Qx.barrier/2` raising `Qx.GateError`: `Qx.Operations.barrier/2` stores `{:barrier, qubits, []}` with the full qubit list, but `Qx.Simulation.apply_instruction/3` only handles `:barrier` in its 0-qubit arm, so `Qx.barrier(qc, [0, 1]) |> Qx.run()` raises `Unsupported gate: :barrier` (and `Qx.steps/2` inherits the raise). Reproduced 2026-07-03 on `main`-identical dispatch code. Released-API bug: `Qx.barrier/2` was deliberately exposed in v0.8.1 (public-api S4). Fix: match `:barrier` as a no-op regardless of arity (advance no counter), plus a run + steps test with a multi-qubit barrier (discovered: circuit-stepper review, testing-reviewer) (done 2026-07-03: barrier-dispatch — `apply_gate_step/5` barrier head at any arity, state and gate counter unchanged; blast radius was wider than logged: `barrier_all/1,2` and OpenQASM-imported barriers also crashed; 9 tests incl. c_if-inner barrier and empty-list shape; review PASS ×3 agents)
-- [x] Add a first-class step-through API so circuit mode can be inspected one operation at a time (the calc-mode feel inside circuit mode): `Qx.steps/1` returning a lazy `Stream` of step structs (kind `:gate | :measurement | :conditional`, operation, state, probabilities, `classical_bits`, position, taken/not-taken flag on conditional steps). Build it over the timeline reduce (`execute_single_shot/2` / `process_timeline_item/6`) rather than the unitary `execute_circuit/2` reduce, which no-ops `:measure` and raises `Qx.GateError` on `{:c_if, ...}`; the timeline substrate is what lets teleportation and error correction (the flagship `c_if` circuits) be stepped through. Mid-circuit measurement makes each materialisation of the stream one stochastic trajectory; add a `seed:` option for reproducible teaching material. No `Qx.run(qc, trace: true)` variant (ill-defined for shot-by-shot conditional circuits). Threads the state once; re-implement the taps on top (fix above). Display: `Inspect` impl on `%Qx.Step{}` (Dirac string, cbits, taken-flag in the inspect line) plus `Qx.Step.show/1` returning the `show_state`-style display map, rehomed from `Register.show_state/1` over the existing mode-neutral `Qx.Format` internals; this is what replaces `Qubit.show_state/1` / `Register.show_state/1` when calc mode is demoted below. Additive; the public-API cleanup below builds on it (design: `spec/unified-circuit-stepper-design.md`, amended 2026-07-03) (done 2026-07-03: circuit-stepper — `Qx.steps/1,2` + `%Qx.Step{}` + `Qx.Step.show/1` shipped as specced over the timeline reduce; explicit `:rand` threading (`seed:` never touches the caller's process RNG); taps rebuilt on the stepper with the frozen `MeasurementError` contract; `Qx.Step` added to the Iron Law #6 surface; review PASS ×3 agents, findings fixed or triaged in-plan; 987 tests + 244 doctests green)
-- [x] Reposition calc mode (`Qx.Register` / `Qx.Qubit`) out of the co-equal public surface now the step-through API above covers "inspect the state after each operation" inside circuit mode. Make them an internal engine (`@moduledoc false`) or a clearly-demoted "operate on a raw state vector" advanced escape hatch. Removes the "Which `h` am I calling?" cognitive load (the four `h` entry points collapse toward `Qx.h/2`). Breaking if removed from the public surface; CHANGELOG entry. Cross-repo audit done 2026-07-03: `kino_qx` is clean (touches only the `Qx.Hardware`/run surface; dep `{:qx, "~> 0.7.1", hex: :qx_sim}`), but 6 shipped `qxportal` tutorials (`priv/static/tutorials/*.livemd`) are built on `alias Qx.Qubit`/`Qx.Register` with heavy `show_state`/`tap_state` use — no compile break (qxportal has no qx mix dep), but every learner running those notebooks breaks. Remaining preconditions: the stepper lands first (`Qx.Qubit.measure_x/y/z` are today's only eager-collapse APIs, and `Qx.Step.show/1` is the `show_state` replacement), and the qxportal tutorials are rewritten to circuit mode + stepper before or alongside the demotion release (design: `spec/unified-circuit-stepper-design.md`; depends on the step-through API above) (done 2026-07-03: calc-mode-demotion — internal engine, the non-breaking option: `@moduledoc false` + comment blocks, both modules out of the Iron Law #6 surface, docs/README/CHANGELOG swept to circuit mode + stepper with a migration note; ex_doc warnings 110 → 46; existing tests untouched, new hidden-but-functional test; review PASS ×3 agents. NOTE the qxportal-tutorial precondition is a RELEASE gate, not this merge gate: the 6 tutorial rewrites must land before the v0.10 release ships, tracked as the qxportal work item)
-- [x] Remove the v0.8.1-deprecated `Qx.StateInit.bell_state/2` and `Qx.StateInit.ghz_state/1` aliases (the state-vector returners): `_vector`-suffixed names become canonical. CHANGELOG `### Removed` entry required; deprecation window closes here. Cross-repo audit 2026-07-03: zero usage in qxportal and kino_qx — the tutorials' `Qx.bell_state/1`/`Qx.ghz_state/1` calls are the surviving circuit facades, not these aliases (audit: public-api S1 CRIT, removal phase) (done 2026-07-03: deprecated-alias-removal — aliases deleted; alias-only test coverage retired with human-default approval (canonical coverage lives in state_init_vector_test.exs, no unique assertions lost per testing-reviewer); 2 integration tests re-pointed at the _vector names; review PASS ×3 agents)
-- [x] Remove the deprecated `Qx.Math.basis_state/2` shim (`lib/qx/math.ex:225`): already `@deprecated` in 0.8.x, only internal callers remain. CHANGELOG `### Removed` entry (audit: public-api MED) (done 2026-07-03: deprecated-alias-removal — zero callers remained by removal day, pure deletion)
-- [x] Remove the deprecated `Qx.histogram/2` alias now `Qx.draw_histogram/2` has shipped for one minor. Cross-repo audit 2026-07-03: zero usage downstream (audit: public-api LOW naming)
-- [x] Draw contract rework (plan: draw-rework) — one static return type per draw function (charts `VegaLite.t()`, Bloch/circuit `Qx.Draw.Image`, state `Qx.Draw.StateTable`), `Kino.Render` impls behind an optional `kino` dep (a cell returning a circuit renders its diagram), `vega_lite` optional with `Qx.MissingDependencyError`, chart-SVG removed (zero consumers), tier-2 Draw names aligned to the facade, `Qx.draw_circuit/2` added. Clean break inside unreleased v0.10 (decided 2026-07-04); origin: api-consistency-review Draw cluster. Release-gated: v0.10 must not be tagged before this and the qxportal tutorial draw-call-site updates land (done 2026-07-04: draw-rework — merged with review PASS x3 agents, all findings fixed; qxportal call sites updated on feat/tutorial-stepper-rewrite 3a4e1ee)
-- [x] Fix `SimulationResult.counts` keys to the documented string contract (plan: counts-contract) — the engine emitted bit-list keys since first release while type, docs, and doctests promised strings; hardware results were already strings. Found by the api-consistency-review (R-01, critical). Must ship **in** the v0.10 release: releasing without it republishes the false contract. Loud CHANGELOG `### Fixed` entry; ~30 test assertions migrated to the real contract with explicit human approval 2026-07-04 (done 2026-07-04: counts-contract — string join at both producer sites, seam test + doctest Qx.SimulationResult wired, 3 examples migrated, review PASS x3 agents; squash-merged eb30f3b)
-
----
-
-## v0.11: Simulation Refactor, Performance & Visualization
-
-Land the audit's simulation-engine refactor and performance work, clarify the
-Calc / CalcFast split, polish the Bloch sphere renderer, broaden hardware
-support beyond IBM, and publish the benchmark baseline. A minor release:
-additive (AWS Braket) and substantial internal refactors, all
-backward-compatible.
+### Simulation & performance (from the 2026-06-14 audit)
 
 - [ ] Replace case dispatch with gate registry in apply_instruction (qx-agu)
 - [ ] Convert case gate_name dispatch to multi-clause functions in Simulation (qx-dn2)
 - [ ] Clarify or merge Calc module responsibility with CalcFast (qx-rut)
-- [ ] Improve Bloch sphere SVG visual quality (qx-w93)
-- [ ] Support for running on AWS Braket QPUs (moved from v0.7)
 - [ ] Reshape `Qx.CalcFast` kernels to eliminate `Nx.take` gather + `Nx.select` mask: single-qubit (`lib/qx/calc_fast.ex:67–91`), CNOT (`114–143`), CSWAP (`157–185`), Toffoli (`187–229`). Replace with reshape + 2×2 tensor contraction along the qubit axis. Highest-leverage perf change in the audit; depends on the v0.8.1 tolerance widening (audit: perf CRIT C1/C2; Iron Law #3)
-- [ ] Vectorise measurement probability and state collapse: `lib/qx/simulation.ex:552–599`. Current host loop `for i <- 0..(2^n - 1), Nx.to_number(state[i])` runs once per shot (~1 M host syncs at 1024 shots × n=10) (audit: perf CRIT C3; Iron Law #5)
-- [ ] Replace `2^n × 2^n` matrix materialisation in SWAP / iSWAP / CP / CY / CRx / CRy / CRz: `lib/qx/simulation.ex:402–431` + the host-loop matrix builders in `lib/qx/gates.ex:331–569`. Currently OOM above n≈10 (4.3 GB at n=14) (audit: perf HIGH)
-- [ ] Replace host-side `2^n` Elixir-list construction in `Qx.StateInit` (`basis_state`, `random_state`, `ghz_state`, `w_state`, fresh-circuit init) and in `Qx.ResultBuilder.build_probability_tensor` (`List.replace_at` over 2^n list) (audit: perf HIGH; Iron Law #5)
-- [ ] Vectorise sample generation: current `Enum.scan` cumulative distribution + per-shot `Enum.find_index` linear scan at `lib/qx/simulation.ex:467–476` is O(shots × 2^n); 100M+ host iterations at 100k shots × n=10 (audit: perf HIGH)
-- [ ] Cap retained state in `run_with_conditionals`: `simulation.ex:142–148,156` materialises the full list of `{state, cbits}` for every shot before `Enum.frequencies`; at 100k shots × n=20 holds ~1.6 TB resident before reduce (audit: perf HIGH)
-- [ ] Replace `instructions ++ [new]` quadratic append in `Qx.QuantumCircuit:98,122,142,184,602` with prepend + reverse-on-finalise (audit: perf HIGH; also flagged by `usage_rules.elixir`)
-- [ ] Cap or auto-truncate probability charts above n≈12 qubits: `lib/qx/draw/svg/charts.ex:31–69,103–137` and `lib/qx/draw/vega_lite.ex:32–50,102–109` currently render one bar per basis state with no bound (n=20 → ~1 M-bar SVG, >100 MB XML, crashes browsers). Raise typed `Qx.*Error` instead (audit: perf CRIT C4)
-- [ ] Break the 4-module cycle `tables → register → qubit → draw → tables`: anchored by `Qx.Qubit.draw_bloch/2` defdelegating up to `Qx.Draw` (`lib/qx/qubit.ex:154`) and `Qx.Draw.Tables.render/2` pattern-matching on `%Qx.Register{}` (`lib/qx/draw/tables.ex:56`). Blocks future Draw refactors (audit: arch MED)
+- [ ] Vectorise measurement probability and state collapse: `lib/qx/simulation.ex` host loop `for i <- 0..(2^n - 1), Nx.to_number(state[i])` runs once per shot (~1 M host syncs at 1024 shots × n=10) (audit: perf CRIT C3; Iron Law #5)
+- [ ] Replace `2^n × 2^n` matrix materialisation in SWAP / iSWAP / CP / CY / CRx / CRy / CRz: `lib/qx/simulation.ex` + the host-loop matrix builders in `lib/qx/gates.ex`. Currently OOM above n≈10 (4.3 GB at n=14) (audit: perf HIGH)
+- [ ] Replace host-side `2^n` Elixir-list construction in `Qx.StateInit` and in `Qx.ResultBuilder.build_probability_tensor` (`List.replace_at` over 2^n list). Scope to whatever survives the StateInit/Math tier decision below — don't optimise functions being deprecated (audit: perf HIGH; Iron Law #5)
+- [ ] Vectorise sample generation: `Enum.scan` cumulative distribution + per-shot `Enum.find_index` linear scan is O(shots × 2^n); 100M+ host iterations at 100k shots × n=10 (audit: perf HIGH)
+- [ ] Cap retained state in `run_with_conditionals`: materialises the full list of `{state, cbits}` for every shot before `Enum.frequencies`; at 100k shots × n=20 holds ~1.6 TB resident before reduce (audit: perf HIGH)
+- [ ] Replace `instructions ++ [new]` quadratic append in `Qx.QuantumCircuit` with prepend + reverse-on-finalise (audit: perf HIGH; also flagged by `usage_rules.elixir`)
+- [ ] Cap or auto-truncate state-sized rendering above n≈12 qubits, raising a typed `Qx.*Error` instead: the three VegaLite chart builders (`lib/qx/draw/vega_lite.ex`), the histogram data build in `lib/qx/draw.ex`, and the 2^n-row table build in `Qx.Draw.Tables`. Rescoped 2026-07-05: the unbounded SVG chart renderer named by the audit was deleted in the v0.10 Draw rework, which shrank this item (audit: perf CRIT C4)
 - [ ] Replace `:math.pow(2, n) |> trunc/1` with `Integer.pow(2, n)` (or `Bitwise.bsl(1, n)`) across `state_init.ex`, `quantum_circuit.ex`, `simulation.ex`, `gates.ex`, `validation.ex`. Exact integer math (audit: perf LOW)
-- [x] Fix `lib/qx/simulation.ex:50–57` docstring example referencing `EXLA.Backend` while EXLA is commented out of `mix.exs`. Users following the example hit `UndefinedFunctionError` (audit: perf MED; pair with the v0.9 `exla`/`emlx` decision) (done: dependency-surface — clarified the EXLA backend docstrings in `simulation.ex` + `qx.ex` to state EXLA is a user-added dep; done alongside the exla/emlx decision)
-- [x] Performance benchmarking infrastructure: Benchee suite for GHZ and QFT circuits across
-  n = 2–20 qubits, with console and HTML output (`mix bench`); establishes the baseline for
-  measuring GPU and distributed execution improvements
-- [ ] Performance benchmarks published and tracked across releases (baseline established; results
-  to be published once GPU acceleration via EXLA/EMLX is implemented)
+- [ ] Break the 4-module cycle `tables → register → qubit → draw → tables`: anchored by the internal calc engine's `Qx.Qubit.draw_bloch/2` defdelegating up to `Qx.Draw` and `Qx.Draw.Tables.render/2` pattern-matching `%Qx.Register{}`. Both anchors survived the v0.10 demotion (the modules are hidden, not gone); the cycle dissolves for free if the 1.0 calc-engine removal lands first — sequence accordingly (audit: arch MED)
+- [ ] Performance benchmarks published and tracked across releases (Benchee baseline `mix bench` exists; results to be published once GPU acceleration via EXLA/EMLX is exercised)
+
+### Visualization & hardware
+
+- [ ] Improve Bloch sphere SVG visual quality (qx-w93). Raised stakes since v0.10: the SVG renderer is now the *only* Bloch path (the VegaLite projection was deleted in the Draw rework) and ships as the `Qx.Draw.Image` artifact rendered inline in Livebook
+- [ ] Support for running on AWS Braket QPUs (moved from v0.7)
+
+### API review follow-through (non-breaking; findings.md buckets)
+
+- [ ] Typed-error sweep #3: raw `FunctionClauseError`/`ArgumentError` still escaping tier 1/2 — `create_circuit` (docs advertise the raw error), `bell_state(:bogus)`, `ghz_state(1)`, `h(qc, "0")`, `c_if` type slips, seven `StateInit` constructors, `filter_by_probability(result, 1)`, `Math.normalize` zero-vector NaN; plus `rx/ry/rz/phase` gaining the `validate_parameter!` their `u/cp/cr*` siblings already run (findings B-09, B-14, T1-10, R-04, R-09, R-10)
+- [ ] Docs sweep: the 83 missing `@spec`s, `## Returns`/`## Raises` on tier 1 functions, §3 tier-annotation openers on tier-2 moduledocs, the tap_* simulation warning copied up to the facade docs, angle types unified to `number()` (findings B-08, B-15, R-12, R-15, T1-11/15/16)
+- [ ] Additive surface: `bell_pair(circuit, q0, q1, which)` and `ghz(circuit, qubits)` appenders with the creators reframed as wrappers (principles §8; must land before v0.12/v0.13 building-block work multiplies the creator shape), `tdg/2` (QASM round-trip parity), `to_qasm`/`from_qasm`/`from_qasm!` facade delegates on `Qx` (findings T1-05/07/12, B-10)
+- [ ] Producer hygiene: `Patterns.measure_all` composes `Operations.measure/3` instead of a hidden internal; single producer path for barrier/c_if instruction tuples; `add_gate` validates gate names or moves internal (findings B-04/11/12; Iron Law #9 pressure)
+- [ ] `from_qasm_function/1` returns `module:` as an atom instead of a string (callers currently must capture the module from `Code.eval_string`'s return; the name is qx-generated so `Module.concat/1` is safe). Found by the post-release README audit (findings addendum 2026-07-04)
+- [ ] Deprecation batch (window opens this minor, removals at 1.0): `barrier_all/2` (vs `barrier/2` range support), `run/2`'s integer-shots overload, `superposition/1` (fails the README test), `QuantumCircuit.get_state/1` → `initial_state/1` + `reset/1` + `depth/1` (misleading names, near-zero callers), `draw_state`'s tier-3 Register escape hatch in the tier-1 spec (findings T1-04/06/08/14, R-02, B-01/05/06/07)
+- [ ] Decide and execute the StateInit/Math tier trim: tier 1/2 code touches only `basis_state`, `normalize`, `probabilities`; the other 16 public functions are orphans, and `Behaviours.QuantumState` has zero public implementors. Demote/deprecate per findings R-07/R-08/R-13; delete the two dead `@doc false` Math converters outright
+- [ ] Principles-doc post-review edits: documented exceptions (`version/0`, `measure_z` alias, `get_state`-raises-on-measured), new §6 family rows for run/steps/c_if/barrier/`*_chain` (findings T1-09/17/18, B-13); replace Iron Law #6's flat surface list with the §3 tier annotations (tension #7)
+- [ ] Modernise or retire `test/qx_manual_test.livemd`: partially updated by the Draw rework but still built on calc-mode aliases; either rewrite onto the circuit surface or fold what it covers into the qxportal tutorials and delete
 
 ---
 
@@ -134,16 +64,23 @@ backward-compatible.
 - [ ] Noise models for simulating real-hardware decoherence (bit-flip, phase-flip, depolarising)
 - [ ] Density matrix simulation as an alternative to statevector
 - [ ] Circuit optimisation / gate cancellation pass
-- [ ] Mid-circuit reset operation `Qx.reset/2`: QAAL `MzReset q` parity; first-class in OpenQASM 3 / IBM hardware. Needs new `:reset` instruction handler in `Qx.Simulation` (projection-and-relabel) (plan: tbd, see qaal-analysis A3)
+- [ ] Mid-circuit reset operation `Qx.reset/2`: QAAL `MzReset q` parity; first-class in OpenQASM 3 / IBM hardware. Needs new `:reset` instruction handler in `Qx.Simulation` (projection-and-relabel) — mind Iron Law #9's producer/dispatch pairing when adding the instruction kind. The name becomes clean once v0.11 deprecates `QuantumCircuit.reset/1` (plan: tbd, see qaal-analysis A3)
 
 ---
 
-## v0.13: Algorithms & Learning
+## v0.13: Algorithms & Building Blocks
 
-- [ ] More quantum algorithm examples in tutorials: Quantum Phase Estimation (QPE), Variational Quantum
-  Eigensolver (VQE), Shor's algorithm
-- [ ] Quantum error correction tutorial (repetition code)
-- [ ] Grow toward a complete algorithm library covering the canonical textbook algorithms
+Governed by `spec/api-design-principles.md` §8: building blocks are
+appenders with the gate shape `(circuit, args...) -> circuit`,
+composing existing operations only, one facade module per domain. The
+v0.11 appender work (`bell_pair`/`ghz`) sets the template. Learner
+tutorial content lives in qxportal; what belongs here is the library
+surface those tutorials call.
+
+- [ ] `Qx.Oracle`: standard oracle constructors (bit-string/BV oracles, phase oracles, truth-table compilation) so algorithm examples stop hand-rolling CNOT loops. Needs its own design doc before code
+- [ ] Algorithm components as appenders: Grover diffusion, QFT, phase estimation
+- [ ] Grow toward a complete algorithm library covering the canonical textbook algorithms (QPE, VQE, Shor's ingredients), with matching tutorial content added on the portal
+- [ ] Quantum error correction building blocks + a portal tutorial (repetition code)
 
 ---
 
@@ -157,36 +94,36 @@ These have no commitment and no scheduled version. They may move up, move down, 
   JSON-parsed to an in-memory map) and the source (IBM Quantum) is trusted.
   Revisit if result sizes or the threat model change.
 - Interactive step-through widget: scrub through a circuit drawing while
-  phase circles (Quirk-style amplitude disks: radius = |amplitude|, needle =
-  arg) update per step. Three pieces, in dependency order: (1) the v0.10
-  stepper as specced — `Enum.to_list(Qx.steps(qc, seed: s))` gives the widget
-  a scrubbable, consistent trajectory (backward stepping needs the seed;
-  memory at teaching scale is trivial, ~400 KB at n=10 × 50 steps); (2) new
-  Qx work — a phase-circle SVG renderer in `Qx.Draw` taking a raw state
-  tensor (settle the global-phase convention: raw arg vs normalising the
-  first nonzero amplitude to real-positive), plus gate-position metadata from
-  `Qx.Draw.circuit/2` so the highlight can sync with `step.index` (note the
-  index runs over the flattened timeline, measurements and `c_if` inner gates
-  included); (3) the interactive Kino widget itself, in `kino_qx`, consuming
-  the published Qx release (workspace §4). The renderer fits the v0.11
-  visualization theme if pulled forward (review: unified-circuit-stepper-design,
-  2026-07-03)
+  phase circles (Quirk-style amplitude disks) update per step. Piece 1 of 3
+  shipped in v0.10 (`Qx.steps/2` with `seed:` gives a scrubbable consistent
+  trajectory). Remaining: (2) a phase-circle renderer in `Qx.Draw` returning
+  a `Qx.Draw.Image` per the v0.10 artifact pattern (settle the global-phase
+  convention), plus gate-position metadata from the circuit renderer so the
+  highlight can sync with `step.index`; (3) the interactive Kino widget in
+  `kino_qx`, consuming the published Qx release (workspace §4). The renderer
+  fits the v0.11 visualization theme if pulled forward.
 - Symbolic / algebraic simulation (exact fractions, no floating point)
 - Circuit-level visualization improvements (multi-qubit gate boxes, measurement symbols)
 - Cirq circuit import adapter (Qiskit/IBM Quantum import already covered by OpenQASM 3.0)
 - Multi-register `Qx.QuantumCircuit` (current model is a single quantum + single classical
   register; OpenQASM import currently rejects multi-register programs)
-- Named circuit-mode register views: bind a name to a contiguous (or arbitrary)
-  qubit-index list so `Qx.h_all(qc, alice)` reads like QAAL `H alice`. Stashed
-  from `qaal-analysis` plan (A4). Naming collides with the existing calc-mode
-  `Qx.Register` struct; large API design surface; B1 (list/range overload of
-  `Qx.Patterns`, shipped in v0.8) covers ~80% of the value. Revisit when
+- Named circuit-mode register views: bind a name to a qubit-index list so
+  `Qx.h_all(qc, alice)` reads like QAAL `H alice`. Stashed from `qaal-analysis`
+  (A4). The naming collision with calc-mode `Qx.Register` softened when the
+  calc engine went internal in v0.10, but the API-surface cost still stands
+  and B1 (list/range overloads, v0.8) covers ~80% of the value. Revisit when
   multi-register tutorials (Shor / QPE) start feeling unmanageable.
 - `else` branches on `c_if` conditionals (currently raises on import; rewrite as two ifs)
 - WASM / browser-side simulation for LiveBook embedding
-- A 1.0 release and an API-stability guarantee (no breaking changes without a major bump):
-  deliberately unscheduled. Too early and the public API is still settling; revisit once the
-  surface and simulation core have stabilised across a few minors.
+- A 1.0 release and an API-stability guarantee (no breaking changes without a
+  major bump). Since the 2026-07-04 API consistency review this has a concrete
+  gate list (the "breaking-1.0" bucket in
+  `.claude/plans/api-consistency-review/findings.md`): calc-engine removal,
+  `QuantumCircuit` state-field extraction (initial state becomes a `run`
+  option), the `measure`/`measure_z` final pick, StateInit survivor
+  naming/opts, `most_frequent` → `nil` on empty, conditional-run ensemble
+  semantics, plus executing the v0.11 deprecation removals. Still
+  deliberately unscheduled; the list is the entry criteria, not a date.
 
 ---
 
