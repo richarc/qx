@@ -80,7 +80,7 @@ For the complete API, see the [hexdocs](https://hexdocs.pm/qx_sim/Qx.html).
 
 ## Getting Started with LiveBook
 
-[LiveBook](https://livebook.dev/) is the perfect environment for interactive quantum computing with Qx. Create a new notebook and add this in the setup cell:
+[LiveBook](https://livebook.dev/) is the perfect environment for interactive quantum computing with Qx. The full tutorial series (quantum states through Grover's search, as downloadable notebooks) lives on the Qx Portal at [qxquantum.com](https://www.qxquantum.com) — it is the maintained home for learning material, and this repo deliberately carries no copies. To start a notebook of your own, add this in the setup cell:
 
 ```elixir
 Mix.install([
