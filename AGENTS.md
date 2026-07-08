@@ -405,6 +405,8 @@ Offer `mix test` after meaningful changes. Offer `mix bench` (alias in `mix.exs`
 
 Doc-surface demotions (`@moduledoc false` on a public module, or removing public docs) gate on the `mix docs` warning count: record the baseline before the flip, require ≤ baseline after, and treat the grouped warning sites as the worklist. A source grep of doc strings undercounts — it misses doctest bodies, `@spec` types, and README/CHANGELOG extras, which all autolink. See `.claude/solutions/architecture-issues/hidden-module-doc-refs-warning-sweep-qx-calc-mode-20260703.md`.
 
+When the count MOVES, diff the warning **lists**, not the counts: capture `mix docs 2>&1 | grep "warning:" | sort | uniq -c` before (via `git stash push -- lib/ test/` + recompile) and after, and `diff` the two — counts gate, diffs diagnose (html+epub double-count: Δ2 ≈ one real site). And whenever doc prose gains a function reference (deprecation messages, See-Also blocks, moduledoc rewrites), grep the named function's definition FIRST — plans can prescribe phantom pointers, and ex_doc's autolinker is the only tool in the pipeline that resolves doc-prose references (compile/credo/tests all stay silent). See `.claude/solutions/architecture-issues/docs-warning-stash-diff-catches-phantom-pointer-qx-stateinit-20260708.md`.
+
 Do NOT present code as complete until verification passes.
 
 ## POST-ACTION — Offer follow-ups
