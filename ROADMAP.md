@@ -4,52 +4,27 @@ What's planned for Qx, by release version. Released versions and the
 changes they shipped live in [`CHANGELOG.md`](CHANGELOG.md) — shipped
 milestone sections are removed from this file once they're on Hex.
 
-Last updated: 2026-07-05, after the v0.10.x releases (stepper,
-calc-mode demotion, counts contract fix, Draw rework) and the API
-consistency review. The review's yardstick is
-`spec/api-design-principles.md`; its findings and triage buckets are
-in `.claude/plans/api-consistency-review/findings.md`.
+Last updated: 2026-07-08. Restructured: the old three-theme v0.11 is
+now one release per theme — API follow-through (v0.11), simulation
+refactor & performance (v0.12), visualization & hardware (v0.13) —
+with noise and algorithms shifting down to v0.14/v0.15. The API
+consistency review's yardstick is `spec/api-design-principles.md`; its
+findings and triage buckets are in
+`.claude/plans/api-consistency-review/findings.md`.
 
 ---
 
-## v0.11: Simulation Refactor, Performance & API Follow-Through
+## v0.11: API Review Follow-Through
 
-Two thrusts. First, the audit's simulation-engine refactor and
-performance work: clarify the Calc / CalcFast split, kill the host-side
-loops, polish the Bloch renderer, broaden hardware support beyond IBM.
-Second, the API consistency review's non-breaking follow-through: the
+The API consistency review's non-breaking follow-through: the
 typed-error and docs sweeps, the additive surface the review called
 for, and the deprecations whose window opens this minor. A minor
 release: additive and internal, no breaking changes (those wait for
 the 1.0 gate list in the Backlog).
 
-### Simulation & performance (from the 2026-06-14 audit)
-
-- [ ] Replace case dispatch with gate registry in apply_instruction (qx-agu)
-- [ ] Convert case gate_name dispatch to multi-clause functions in Simulation (qx-dn2)
-- [ ] Clarify or merge Calc module responsibility with CalcFast (qx-rut)
-- [ ] Reshape `Qx.CalcFast` kernels to eliminate `Nx.take` gather + `Nx.select` mask: single-qubit (`lib/qx/calc_fast.ex:67–91`), CNOT (`114–143`), CSWAP (`157–185`), Toffoli (`187–229`). Replace with reshape + 2×2 tensor contraction along the qubit axis. Highest-leverage perf change in the audit; depends on the v0.8.1 tolerance widening (audit: perf CRIT C1/C2; Iron Law #3)
-- [ ] Vectorise measurement probability and state collapse: `lib/qx/simulation.ex` host loop `for i <- 0..(2^n - 1), Nx.to_number(state[i])` runs once per shot (~1 M host syncs at 1024 shots × n=10) (audit: perf CRIT C3; Iron Law #5)
-- [ ] Replace `2^n × 2^n` matrix materialisation in SWAP / iSWAP / CP / CY / CRx / CRy / CRz: `lib/qx/simulation.ex` + the host-loop matrix builders in `lib/qx/gates.ex`. Currently OOM above n≈10 (4.3 GB at n=14) (audit: perf HIGH)
-- [ ] Replace host-side `2^n` Elixir-list construction in `Qx.StateInit` and in `Qx.ResultBuilder.build_probability_tensor` (`List.replace_at` over 2^n list). Scope to whatever survives the StateInit/Math tier decision below — don't optimise functions being deprecated (audit: perf HIGH; Iron Law #5)
-- [ ] Vectorise sample generation: `Enum.scan` cumulative distribution + per-shot `Enum.find_index` linear scan is O(shots × 2^n); 100M+ host iterations at 100k shots × n=10 (audit: perf HIGH)
-- [ ] Cap retained state in `run_with_conditionals`: materialises the full list of `{state, cbits}` for every shot before `Enum.frequencies`; at 100k shots × n=20 holds ~1.6 TB resident before reduce (audit: perf HIGH)
-- [ ] Replace `instructions ++ [new]` quadratic append in `Qx.QuantumCircuit` with prepend + reverse-on-finalise (audit: perf HIGH; also flagged by `usage_rules.elixir`)
-- [ ] Cap or auto-truncate state-sized rendering above n≈12 qubits, raising a typed `Qx.*Error` instead: the three VegaLite chart builders (`lib/qx/draw/vega_lite.ex`), the histogram data build in `lib/qx/draw.ex`, and the 2^n-row table build in `Qx.Draw.Tables`. Rescoped 2026-07-05: the unbounded SVG chart renderer named by the audit was deleted in the v0.10 Draw rework, which shrank this item (audit: perf CRIT C4)
-- [ ] Replace `:math.pow(2, n) |> trunc/1` with `Integer.pow(2, n)` (or `Bitwise.bsl(1, n)`) across `state_init.ex`, `quantum_circuit.ex`, `simulation.ex`, `gates.ex`, `validation.ex`. Exact integer math (audit: perf LOW)
-- [ ] Break the 4-module cycle `tables → register → qubit → draw → tables`: anchored by the internal calc engine's `Qx.Qubit.draw_bloch/2` defdelegating up to `Qx.Draw` and `Qx.Draw.Tables.render/2` pattern-matching `%Qx.Register{}`. Both anchors survived the v0.10 demotion (the modules are hidden, not gone); the cycle dissolves for free if the 1.0 calc-engine removal lands first — sequence accordingly (audit: arch MED)
-- [ ] Performance benchmarks published and tracked across releases (Benchee baseline `mix bench` exists; results to be published once GPU acceleration via EXLA/EMLX is exercised)
-
-### Visualization & hardware
-
-- [ ] Improve Bloch sphere SVG visual quality (qx-w93). Raised stakes since v0.10: the SVG renderer is now the *only* Bloch path (the VegaLite projection was deleted in the Draw rework) and ships as the `Qx.Draw.Image` artifact rendered inline in Livebook
-- [ ] Support for running on AWS Braket QPUs (moved from v0.7)
-
-### API review follow-through (non-breaking; findings.md buckets)
-
 - [ ] Typed-error sweep #3: raw `FunctionClauseError`/`ArgumentError` still escaping tier 1/2 — `create_circuit` (docs advertise the raw error), `bell_state(:bogus)`, `ghz_state(1)`, `h(qc, "0")`, `c_if` type slips, seven `StateInit` constructors, `filter_by_probability(result, 1)`, `Math.normalize` zero-vector NaN; plus `rx/ry/rz/phase` gaining the `validate_parameter!` their `u/cp/cr*` siblings already run (findings B-09, B-14, T1-10, R-04, R-09, R-10)
 - [ ] Docs sweep: the 83 missing `@spec`s, `## Returns`/`## Raises` on tier 1 functions, §3 tier-annotation openers on tier-2 moduledocs, the tap_* simulation warning copied up to the facade docs, angle types unified to `number()` (findings B-08, B-15, R-12, R-15, T1-11/15/16)
-- [ ] Additive surface: `bell_pair(circuit, q0, q1, which)` and `ghz(circuit, qubits)` appenders with the creators reframed as wrappers (principles §8; must land before v0.12/v0.13 building-block work multiplies the creator shape), `tdg/2` (QASM round-trip parity), `to_qasm`/`from_qasm`/`from_qasm!` facade delegates on `Qx` (findings T1-05/07/12, B-10)
+- [ ] Additive surface: `bell_pair(circuit, q0, q1, which)` and `ghz(circuit, qubits)` appenders with the creators reframed as wrappers (principles §8; must land before the v0.15 building-block work multiplies the creator shape), `tdg/2` (QASM round-trip parity), `to_qasm`/`from_qasm`/`from_qasm!` facade delegates on `Qx` (findings T1-05/07/12, B-10)
 - [ ] Producer hygiene: `Patterns.measure_all` composes `Operations.measure/3` instead of a hidden internal; single producer path for barrier/c_if instruction tuples; `add_gate` validates gate names or moves internal (findings B-04/11/12; Iron Law #9 pressure)
 - [ ] `from_qasm_function/1` returns `module:` as an atom instead of a string (callers currently must capture the module from `Code.eval_string`'s return; the name is qx-generated so `Module.concat/1` is safe). Found by the post-release README audit (findings addendum 2026-07-04)
 - [ ] Deprecation batch (window opens this minor, removals at 1.0): `barrier_all/2` (vs `barrier/2` range support), `run/2`'s integer-shots overload, `superposition/1` (fails the README test), `QuantumCircuit.get_state/1` → `initial_state/1` + `reset/1` + `depth/1` (misleading names, near-zero callers), `draw_state`'s tier-3 Register escape hatch in the tier-1 spec (findings T1-04/06/08/14, R-02, B-01/05/06/07)
@@ -59,7 +34,39 @@ the 1.0 gate list in the Backlog).
 
 ---
 
-## v0.12: Noise & Realism
+## v0.12: Simulation Refactor & Performance
+
+The 2026-06-14 audit's simulation-engine refactor and performance
+work: clarify the Calc / CalcFast split, kill the host-side loops.
+Additive and internal, no breaking changes.
+
+- [ ] Replace case dispatch with gate registry in apply_instruction (qx-agu)
+- [ ] Convert case gate_name dispatch to multi-clause functions in Simulation (qx-dn2)
+- [ ] Clarify or merge Calc module responsibility with CalcFast (qx-rut)
+- [ ] Reshape `Qx.CalcFast` kernels to eliminate `Nx.take` gather + `Nx.select` mask: single-qubit (`lib/qx/calc_fast.ex:67–91`), CNOT (`114–143`), CSWAP (`157–185`), Toffoli (`187–229`). Replace with reshape + 2×2 tensor contraction along the qubit axis. Highest-leverage perf change in the audit; depends on the v0.8.1 tolerance widening (audit: perf CRIT C1/C2; Iron Law #3)
+- [ ] Vectorise measurement probability and state collapse: `lib/qx/simulation.ex` host loop `for i <- 0..(2^n - 1), Nx.to_number(state[i])` runs once per shot (~1 M host syncs at 1024 shots × n=10) (audit: perf CRIT C3; Iron Law #5)
+- [ ] Replace `2^n × 2^n` matrix materialisation in SWAP / iSWAP / CP / CY / CRx / CRy / CRz: `lib/qx/simulation.ex` + the host-loop matrix builders in `lib/qx/gates.ex`. Currently OOM above n≈10 (4.3 GB at n=14) (audit: perf HIGH)
+- [ ] Replace host-side `2^n` Elixir-list construction in `Qx.StateInit` and in `Qx.ResultBuilder.build_probability_tensor` (`List.replace_at` over 2^n list). Scope to whatever survives the v0.11 StateInit/Math tier decision — don't optimise functions being deprecated (audit: perf HIGH; Iron Law #5)
+- [ ] Vectorise sample generation: `Enum.scan` cumulative distribution + per-shot `Enum.find_index` linear scan is O(shots × 2^n); 100M+ host iterations at 100k shots × n=10 (audit: perf HIGH)
+- [ ] Cap retained state in `run_with_conditionals`: materialises the full list of `{state, cbits}` for every shot before `Enum.frequencies`; at 100k shots × n=20 holds ~1.6 TB resident before reduce (audit: perf HIGH)
+- [ ] Replace `instructions ++ [new]` quadratic append in `Qx.QuantumCircuit` with prepend + reverse-on-finalise (audit: perf HIGH; also flagged by `usage_rules.elixir`)
+- [ ] Cap or auto-truncate state-sized rendering above n≈12 qubits, raising a typed `Qx.*Error` instead: the three VegaLite chart builders (`lib/qx/draw/vega_lite.ex`), the histogram data build in `lib/qx/draw.ex`, and the 2^n-row table build in `Qx.Draw.Tables`. Rescoped 2026-07-05: the unbounded SVG chart renderer named by the audit was deleted in the v0.10 Draw rework, which shrank this item (audit: perf CRIT C4)
+- [ ] Replace `:math.pow(2, n) |> trunc/1` with `Integer.pow(2, n)` (or `Bitwise.bsl(1, n)`) across `state_init.ex`, `quantum_circuit.ex`, `simulation.ex`, `gates.ex`, `validation.ex`. Exact integer math (audit: perf LOW)
+- [ ] Break the 4-module cycle `tables → register → qubit → draw → tables`: anchored by the internal calc engine's `Qx.Qubit.draw_bloch/2` defdelegating up to `Qx.Draw` and `Qx.Draw.Tables.render/2` pattern-matching `%Qx.Register{}`. Both anchors survived the v0.10 demotion (the modules are hidden, not gone); the cycle dissolves for free if the 1.0 calc-engine removal lands first — sequence accordingly (audit: arch MED)
+- [ ] Performance benchmarks published and tracked across releases (Benchee baseline `mix bench` exists; results to be published once GPU acceleration via EXLA/EMLX is exercised)
+
+---
+
+## v0.13: Visualization & Hardware
+
+Polish the Bloch renderer, broaden hardware support beyond IBM.
+
+- [ ] Improve Bloch sphere SVG visual quality (qx-w93). Raised stakes since v0.10: the SVG renderer is now the *only* Bloch path (the VegaLite projection was deleted in the Draw rework) and ships as the `Qx.Draw.Image` artifact rendered inline in Livebook
+- [ ] Support for running on AWS Braket QPUs (moved from v0.7)
+
+---
+
+## v0.14: Noise & Realism
 
 - [ ] Noise models for simulating real-hardware decoherence (bit-flip, phase-flip, depolarising)
 - [ ] Density matrix simulation as an alternative to statevector
@@ -68,7 +75,7 @@ the 1.0 gate list in the Backlog).
 
 ---
 
-## v0.13: Algorithms & Building Blocks
+## v0.15: Algorithms & Building Blocks
 
 Governed by `spec/api-design-principles.md` §8: building blocks are
 appenders with the gate shape `(circuit, args...) -> circuit`,
@@ -101,7 +108,7 @@ These have no commitment and no scheduled version. They may move up, move down, 
   convention), plus gate-position metadata from the circuit renderer so the
   highlight can sync with `step.index`; (3) the interactive Kino widget in
   `kino_qx`, consuming the published Qx release (workspace §4). The renderer
-  fits the v0.11 visualization theme if pulled forward.
+  fits the v0.13 visualization theme if pulled forward.
 - Symbolic / algebraic simulation (exact fractions, no floating point)
 - Circuit-level visualization improvements (multi-qubit gate boxes, measurement symbols)
 - Cirq circuit import adapter (Qiskit/IBM Quantum import already covered by OpenQASM 3.0)
