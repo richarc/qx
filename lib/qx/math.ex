@@ -1,10 +1,14 @@
 defmodule Qx.Math do
   @moduledoc """
-  Core mathematical and linear algebra functions for quantum mechanics calculations.
+  Core mathematical functions for quantum mechanics calculations.
 
-  This module provides the fundamental mathematical operations needed for quantum
-  computing simulations, including tensor products, matrix operations, and
-  quantum state manipulations.
+  The public surface of this module is `normalize/1` and `probabilities/1`
+  — the two state utilities used throughout Qx and taught in the tutorials.
+
+  The remaining linear-algebra helpers (`kron/2`, `inner_product/2`,
+  `outer_product/2`, `trace/1`, `unitary?/1`, `apply_gate/2`, `identity/1`,
+  `complex/2`) are deprecated and will be removed in Qx 1.0. Each carries a
+  drop-in `Nx`/`Complex` replacement in its deprecation notice.
   """
 
   import Nx.Defn
@@ -31,6 +35,7 @@ defmodule Qx.Math do
         ]
       >
   """
+  @deprecated "Inline the Nx pipeline: `a |> Nx.reshape({m, 1, n, 1}) |> Nx.multiply(Nx.reshape(b, {1, p, 1, q})) |> Nx.reshape({m * p, n * q})`. Will be removed in Qx 1.0"
   defn kron(a, b) do
     {m, n} = Nx.shape(a)
     {p, q} = Nx.shape(b)
@@ -76,6 +81,7 @@ defmodule Qx.Math do
         0.0+0.0i
       >
   """
+  @deprecated "Use `Nx.sum(Nx.multiply(Nx.conjugate(state1), state2))`. Will be removed in Qx 1.0"
   defn inner_product(state1, state2) do
     Nx.sum(Nx.conjugate(state1) * state2)
   end
@@ -96,6 +102,7 @@ defmodule Qx.Math do
         ]
       >
   """
+  @deprecated "Use `Nx.outer(state1, Nx.conjugate(state2))`. Will be removed in Qx 1.0"
   defn outer_product(state1, state2) do
     Nx.outer(state1, Nx.conjugate(state2))
   end
@@ -113,6 +120,7 @@ defmodule Qx.Math do
         [0.0, 1.0]
       >
   """
+  @deprecated "Use `Nx.dot/2`. Will be removed in Qx 1.0"
   defn apply_gate(gate, state) do
     Nx.dot(gate, state)
   end
@@ -144,23 +152,9 @@ defmodule Qx.Math do
       iex> Complex.imag(c)
       2.0
   """
+  @deprecated "Use `Complex.new/2`. Will be removed in Qx 1.0"
   def complex(real, imag \\ 0.0) do
     C.new(real, imag)
-  end
-
-  # Converts a `Complex.t()` to an Nx tensor [re, im]. Internal converter
-  # used by gate-matrix builders.
-  @doc false
-  def complex_to_tensor(%C{} = c) do
-    Nx.tensor([c.re, c.im])
-  end
-
-  # Inverse of complex_to_tensor/1: extracts [re, im] from a 2-element Nx
-  # tensor into a `Complex.t()`. Internal.
-  @doc false
-  def tensor_to_complex(tensor) do
-    [re, im] = Nx.to_flat_list(tensor)
-    C.new(re, im)
   end
 
   # Builds a c64 complex matrix tensor from a list-of-lists. Accepts plain
@@ -190,6 +184,7 @@ defmodule Qx.Math do
         5.0
       >
   """
+  @deprecated "Use `Nx.sum(Nx.take_diagonal(matrix))`. Will be removed in Qx 1.0"
   defn trace(matrix) do
     Nx.sum(Nx.take_diagonal(matrix))
   end
@@ -213,6 +208,7 @@ defmodule Qx.Math do
         ]
       >
   """
+  @deprecated "Use `Nx.eye/1`. Will be removed in Qx 1.0"
   def identity(n) do
     Nx.eye(n)
   end
@@ -229,7 +225,26 @@ defmodule Qx.Math do
       iex> not_unitary = Nx.tensor([[2.0, 0.0], [0.0, 2.0]])
       iex> Qx.Math.unitary?(not_unitary)
       false
+
+  ## Replacement recipe
+
+  Check U†U ≈ I directly with Nx:
+
+      {n, m} = Nx.shape(matrix)
+
+      unitary? =
+        n == m and
+          matrix
+          |> Nx.conjugate()
+          |> Nx.transpose()
+          |> Nx.dot(matrix)
+          |> Nx.subtract(Nx.as_type(Nx.eye(n), Nx.type(matrix)))
+          |> Nx.abs()
+          |> Nx.reduce_max()
+          |> Nx.to_number()
+          |> Kernel.<(1.0e-6)
   """
+  @deprecated "Check U†U ≈ I directly with Nx (recipe in the docs). Will be removed in Qx 1.0"
   @spec unitary?(Nx.Tensor.t()) :: boolean()
   def unitary?(matrix) do
     {n, m} = Nx.shape(matrix)
@@ -240,8 +255,9 @@ defmodule Qx.Math do
       conjugate_transpose = Nx.transpose(Nx.conjugate(matrix))
       product = Nx.dot(conjugate_transpose, matrix)
 
-      # Convert identity to same type as product
-      identity_matrix = identity(n) |> Nx.as_type(Nx.type(product))
+      # Convert identity to same type as product (inline Nx.eye — not the
+      # deprecated identity/1 — so lib/ emits no deprecation warnings)
+      identity_matrix = Nx.eye(n) |> Nx.as_type(Nx.type(product))
 
       # Check if the product is close to identity within tolerance
       # Use Nx.subtract instead of - operator for tensor subtraction

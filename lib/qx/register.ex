@@ -45,7 +45,7 @@ defmodule Qx.Register do
 
     %__MODULE__{
       num_qubits: num_qubits,
-      state: Qx.StateInit.zero_state(num_qubits)
+      state: Qx.StateInit.basis_state(0, Integer.pow(2, num_qubits))
     }
   end
 

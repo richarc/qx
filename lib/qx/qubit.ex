@@ -106,7 +106,7 @@ defmodule Qx.Qubit do
       >
   """
   def one do
-    Qx.StateInit.one_state()
+    Qx.StateInit.basis_state(1, 2)
   end
 
   @doc """
@@ -122,7 +122,7 @@ defmodule Qx.Qubit do
       true
   """
   def plus do
-    Qx.StateInit.plus_state()
+    x_eigenstate(1.0)
   end
 
   @doc """
@@ -138,7 +138,7 @@ defmodule Qx.Qubit do
       true
   """
   def minus do
-    Qx.StateInit.minus_state()
+    x_eigenstate(-1.0)
   end
 
   @doc """
@@ -153,7 +153,18 @@ defmodule Qx.Qubit do
       true
   """
   def random do
-    Qx.StateInit.random_state(1)
+    amps = for _ <- 1..2, do: C.new(:rand.uniform() * 2 - 1, :rand.uniform() * 2 - 1)
+
+    amps
+    |> Nx.tensor(type: :c64)
+    |> Qx.Math.normalize()
+  end
+
+  # (|0⟩ + sign·|1⟩)/√2 — the X eigenstates |+⟩ / |−⟩, built inline since
+  # the StateInit plus_state/minus_state constructors are deprecated.
+  defp x_eigenstate(sign) do
+    inv_sqrt2 = 1.0 / :math.sqrt(2)
+    Nx.tensor([C.new(inv_sqrt2, 0.0), C.new(sign * inv_sqrt2, 0.0)], type: :c64)
   end
 
   @doc """

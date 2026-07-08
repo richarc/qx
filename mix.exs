@@ -125,9 +125,6 @@ defmodule Qx.MixProject do
         Utilities: [
           Qx.Math,
           Qx.StateInit
-        ],
-        Behaviours: [
-          Qx.Behaviours.QuantumState
         ]
       ],
       groups_for_extras: [

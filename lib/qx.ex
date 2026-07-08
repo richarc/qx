@@ -50,11 +50,10 @@ defmodule Qx do
     inspection of a running circuit, mid-circuit measurement included)
   - `Qx.Draw` - Visualization of results
   - `Qx.Math` - Core mathematical functions for quantum mechanics
-  - `Qx.StateInit` - State-vector constructors (basis, Bell, GHZ, W states)
+  - `Qx.StateInit` - Basis-state vector constructor
   - `Qx.Export.OpenQASM` - Export circuits to OpenQASM for real quantum hardware
   - `Qx.Hardware` - Run circuits on cloud QPUs (e.g. IBM Quantum)
   - `Qx.Hardware.Config` - Hardware backend configuration (IBM Quantum via qxportal)
-  - `Qx.Behaviours.QuantumState` - Behaviour contract for quantum-state types
 
   ## Exporting to Real Quantum Hardware
 
@@ -1304,7 +1303,9 @@ defmodule Qx do
 
   ## See Also
 
-    * `Qx.StateInit.bell_state_vector/2` — returns a state vector, not a circuit.
+    * `Qx.StateInit.bell_state_vector/2` — returns a state vector, not a
+      circuit (deprecated, removal at 1.0 — run this circuit and
+      `Qx.get_state/1` instead).
   """
   @type bell_state_type :: Patterns.bell_state_type()
   @spec bell_state(bell_state_type()) :: circuit()
@@ -1328,7 +1329,9 @@ defmodule Qx do
 
   ## See Also
 
-    * `Qx.StateInit.ghz_state_vector/2` — returns a state vector, not a circuit.
+    * `Qx.StateInit.ghz_state_vector/2` — returns a state vector, not a
+      circuit (deprecated, removal at 1.0 — run this circuit and
+      `Qx.get_state/1` instead).
   """
   @spec ghz_state(pos_integer()) :: circuit()
   defdelegate ghz_state(num_qubits \\ 3), to: Patterns, as: :ghz_state_circuit

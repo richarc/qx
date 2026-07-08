@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Deprecated
+
+The v0.11 StateInit/Math tier trim (findings R-07/R-08/R-13): both
+modules stay public with a trimmed supported surface — `StateInit`
+keeps `basis_state/2,3`; `Math` keeps `normalize/1` and
+`probabilities/1`. Everything below still works but is `@deprecated`
+and will be **removed in Qx 1.0**:
+
+- `Qx.StateInit` named-state constructors (9) — named states are
+  prepared in circuit mode:
+  - `zero_state/1,2` → `basis_state(0, Integer.pow(2, num_qubits))`
+    (circuits already start in `|0…0⟩`)
+  - `one_state/0,1` → `basis_state(1, 2)`
+  - `plus_state/0,1` → `Qx.create_circuit(1) |> Qx.h(0)`
+  - `minus_state/0,1` → `Qx.create_circuit(1) |> Qx.x(0) |> Qx.h(0)`
+  - `superposition_state/1,2` → `Qx.Patterns.superposition_circuit/1`
+  - `bell_state_vector/0,1,2` → `Qx.bell_state/1`
+  - `ghz_state_vector/1,2` → `Qx.ghz_state/0`
+  - `random_state/1,2`, `w_state/1,2` → no replacement (recipes in the
+    deprecation notices)
+- `Qx.Math` linear-algebra helpers (8) — drop-in `Nx`/`Complex`
+  equivalents:
+  - `apply_gate/2` → `Nx.dot/2`
+  - `identity/1` → `Nx.eye/1`
+  - `complex/1,2` → `Complex.new/2`
+  - `kron/2`, `inner_product/2`, `outer_product/2`, `trace/1` →
+    one-line Nx pipelines (in the deprecation notices)
+  - `unitary?/1` → direct U†U ≈ I check (recipe in the docs)
+
+### Removed
+
+- `Qx.Math.complex_to_tensor/1` and `Qx.Math.tensor_to_complex/1` —
+  dead internal `@doc false` converters (never part of the public API;
+  the gate-matrix builders use `complex_matrix/1`).
+
+### Changed
+
+- `Qx.Behaviours.QuantumState` demoted to internal (`@moduledoc false`,
+  no stability guarantee) per finding R-13 — its sole implementor is
+  the internal calc-engine register; `Qx.QuantumCircuit` follows the
+  shape only by convention. Callbacks are intact and removal is
+  deferred to 1.0, following the v0.10 calc-mode demotion precedent.
+
 ## [0.10.1] - 2026-07-04
 
 ### Fixed

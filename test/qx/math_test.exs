@@ -206,36 +206,6 @@ defmodule Qx.MathTest do
     end
   end
 
-  describe "complex_to_tensor/1" do
-    test "converts complex to tensor" do
-      c = C.new(1.0, 2.0)
-      tensor = Math.complex_to_tensor(c)
-
-      list = Nx.to_flat_list(tensor)
-      assert approx_equal?(Enum.at(list, 0), 1.0)
-      assert approx_equal?(Enum.at(list, 1), 2.0)
-    end
-  end
-
-  describe "tensor_to_complex/1" do
-    test "converts tensor to complex" do
-      tensor = Nx.tensor([3.0, 4.0])
-      c = Math.tensor_to_complex(tensor)
-
-      assert Complex.real(c) == 3.0
-      assert Complex.imag(c) == 4.0
-    end
-
-    test "round trip conversion" do
-      original = C.new(5.0, 6.0)
-      tensor = Math.complex_to_tensor(original)
-      result = Math.tensor_to_complex(tensor)
-
-      assert Complex.real(result) == Complex.real(original)
-      assert Complex.imag(result) == Complex.imag(original)
-    end
-  end
-
   describe "complex_matrix/1" do
     test "creates matrix from real numbers" do
       matrix = Math.complex_matrix([[1, 0], [0, 1]])

@@ -1,41 +1,11 @@
 defmodule Qx.Behaviours.QuantumState do
-  @moduledoc """
-  Behaviour for **multi-qubit** quantum state manipulation.
-
-  Enforces a consistent gate-application API across modules whose state
-  is indexed by qubit number: the internal calc-engine register
-  implements it directly, and `Qx.QuantumCircuit` follows the same shape
-  by convention via `Qx.Operations`. Implementing modules must provide
-  the standard gate set + state inspection.
-
-  ## Single-qubit modules
-
-  The internal single-qubit calc module is **intentionally not** an
-  implementor. Its gate functions take a single-state argument rather
-  than the `(state, qubit_index)` shape this behaviour requires, and
-  unifying the two paradigms is deferred to a future major version.
-
-  ## Optional callbacks
-
-  Three-qubit gates (`ccx`, `cswap`) and a small handful of less-common
-  two-qubit gates are marked as `@optional_callbacks` — implementations
-  with fewer than 3 qubits (or that omit a gate) can leave them
-  undefined without a compile warning.
-
-  ## Example
-
-      defmodule MyMultiQubitState do
-        @behaviour Qx.Behaviours.QuantumState
-
-        @impl true
-        def h(state, qubit), do: # ... implementation
-
-        @impl true
-        def cx(state, control, target), do: # ... implementation
-
-        # ... other required callbacks
-      end
-  """
+  # Behaviour for multi-qubit quantum state manipulation.
+  # Demoted from the public surface in v0.11 (finding R-13): its sole
+  # implementor is the internal calc-engine Qx.Register (zero @impls),
+  # and Qx.QuantumCircuit follows the shape only by convention via
+  # Qx.Operations. Callbacks kept intact — Register still @behaviour's
+  # it; both die together at 1.0. No stability guarantee.
+  @moduledoc false
 
   @type state :: any()
   @type qubit_index :: non_neg_integer()

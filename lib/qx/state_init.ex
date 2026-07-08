@@ -2,29 +2,28 @@ defmodule Qx.StateInit do
   @moduledoc """
   State initialization utilities for quantum systems.
 
-  This module provides functions for creating common quantum states:
-  - Basis states (|0⟩, |1⟩, |00⟩, etc.)
-  - Zero state (|00...0⟩)
-  - Superposition states
-  - Random normalized states
+  The public surface of this module is `basis_state/3` — the raw
+  state-vector constructor used by `Qx.QuantumCircuit`.
+
+  The named-state constructors (`zero_state`, `one_state`, `plus_state`,
+  `minus_state`, `superposition_state`, `random_state`,
+  `bell_state_vector`, `ghz_state_vector`, `w_state`) are deprecated and
+  will be removed in Qx 1.0: named states are prepared in **circuit mode**
+  (`Qx.bell_state/1`, `Qx.ghz_state/0`, `Qx.Patterns.superposition_circuit/1`, or
+  `Qx.create_circuit/1` + gates). Each deprecation notice carries its
+  replacement.
 
   ## Examples
-
-      # Create |00⟩ state for 2 qubits
-      iex> state = Qx.StateInit.zero_state(2)
-      iex> Nx.shape(state)
-      {4}
 
       # Create basis state |101⟩ for 3 qubits
       iex> state = Qx.StateInit.basis_state(5, 8)
       iex> Qx.Math.probabilities(state) |> Nx.to_flat_list() |> Enum.at(5)
       1.0
 
-      # Create equal superposition
-      iex> state = Qx.StateInit.superposition_state(2)
-      iex> probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
-      iex> Enum.all?(probs, &(abs(&1 - 0.25) < 0.01))
-      true
+      # Create |0⟩ for a single qubit (dimension 2, index 0)
+      iex> state = Qx.StateInit.basis_state(0, 2)
+      iex> Nx.shape(state)
+      {2}
   """
 
   alias Complex, as: C
@@ -97,6 +96,7 @@ defmodule Qx.StateInit do
       iex> Enum.sum(Enum.drop(probs, 1))
       0.0
   """
+  @deprecated "Use `basis_state(0, Integer.pow(2, num_qubits))` — circuits already start in |0…0⟩. Will be removed in Qx 1.0"
   def zero_state(num_qubits, type \\ :c64) when is_integer(num_qubits) and num_qubits > 0 do
     dimension = trunc(:math.pow(2, num_qubits))
     basis_state(0, dimension, type)
@@ -112,6 +112,7 @@ defmodule Qx.StateInit do
       iex> Enum.at(probs, 1)
       1.0
   """
+  @deprecated "Use `basis_state(1, 2)`. Will be removed in Qx 1.0"
   def one_state(type \\ :c64) do
     basis_state(1, 2, type)
   end
@@ -127,6 +128,7 @@ defmodule Qx.StateInit do
       iex> abs(p0 - 0.5) < 0.01 and abs(p1 - 0.5) < 0.01
       true
   """
+  @deprecated "Prepare |+⟩ in circuit mode: `Qx.create_circuit(1) |> Qx.h(0)`. Will be removed in Qx 1.0"
   def plus_state(type \\ :c64) do
     inv_sqrt2 = 1.0 / :math.sqrt(2)
     Nx.tensor([C.new(inv_sqrt2, 0.0), C.new(inv_sqrt2, 0.0)], type: type)
@@ -143,6 +145,7 @@ defmodule Qx.StateInit do
       iex> abs(p0 - 0.5) < 0.01 and abs(p1 - 0.5) < 0.01
       true
   """
+  @deprecated "Prepare |−⟩ in circuit mode: `Qx.create_circuit(1) |> Qx.x(0) |> Qx.h(0)`. Will be removed in Qx 1.0"
   def minus_state(type \\ :c64) do
     inv_sqrt2 = 1.0 / :math.sqrt(2)
     Nx.tensor([C.new(inv_sqrt2, 0.0), C.new(-inv_sqrt2, 0.0)], type: type)
@@ -178,6 +181,7 @@ defmodule Qx.StateInit do
       iex> Enum.all?(probs, &(abs(&1 - 0.125) < 0.01))
       true
   """
+  @deprecated "Use `Qx.Patterns.superposition_circuit/1` (circuit mode). Will be removed in Qx 1.0"
   def superposition_state(num_qubits, type \\ :c64)
       when is_integer(num_qubits) and num_qubits > 0 do
     dimension = trunc(:math.pow(2, num_qubits))
@@ -211,6 +215,7 @@ defmodule Qx.StateInit do
       iex> abs(total - 1.0) < 1.0e-6
       true
   """
+  @deprecated "No direct replacement — build random amplitudes and normalize: `(for _ <- 1..dimension, do: Complex.new(:rand.uniform() * 2 - 1, :rand.uniform() * 2 - 1)) |> Nx.tensor(type: :c64) |> Qx.Math.normalize()`. Will be removed in Qx 1.0"
   def random_state(num_qubits, type \\ :c64) when is_integer(num_qubits) and num_qubits > 0 do
     dimension = trunc(:math.pow(2, num_qubits))
 
@@ -270,6 +275,7 @@ defmodule Qx.StateInit do
       directly. Use that when you want a circuit to execute, this when you
       want the mathematical state.
   """
+  @deprecated "Use `Qx.bell_state/1` (circuit mode). Will be removed in Qx 1.0"
   @spec bell_state_vector(bell_state_which(), Nx.Type.t()) :: Nx.Tensor.t()
   def bell_state_vector(which \\ :phi_plus, type \\ :c64)
 
@@ -346,6 +352,7 @@ defmodule Qx.StateInit do
       rather than the state vector. Use that for a runnable circuit; this
       for the mathematical state at any qubit count.
   """
+  @deprecated "Use `Qx.ghz_state/0` (circuit mode). Will be removed in Qx 1.0"
   @spec ghz_state_vector(pos_integer(), Nx.Type.t()) :: Nx.Tensor.t()
   def ghz_state_vector(num_qubits, type \\ :c64)
       when is_integer(num_qubits) and num_qubits >= 2 do
@@ -383,6 +390,7 @@ defmodule Qx.StateInit do
       ...> abs(Enum.at(probs, 4) - expected_prob) < 0.01
       true
   """
+  @deprecated "No replacement — build the state with `basis_state/2` sums or gates in circuit mode. Will be removed in Qx 1.0"
   def w_state(num_qubits, type \\ :c64) when is_integer(num_qubits) and num_qubits >= 2 do
     dimension = trunc(:math.pow(2, num_qubits))
     amplitude = 1.0 / :math.sqrt(num_qubits)
