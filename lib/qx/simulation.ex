@@ -435,14 +435,14 @@ defmodule Qx.Simulation do
   # :off preserves the exact prior behaviour at zero cost.
   @spec maybe_measurement_renorm(state(), renorm()) :: state()
   defp maybe_measurement_renorm(state, :off), do: state
-  defp maybe_measurement_renorm(state, _renorm), do: Math.normalize(state)
+  defp maybe_measurement_renorm(state, _renorm), do: Math.normalize_unchecked(state)
 
   # Per-gate renorm for {:every, n}: renorm after the `ordinal`-th gate
   # (1-based) when `ordinal` is a multiple of n. :off / :measurement
   # add no per-gate work (catch-all clause just returns state).
   @spec maybe_gate_renorm(state(), renorm(), non_neg_integer()) :: state()
   defp maybe_gate_renorm(state, {:every, n}, ordinal) do
-    if rem(ordinal, n) == 0, do: Math.normalize(state), else: state
+    if rem(ordinal, n) == 0, do: Math.normalize_unchecked(state), else: state
   end
 
   defp maybe_gate_renorm(state, _renorm, _ordinal), do: state

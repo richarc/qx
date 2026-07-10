@@ -97,19 +97,56 @@ end
 
 defmodule Qx.BasisError do
   @moduledoc """
-  Raised when a computational basis value is not 0 or 1.
+  Raised for two related computational-basis misuses:
 
-  Carries the offending `:value` so callers can pattern-match on the cause
-  rather than parsing the message.
+    * a single-qubit basis value that is not 0 or 1 (carried in `:value`), and
+    * an invalid `Qx.StateInit.basis_state/2,3` argument — a non-integer or
+      negative index, an index ≥ the dimension, or a dimension < 1. These carry
+      a `:reason` (`:not_an_integer` | `:negative` | `:out_of_range` |
+      `:invalid_dimension`) plus `:value`/`:dimension` so callers can
+      pattern-match on the cause rather than parsing the message.
 
-  Like `Qx.ParameterError`, this exception omits the
+  Like `Qx.ParameterError`, the bare-value clause omits an
   `exception(message) when is_binary` fallback: a basis value may be any
-  term — a binary included — so every value is captured in `:value`, never
-  treated as a pre-formatted message.
+  term — a binary included — so every non-tuple value is captured in `:value`,
+  never treated as a pre-formatted message.
   """
-  defexception [:value, :message]
+  defexception [:value, :reason, :dimension, :message]
 
   @impl true
+  def exception({:not_an_integer, value}) do
+    %__MODULE__{
+      reason: :not_an_integer,
+      value: value,
+      message: "Basis state index must be an integer, got: #{inspect(value)}"
+    }
+  end
+
+  def exception({:negative, value}) do
+    %__MODULE__{
+      reason: :negative,
+      value: value,
+      message: "Basis state index must be non-negative, got: #{inspect(value)}"
+    }
+  end
+
+  def exception({:out_of_range, index, dimension}) do
+    %__MODULE__{
+      reason: :out_of_range,
+      value: index,
+      dimension: dimension,
+      message: "Basis state index #{index} out of range (0..#{dimension - 1})"
+    }
+  end
+
+  def exception({:invalid_dimension, value}) do
+    %__MODULE__{
+      reason: :invalid_dimension,
+      dimension: value,
+      message: "Basis state dimension must be a positive integer, got: #{inspect(value)}"
+    }
+  end
+
   def exception(value) do
     %__MODULE__{
       value: value,
@@ -152,6 +189,13 @@ defmodule Qx.QubitIndexError do
     %__MODULE__{
       qubit: qubits,
       message: "Qubit indices must be distinct, got: #{inspect(qubits)}"
+    }
+  end
+
+  def exception({:not_an_integer, value}) do
+    %__MODULE__{
+      qubit: value,
+      message: "Qubit index must be an integer, got: #{inspect(value)}"
     }
   end
 
@@ -273,6 +317,19 @@ defmodule Qx.ClassicalBitError do
   defexception [:bit, :max, :message]
 
   @impl true
+  def exception({:not_an_integer, value}) do
+    %__MODULE__{
+      bit: value,
+      message: "Classical bit index must be an integer, got: #{inspect(value)}"
+    }
+  end
+
+  def exception({:invalid_count, value}) do
+    %__MODULE__{
+      message: "Number of classical bits must be a non-negative integer, got: #{inspect(value)}"
+    }
+  end
+
   def exception({bit, max}) do
     %__MODULE__{
       bit: bit,
@@ -400,6 +457,13 @@ defmodule Qx.QubitCountError do
   defexception [:count, :min, :max, :message]
 
   @impl true
+  def exception({:not_an_integer, value}) do
+    %__MODULE__{
+      count: value,
+      message: "Number of qubits must be an integer, got: #{inspect(value)}"
+    }
+  end
+
   def exception({count, min, max}) do
     %__MODULE__{
       count: count,

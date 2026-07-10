@@ -57,8 +57,15 @@ defmodule Qx.StateInit do
       iex> probs = Qx.Math.probabilities(state) |> Nx.to_flat_list()
       iex> Enum.at(probs, 5)
       1.0
+
+  ## Raises
+
+    * `Qx.BasisError` - If `dimension` is not a positive integer, `index` is not
+      an integer, `index` is negative, or `index >= dimension`
   """
   def basis_state(index, dimension, type \\ :c64)
+
+  def basis_state(index, dimension, type)
       when is_integer(index) and is_integer(dimension) and index >= 0 and index < dimension do
     state_data =
       for i <- 0..(dimension - 1) do
@@ -66,6 +73,25 @@ defmodule Qx.StateInit do
       end
 
     Nx.tensor(state_data, type: type)
+  end
+
+  # Fallback (sweep #3): route invalid basis_state args onto Qx.BasisError
+  # reason variants instead of leaking a raw FunctionClauseError. Checked in
+  # priority order — a bad dimension makes the index checks meaningless.
+  def basis_state(index, dimension, _type) do
+    cond do
+      not (is_integer(dimension) and dimension >= 1) ->
+        raise Qx.BasisError, {:invalid_dimension, dimension}
+
+      not is_integer(index) ->
+        raise Qx.BasisError, {:not_an_integer, index}
+
+      index < 0 ->
+        raise Qx.BasisError, {:negative, index}
+
+      true ->
+        raise Qx.BasisError, {:out_of_range, index, dimension}
+    end
   end
 
   @doc """

@@ -52,7 +52,12 @@ defmodule Qx.Math do
   end
 
   @doc """
-  Normalizes a quantum state vector to ensure unit magnitude.
+  Normalizes a quantum state vector to unit magnitude.
+
+  This is a host function: it performs a single `Nx.to_number/1` sync to
+  check the norm, then delegates to a pure `defn` kernel. Composing it inside
+  your own `defn` is therefore not supported — inline the kernel
+  (`state / Nx.sqrt(Nx.sum(Nx.abs(state) ** 2))`) in that case.
 
   ## Examples
 
@@ -62,8 +67,31 @@ defmodule Qx.Math do
         f32[2]
         [0.70710677, 0.70710677]
       >
+
+  ## Raises
+
+    * `Qx.StateNormalizationError` - If the input has zero norm (an all-zero
+      vector has no defined normalization; this previously returned a silent
+      `NaN` tensor)
   """
-  defn normalize(state) do
+  def normalize(state) do
+    norm = Nx.abs(state) |> Nx.pow(2) |> Nx.sum() |> Nx.sqrt() |> Nx.to_number()
+
+    if norm == 0.0 do
+      raise Qx.StateNormalizationError,
+            "Cannot normalize a zero-norm state vector (all amplitudes are zero)"
+    end
+
+    normalize_unchecked(state)
+  end
+
+  # Pure-defn normalization kernel: the byte-identical body of the former
+  # `defn normalize/1`. Used by the public `normalize/1` (after its host-side
+  # zero-norm check) and by the `Qx.Simulation` renorm hot path, which never
+  # sees a zero-norm state (post-gate states are unit-norm by construction) and
+  # so must avoid the public wrapper's per-call host sync (Iron Laws #5/#8).
+  @doc false
+  defn normalize_unchecked(state) do
     norm = Nx.sqrt(Nx.sum(Nx.abs(state) ** 2))
     state / norm
   end

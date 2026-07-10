@@ -49,6 +49,43 @@ and will be **removed in Qx 1.0**:
   the internal calc-engine register; `Qx.QuantumCircuit` follows the
   shape only by convention. Callbacks are intact and removal is
   deferred to 1.0, following the v0.10 calc-mode demotion precedent.
+- `Qx.SimulationResult.filter_by_probability/2` now accepts any number
+  in `0..1` for the threshold — the integers `0` and `1` are valid
+  probabilities (previously only floats were accepted; integer `1`
+  crashed). Additive/non-breaking; the `@spec` widened from `float()`
+  to `number()`.
+- `Qx.rx/ry/rz/phase` (and the `Qx.Operations` equivalents) now validate
+  their angle/phase parameter at **build time**, raising
+  `Qx.ParameterError` immediately rather than letting a non-numeric
+  parameter detonate later inside the simulator. Non-breaking (matches
+  the existing `u/cp/crx/cry/crz` behaviour).
+
+### Fixed
+
+- Typed-error sweep #3 (findings B-09/B-14/T1-10/R-04/R-09/R-10):
+  public functions that leaked a raw `FunctionClauseError` on invalid
+  input now raise a typed `Qx.*Error`. **Non-breaking** — every input
+  below already crashed; only the exception type improves:
+  - `Qx.create_circuit/1,2` — non-integer qubit count →
+    `Qx.QubitCountError`; non-integer/negative classical-bit count →
+    `Qx.ClassicalBitError`
+  - single- and two-qubit gate builders (`Qx.h/x/y/z/rx/…`, `Qx.cx/…`)
+    — non-integer qubit index → `Qx.QubitIndexError`
+  - `Qx.bell_state/1` (`Qx.Patterns.bell_state_circuit/1`) — unknown
+    selector → `Qx.OptionError`
+  - `Qx.ghz_state` / `Qx.Patterns.ghz_state_circuit/1` — count `< 2` or
+    non-integer → `Qx.QubitCountError`
+  - `Qx.Operations.c_if/4` — non-integer classical bit →
+    `Qx.ClassicalBitError`
+  - `Qx.StateInit.basis_state/2,3` — non-integer/negative index,
+    `index >= dimension`, or non-positive dimension → `Qx.BasisError`
+  - `Qx.SimulationResult.filter_by_probability/2` — out-of-range or
+    non-number threshold → `Qx.OptionError`
+- `Qx.Math.normalize/1` on an all-zero vector previously returned a
+  silent `NaN` tensor; it now raises `Qx.StateNormalizationError`
+  (finding R-09). Valid-input behaviour is unchanged, and the
+  simulation renormalization hot path is untouched (it uses an internal
+  unchecked kernel that never sees a zero-norm state).
 
 ## [0.10.1] - 2026-07-04
 

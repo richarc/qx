@@ -186,8 +186,14 @@ defmodule Qx.Operations do
       iex> [{gate, qubits, params}] = Qx.QuantumCircuit.get_instructions(qc)
       iex> {gate, qubits, length(params)}
       {:rx, [0], 1}
+
+  ## Raises
+
+    * `Qx.ParameterError` - If `theta` is not a number (validated at build time)
+    * `Qx.QubitIndexError` - If qubit index is out of range or not an integer
   """
   def rx(%QuantumCircuit{} = circuit, qubit, theta) do
+    Validation.validate_parameter!(theta)
     QuantumCircuit.add_gate(circuit, :rx, qubit, [theta])
   end
 
@@ -206,8 +212,14 @@ defmodule Qx.Operations do
       iex> [{gate, qubits, params}] = Qx.QuantumCircuit.get_instructions(qc)
       iex> {gate, qubits, length(params)}
       {:ry, [0], 1}
+
+  ## Raises
+
+    * `Qx.ParameterError` - If `theta` is not a number (validated at build time)
+    * `Qx.QubitIndexError` - If qubit index is out of range or not an integer
   """
   def ry(%QuantumCircuit{} = circuit, qubit, theta) do
+    Validation.validate_parameter!(theta)
     QuantumCircuit.add_gate(circuit, :ry, qubit, [theta])
   end
 
@@ -226,8 +238,14 @@ defmodule Qx.Operations do
   iex> [{gate, qubits, params}] = Qx.QuantumCircuit.get_instructions(qc)
   iex> {gate, qubits, length(params)}
   {:rz, [0], 1}
+
+  ## Raises
+
+    * `Qx.ParameterError` - If `theta` is not a number (validated at build time)
+    * `Qx.QubitIndexError` - If qubit index is out of range or not an integer
   """
   def rz(%QuantumCircuit{} = circuit, qubit, theta) do
+    Validation.validate_parameter!(theta)
     QuantumCircuit.add_gate(circuit, :rz, qubit, [theta])
   end
 
@@ -246,8 +264,14 @@ defmodule Qx.Operations do
       iex> [{gate, qubits, params}] = Qx.QuantumCircuit.get_instructions(qc)
       iex> {gate, qubits, length(params)}
       {:phase, [0], 1}
+
+  ## Raises
+
+    * `Qx.ParameterError` - If `phi` is not a number (validated at build time)
+    * `Qx.QubitIndexError` - If qubit index is out of range or not an integer
   """
   def phase(%QuantumCircuit{} = circuit, qubit, phi) do
+    Validation.validate_parameter!(phi)
     QuantumCircuit.add_gate(circuit, :phase, qubit, [phi])
   end
 
@@ -769,6 +793,13 @@ defmodule Qx.Operations do
 
   def c_if(_circuit, _classical_bit, _value, gate_fn) when not is_function(gate_fn, 1) do
     raise Qx.ConditionalError, "Gate function must be a function with arity 1"
+  end
+
+  # Final fallback (sweep #3): a non-integer classical_bit (with a valid value
+  # and gate_fn — else the clauses above fire) fell through to a raw
+  # FunctionClauseError. Route it onto the typed error.
+  def c_if(%QuantumCircuit{} = _circuit, classical_bit, _value, _gate_fn) do
+    raise Qx.ClassicalBitError, {:not_an_integer, classical_bit}
   end
 
   # Private helper to validate conditional block

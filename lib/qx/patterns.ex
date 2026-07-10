@@ -329,12 +329,32 @@ defmodule Qx.Patterns do
     |> Operations.cx(0, 1)
   end
 
+  # Fallback (sweep #3): an unknown selector fell through to a raw
+  # FunctionClauseError. Route it onto Qx.OptionError.
+  def bell_state_circuit(which) do
+    raise Qx.OptionError,
+          {:which, which, "Expected :phi_plus, :phi_minus, :psi_plus, or :psi_minus."}
+  end
+
   @doc false
   @spec ghz_state_circuit(pos_integer()) :: QuantumCircuit.t()
-  def ghz_state_circuit(num_qubits \\ 3) when is_integer(num_qubits) and num_qubits >= 2 do
+  def ghz_state_circuit(num_qubits \\ 3)
+
+  def ghz_state_circuit(num_qubits) when is_integer(num_qubits) and num_qubits >= 2 do
     QuantumCircuit.new(num_qubits)
     |> Operations.h(0)
     |> cx_chain(Enum.to_list(0..(num_qubits - 1)))
+  end
+
+  # Fallbacks (sweep #3): an integer < 2 or a non-integer count fell through to
+  # a raw FunctionClauseError. Route both onto Qx.QubitCountError (GHZ needs ≥ 2
+  # qubits; the upper bound of 20 comes from QuantumCircuit.new/1).
+  def ghz_state_circuit(num_qubits) when is_integer(num_qubits) do
+    raise Qx.QubitCountError, {num_qubits, 2, 20}
+  end
+
+  def ghz_state_circuit(num_qubits) do
+    raise Qx.QubitCountError, {:not_an_integer, num_qubits}
   end
 
   @doc """

@@ -95,8 +95,8 @@ defmodule Qx do
 
   ## Raises
 
-    * `Qx.QubitCountError` - If `num_qubits` is an integer outside the supported range (1..20)
-    * `FunctionClauseError` - If `num_qubits`/`num_classical_bits` is not an integer, or `num_classical_bits < 0`
+    * `Qx.QubitCountError` - If `num_qubits` is not an integer, or is an integer outside the supported range (1..20)
+    * `Qx.ClassicalBitError` - If `num_classical_bits` is not a non-negative integer
   """
   @spec create_circuit(pos_integer(), non_neg_integer()) :: circuit()
   defdelegate create_circuit(num_qubits, num_classical_bits), to: QuantumCircuit, as: :new
@@ -117,8 +117,7 @@ defmodule Qx do
 
   ## Raises
 
-    * `Qx.QubitCountError` - If `num_qubits` is an integer outside the supported range (1..20)
-    * `FunctionClauseError` - If `num_qubits` is not an integer
+    * `Qx.QubitCountError` - If `num_qubits` is not an integer, or is an integer outside the supported range (1..20)
   """
   @spec create_circuit(pos_integer()) :: circuit()
   defdelegate create_circuit(num_qubits), to: QuantumCircuit, as: :new
@@ -504,6 +503,11 @@ defmodule Qx do
       iex> qc = Qx.create_circuit(1) |> Qx.rx(0, :math.pi/2)
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
+
+  ## Raises
+
+    * `Qx.ParameterError` - If `theta` is not a number (validated at build time)
+    * `Qx.QubitIndexError` - If qubit index is out of range or not an integer
   """
   @spec rx(circuit(), non_neg_integer(), float()) :: circuit()
   defdelegate rx(circuit, qubit, theta), to: Operations
@@ -521,6 +525,11 @@ defmodule Qx do
       iex> qc = Qx.create_circuit(1) |> Qx.ry(0, :math.pi/2)
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
+
+  ## Raises
+
+    * `Qx.ParameterError` - If `theta` is not a number (validated at build time)
+    * `Qx.QubitIndexError` - If qubit index is out of range or not an integer
   """
   @spec ry(circuit(), non_neg_integer(), float()) :: circuit()
   defdelegate ry(circuit, qubit, theta), to: Operations
@@ -538,6 +547,11 @@ defmodule Qx do
       iex> qc = Qx.create_circuit(1) |> Qx.rz(0, :math.pi/2)
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
+
+  ## Raises
+
+    * `Qx.ParameterError` - If `theta` is not a number (validated at build time)
+    * `Qx.QubitIndexError` - If qubit index is out of range or not an integer
   """
   @spec rz(circuit(), non_neg_integer(), float()) :: circuit()
   defdelegate rz(circuit, qubit, theta), to: Operations
@@ -555,6 +569,11 @@ defmodule Qx do
       iex> qc = Qx.create_circuit(1) |> Qx.phase(0, :math.pi/4)
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
+
+  ## Raises
+
+    * `Qx.ParameterError` - If `phi` is not a number (validated at build time)
+    * `Qx.QubitIndexError` - If qubit index is out of range or not an integer
   """
   @spec phase(circuit(), non_neg_integer(), float()) :: circuit()
   defdelegate phase(circuit, qubit, phi), to: Operations

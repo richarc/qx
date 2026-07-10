@@ -93,6 +93,13 @@ defmodule Qx.Validation do
     :ok
   end
 
+  # Non-integer qubit index (num_qubits is always an integer from the circuit).
+  # Routes the raw FunctionClauseError from `add_gate`/`add_two_qubit_gate`
+  # onto the typed error (sweep #3).
+  def validate_qubit_index!(index, num_qubits) when is_integer(num_qubits) do
+    raise Qx.QubitIndexError, {:not_an_integer, index}
+  end
+
   # Validates every qubit index in `indices` is in range. Raises Qx.QubitIndexError
   # on the first offender.
   @doc false
@@ -156,6 +163,31 @@ defmodule Qx.Validation do
     end
 
     :ok
+  end
+
+  # Non-integer num_qubits fallback (sweep #3). Routes the raw
+  # FunctionClauseError from `QuantumCircuit.new/1,2` onto the typed error.
+  def validate_num_qubits!(num_qubits) do
+    raise Qx.QubitCountError, {:not_an_integer, num_qubits}
+  end
+
+  # Validates the classical-bit COUNT for `QuantumCircuit.new/2`: must be a
+  # non-negative integer. Raises Qx.ClassicalBitError otherwise (sweep #3).
+  @doc false
+  def validate_num_classical_bits!(n) when is_integer(n) and n >= 0, do: :ok
+
+  def validate_num_classical_bits!(n) do
+    raise Qx.ClassicalBitError, {:invalid_count, n}
+  end
+
+  # Validates a probability threshold: a number in 0..1 (integers 0/1 allowed —
+  # the widening in `SimulationResult.filter_by_probability/2`). Raises
+  # Qx.OptionError otherwise (sweep #3).
+  @doc false
+  def validate_probability!(p) when is_number(p) and p >= 0 and p <= 1, do: :ok
+
+  def validate_probability!(p) do
+    raise Qx.OptionError, {:threshold, p, "Expected a number in 0..1."}
   end
 
   # Validates the `:renormalize` option for `Qx.Simulation.run/2`. Accepts

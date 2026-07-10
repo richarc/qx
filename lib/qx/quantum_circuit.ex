@@ -46,12 +46,13 @@ defmodule Qx.QuantumCircuit do
       iex> qc.num_classical_bits
       2
   """
-  def new(num_qubits, num_classical_bits)
-      when is_integer(num_qubits) and is_integer(num_classical_bits) and num_classical_bits >= 0 do
-    # Enforce the documented 1..20 qubit cap (Iron Law #7) — raises
-    # `Qx.QubitCountError` at both bounds (was previously a typed error only
-    # at the upper bound; the lower bound fell through to FunctionClauseError).
+  def new(num_qubits, num_classical_bits) do
+    # Validate up front (Iron Law #7). A single unguarded clause raises the
+    # typed error directly — `Qx.QubitCountError` (non-integer or outside 1..20)
+    # or `Qx.ClassicalBitError` (non-integer or negative) — rather than relying
+    # on a guard/fallback split whose exhaustiveness is only emergent.
     Qx.Validation.validate_num_qubits!(num_qubits)
+    Qx.Validation.validate_num_classical_bits!(num_classical_bits)
 
     # Initialize all qubits in |0⟩ state with complex representation
     # For n qubits, we need a 2^n dimensional state vector with complex components
@@ -82,7 +83,9 @@ defmodule Qx.QuantumCircuit do
       iex> qc.num_classical_bits
       0
   """
-  def new(num_qubits) when is_integer(num_qubits) do
+  def new(num_qubits) do
+    # `new/2` validates `num_qubits`; a non-integer or out-of-range value raises
+    # `Qx.QubitCountError` there.
     new(num_qubits, 0)
   end
 
@@ -91,7 +94,10 @@ defmodule Qx.QuantumCircuit do
   # gate_name: atom (e.g. :h, :x). qubit: target index. params: optional list.
   @doc false
   def add_gate(%__MODULE__{} = circuit, gate_name, qubit, params \\ [])
-      when is_atom(gate_name) and is_integer(qubit) do
+      when is_atom(gate_name) do
+    # `is_integer(qubit)` dropped from the guard (sweep #3) so a non-integer
+    # qubit reaches `validate_qubit_index!`, which raises Qx.QubitIndexError
+    # instead of a raw FunctionClauseError.
     Qx.Validation.validate_qubit_index!(qubit, circuit.num_qubits)
     instruction = {gate_name, [qubit], params}
 
@@ -109,7 +115,9 @@ defmodule Qx.QuantumCircuit do
         target_qubit,
         params \\ []
       )
-      when is_atom(gate_name) and is_integer(control_qubit) and is_integer(target_qubit) do
+      when is_atom(gate_name) do
+    # Integer guards on the qubits dropped (sweep #3) so non-integer indices
+    # reach `validate_qubit_index!` → Qx.QubitIndexError, not FunctionClauseError.
     Qx.Validation.validate_qubit_index!(control_qubit, circuit.num_qubits)
     Qx.Validation.validate_qubit_index!(target_qubit, circuit.num_qubits)
 

@@ -79,7 +79,8 @@ defmodule Qx.SimulationResult do
   ## Parameters
 
     * `result` - Simulation result
-    * `threshold` - Minimum probability (0.0 to 1.0)
+    * `threshold` - Minimum probability, any number in `0..1` (the integers
+      `0` and `1` are accepted as well as floats)
 
   ## Returns
 
@@ -97,10 +98,17 @@ defmodule Qx.SimulationResult do
       iex> Qx.SimulationResult.filter_by_probability(result, 0.5)
       %{"00" => 52}
 
+  ## Raises
+
+    * `Qx.OptionError` - If `threshold` is not a number in `0..1`
   """
-  @spec filter_by_probability(t(), float()) :: %{String.t() => non_neg_integer()}
-  def filter_by_probability(%__MODULE__{counts: counts, shots: shots}, threshold)
-      when is_float(threshold) and threshold >= 0.0 and threshold <= 1.0 do
+  @spec filter_by_probability(t(), number()) :: %{String.t() => non_neg_integer()}
+  def filter_by_probability(%__MODULE__{counts: counts, shots: shots}, threshold) do
+    # Validate up front (sweep #3): `validate_probability!/1` accepts any number
+    # in 0..1 (the integers 0/1 included — additive, see CHANGELOG) and raises
+    # `Qx.OptionError` otherwise. A single clause makes the raise explicit rather
+    # than dependent on a guard/fallback split.
+    Qx.Validation.validate_probability!(threshold)
     min_count = threshold * shots
 
     counts
