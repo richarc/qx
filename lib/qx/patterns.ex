@@ -222,7 +222,7 @@ defmodule Qx.Patterns do
   @spec measure_all(QuantumCircuit.t(), qubits()) :: QuantumCircuit.t()
   def measure_all(%QuantumCircuit{} = circuit, qubits) do
     Enum.reduce(qubits_to_list(qubits), circuit, fn i, acc ->
-      QuantumCircuit.add_measurement(acc, i, i)
+      Operations.measure(acc, i, i)
     end)
   end
 

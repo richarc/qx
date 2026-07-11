@@ -683,9 +683,7 @@ defmodule Qx.Operations do
   @spec barrier(QuantumCircuit.t(), [non_neg_integer()]) :: QuantumCircuit.t()
   def barrier(%QuantumCircuit{} = circuit, qubits) when is_list(qubits) do
     Validation.validate_qubit_indices!(qubits, circuit.num_qubits)
-
-    instruction = {:barrier, qubits, []}
-    %{circuit | instructions: circuit.instructions ++ [instruction]}
+    QuantumCircuit.add_barrier(circuit, qubits)
   end
 
   @doc """
@@ -842,11 +840,8 @@ defmodule Qx.Operations do
     # Validate the conditional block
     validate_conditional_block(conditional_instructions)
 
-    # Create the conditional instruction
-    instruction = {:c_if, [classical_bit, value], conditional_instructions}
-
-    # Add to the main circuit
-    %{circuit | instructions: circuit.instructions ++ [instruction]}
+    # Build+append the conditional instruction via the single producer surface.
+    QuantumCircuit.add_conditional(circuit, classical_bit, value, conditional_instructions)
   end
 
   def c_if(%QuantumCircuit{} = circuit, classical_bit, _value, _gate_fn)

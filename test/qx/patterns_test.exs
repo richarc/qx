@@ -636,4 +636,22 @@ defmodule Qx.PatternsTest do
       end
     end
   end
+
+  describe "measure_all producer-hygiene invariant" do
+    test "measure_all == composing Operations.measure/3 per qubit (byte-identical)" do
+      composed =
+        QuantumCircuit.new(3, 3)
+        |> Qx.Operations.measure(0, 0)
+        |> Qx.Operations.measure(1, 1)
+        |> Qx.Operations.measure(2, 2)
+
+      assert Patterns.measure_all(QuantumCircuit.new(3, 3)) == composed
+
+      assert QuantumCircuit.get_instructions(Patterns.measure_all(QuantumCircuit.new(3, 3))) == [
+               {:measure, [0, 0], []},
+               {:measure, [1, 1], []},
+               {:measure, [2, 2], []}
+             ]
+    end
+  end
 end

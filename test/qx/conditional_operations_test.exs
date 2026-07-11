@@ -153,4 +153,28 @@ defmodule Qx.ConditionalOperationsTest do
       end
     end
   end
+
+  describe "c_if producer-hygiene invariant" do
+    test "c_if/4 builds the {:c_if, [cb, val], instrs} tuple unchanged (byte-identical)" do
+      qc =
+        Qx.create_circuit(2, 2)
+        |> Qx.h(0)
+        |> Qx.measure(0, 0)
+        |> Qx.c_if(0, 1, fn c -> Qx.x(c, 1) end)
+
+      assert Qx.QuantumCircuit.get_instructions(qc) == [
+               {:h, [0], []},
+               {:measure, [0, 0], []},
+               {:c_if, [0, 1], [{:x, [1], []}]}
+             ]
+    end
+
+    test "QuantumCircuit.add_conditional/4 builds+appends the {:c_if, …} tuple" do
+      qc =
+        Qx.QuantumCircuit.new(2, 2)
+        |> Qx.QuantumCircuit.add_conditional(0, 1, [{:x, [1], []}])
+
+      assert Qx.QuantumCircuit.get_instructions(qc) == [{:c_if, [0, 1], [{:x, [1], []}]}]
+    end
+  end
 end

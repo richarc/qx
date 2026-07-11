@@ -148,4 +148,16 @@ defmodule Qx.BarrierDispatchTest do
       assert_probs(result.probabilities, [0.5, 0.5])
     end
   end
+
+  describe "barrier producer-hygiene invariant" do
+    test "Qx.barrier/2 output is unchanged (byte-identical)" do
+      qc = Qx.create_circuit(3) |> Qx.barrier([0, 1, 2])
+      assert Qx.QuantumCircuit.get_instructions(qc) == [{:barrier, [0, 1, 2], []}]
+    end
+
+    test "QuantumCircuit.add_barrier/2 builds+appends the {:barrier, …} tuple" do
+      qc = Qx.QuantumCircuit.add_barrier(Qx.QuantumCircuit.new(3), [0, 2])
+      assert Qx.QuantumCircuit.get_instructions(qc) == [{:barrier, [0, 2], []}]
+    end
+  end
 end

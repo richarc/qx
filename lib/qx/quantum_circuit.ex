@@ -95,6 +95,18 @@ defmodule Qx.QuantumCircuit do
     new(num_qubits, 0)
   end
 
+  # --- Instruction producer surface (internal) ---
+  #
+  # `add_gate/4`, `add_two_qubit_gate/5`, `add_three_qubit_gate/5`,
+  # `add_measurement/3`, `add_barrier/2`, and `add_conditional/4` are the SINGLE
+  # place every instruction tuple is built and appended. All are `@doc false`
+  # with no external callers (only `Qx.Operations`/`Qx.Patterns` reach them), so
+  # every instruction SHAPE a producer can emit is greppable here — the
+  # Iron Law #9 (dispatch completeness) audit point. `gate_name`/kind atoms are
+  # always hardcoded by `Operations` (never user input), so no per-name allowlist
+  # is validated here; Iron Law #9 coverage is the execution-test-per-shape rule,
+  # and qubit/bit indices are validated by the callers or the helpers below.
+
   # Adds a single-qubit gate instruction to the circuit. Internal helper used
   # by `Qx.Operations` and `Qx.Patterns`; users should call `Qx.h(qc, 0)` etc.
   # gate_name: atom (e.g. :h, :x). qubit: target index. params: optional list.
@@ -197,6 +209,29 @@ defmodule Qx.QuantumCircuit do
         measured_qubits: measured_qubits,
         instructions: circuit.instructions ++ [measurement_instruction]
     }
+  end
+
+  # Adds a barrier instruction spanning `qubits`. Internal producer used by
+  # `Qx.Operations.barrier/2` (which owns qubit-index validation); users call
+  # `Qx.barrier(qc, [0, 1])`. Builds+appends the `{:barrier, qubits, []}` tuple
+  # so barrier production lives on this single `add_*` surface, not inline in
+  # Operations.
+  @doc false
+  def add_barrier(%__MODULE__{} = circuit, qubits) when is_list(qubits) do
+    %{circuit | instructions: circuit.instructions ++ [{:barrier, qubits, []}]}
+  end
+
+  # Adds a conditional (`c_if`) instruction. Internal producer used by
+  # `Qx.Operations.c_if/4` (which owns running the gate function, block
+  # validation, and the value/bit guards); users call `Qx.c_if/4`. Builds +
+  # appends the `{:c_if, [classical_bit, value], conditional_instructions}`
+  # tuple — the already-collected `conditional_instructions` come from
+  # Operations running the caller's `gate_fn` on a temp circuit.
+  @doc false
+  def add_conditional(%__MODULE__{} = circuit, classical_bit, value, conditional_instructions)
+      when is_list(conditional_instructions) do
+    instruction = {:c_if, [classical_bit, value], conditional_instructions}
+    %{circuit | instructions: circuit.instructions ++ [instruction]}
   end
 
   @doc """
