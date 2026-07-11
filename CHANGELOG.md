@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Qx.bell_pair/4` and `Qx.ghz/2` — circuit *appenders* that add
+  state-preparation gates onto an existing circuit at caller-chosen
+  qubits (e.g. `circuit |> Qx.bell_pair(1, 2)` or `circuit |> Qx.ghz(0..3)`),
+  complementing the existing `Qx.bell_state/1` / `Qx.ghz_state/1`
+  *creators* which build a fresh circuit. `bell_pair/4` selects the Bell
+  state via a `which` option (default `:phi_plus`); `ghz/2` accepts a
+  list or range of at least two qubits. The zero-/one-arg creators are
+  now thin wrappers over these appenders — no behaviour change (output
+  circuits and raised errors are byte-identical). Purely additive,
+  non-breaking.
+
 ### Deprecated
 
 The v0.11 StateInit/Math tier trim (findings R-07/R-08/R-13): both

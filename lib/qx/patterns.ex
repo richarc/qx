@@ -64,7 +64,8 @@ defmodule Qx.Patterns do
   A list or range of non-negative qubit indices.
 
   Used as the second argument to the `/2` form of `h_all`, `x_all`, `y_all`,
-  `z_all`, `measure_all`, and `barrier_all` to select a sub-register.
+  `z_all`, `measure_all`, and `barrier_all` to select a sub-register, and as
+  the qubit selector for `ghz/2`.
   """
   @type qubits :: [non_neg_integer()] | Range.t()
 
@@ -295,48 +296,145 @@ defmodule Qx.Patterns do
     |> Enum.reduce(circuit, fn [c, t], acc -> Operations.cx(acc, c, t) end)
   end
 
+  @doc """
+  Appends the GHZ-preparation gates over `qubits` onto an existing `circuit`.
+
+  Applies a Hadamard to the first qubit in `qubits`, then a linear CNOT chain
+  (`cx_chain/2`) along the rest — the `|GHZ⟩ = (|0…0⟩ + |1…1⟩)/√2` recipe.
+  Where `Qx.ghz_state/1` *creates* a fresh `n`-qubit circuit over `0..n-1`,
+  this builder *appends* onto `circuit` at the caller-chosen qubits.
+
+  `qubits` may be a list or a range and must name at least two qubits — a GHZ
+  state needs two qubits to entangle.
+
+  ## Parameters
+
+    * `circuit` - The `Qx.QuantumCircuit` to append onto.
+    * `qubits` - A list or range of at least two qubit indices; the first is
+      the Hadamard/root qubit, and the chain follows the given order.
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(4) |> Qx.Patterns.ghz(1..3)
+      iex> Qx.QuantumCircuit.get_instructions(qc)
+      [{:h, [1], []}, {:cx, [1, 2], []}, {:cx, [2, 3], []}]
+
+  ## Raises
+
+    * `Qx.QubitCountError` - If fewer than two qubits are given.
+    * `Qx.QubitIndexError` - If any qubit index is out of range (surfaced by
+      the composed `Qx.Operations.h/2` and `cx_chain/2`).
+  """
+  @spec ghz(QuantumCircuit.t(), qubits()) :: QuantumCircuit.t()
+  def ghz(%QuantumCircuit{} = circuit, qubits) do
+    case qubits_to_list(qubits) do
+      [] ->
+        raise Qx.QubitCountError, {0, 2, 20}
+
+      [_only] ->
+        raise Qx.QubitCountError, {1, 2, 20}
+
+      [first | _] = list ->
+        circuit
+        |> Operations.h(first)
+        |> cx_chain(list)
+    end
+  end
+
   @typedoc """
   Selector for which of the four Bell states a recipe builds.
   """
   @type bell_state_type :: :phi_plus | :phi_minus | :psi_plus | :psi_minus
 
-  @doc false
-  @spec bell_state_circuit(bell_state_type()) :: QuantumCircuit.t()
-  def bell_state_circuit(which \\ :phi_plus)
+  @doc """
+  Appends the gates that entangle qubits `q0` and `q1` into one of the four
+  Bell states onto an existing `circuit`.
 
-  def bell_state_circuit(:phi_plus) do
-    QuantumCircuit.new(2)
-    |> Operations.h(0)
-    |> Operations.cx(0, 1)
+  Unlike `Qx.bell_state/1` (which *creates* a fresh 2-qubit circuit), this
+  builder *appends* onto `circuit` at the caller-chosen qubits, so it composes
+  inside a larger pipeline. The gate sequence per `which` (with `q0` the
+  control and `q1` the target of the final `CX`):
+
+  | `which`       | Gates appended                     |
+  | ------------- | ---------------------------------- |
+  | `:phi_plus`   | `h(q0), cx(q0, q1)` (default)      |
+  | `:phi_minus`  | `x(q0), h(q0), cx(q0, q1)`         |
+  | `:psi_plus`   | `x(q1), h(q0), cx(q0, q1)`         |
+  | `:psi_minus`  | `x(q0), x(q1), h(q0), cx(q0, q1)`  |
+
+  ## Parameters
+
+    * `circuit` - The `Qx.QuantumCircuit` to append onto.
+    * `q0` - Control qubit of the entangling `CX` (and the Hadamard target).
+    * `q1` - Target qubit of the entangling `CX`.
+    * `which` - Which Bell state to prepare (default `:phi_plus`).
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(3) |> Qx.Patterns.bell_pair(1, 2)
+      iex> Qx.QuantumCircuit.get_instructions(qc)
+      [{:h, [1], []}, {:cx, [1, 2], []}]
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If `q0` or `q1` is out of range, or if `q0 == q1`
+      (surfaced by the composed `Qx.Operations.cx/3`).
+    * `Qx.OptionError` - If `which` is not one of `:phi_plus`, `:phi_minus`,
+      `:psi_plus`, `:psi_minus`.
+  """
+  @spec bell_pair(QuantumCircuit.t(), non_neg_integer(), non_neg_integer(), bell_state_type()) ::
+          QuantumCircuit.t()
+  def bell_pair(circuit, q0, q1, which \\ :phi_plus)
+
+  def bell_pair(%QuantumCircuit{} = circuit, q0, q1, :phi_plus) do
+    circuit
+    |> Operations.h(q0)
+    |> Operations.cx(q0, q1)
   end
 
-  def bell_state_circuit(:phi_minus) do
-    QuantumCircuit.new(2)
-    |> Operations.x(0)
-    |> Operations.h(0)
-    |> Operations.cx(0, 1)
+  def bell_pair(%QuantumCircuit{} = circuit, q0, q1, :phi_minus) do
+    circuit
+    |> Operations.x(q0)
+    |> Operations.h(q0)
+    |> Operations.cx(q0, q1)
   end
 
-  def bell_state_circuit(:psi_plus) do
-    QuantumCircuit.new(2)
-    |> Operations.x(1)
-    |> Operations.h(0)
-    |> Operations.cx(0, 1)
+  def bell_pair(%QuantumCircuit{} = circuit, q0, q1, :psi_plus) do
+    circuit
+    |> Operations.x(q1)
+    |> Operations.h(q0)
+    |> Operations.cx(q0, q1)
   end
 
-  def bell_state_circuit(:psi_minus) do
-    QuantumCircuit.new(2)
-    |> Operations.x(0)
-    |> Operations.x(1)
-    |> Operations.h(0)
-    |> Operations.cx(0, 1)
+  def bell_pair(%QuantumCircuit{} = circuit, q0, q1, :psi_minus) do
+    circuit
+    |> Operations.x(q0)
+    |> Operations.x(q1)
+    |> Operations.h(q0)
+    |> Operations.cx(q0, q1)
   end
 
-  # Fallback (sweep #3): an unknown selector fell through to a raw
-  # FunctionClauseError. Route it onto Qx.OptionError.
-  def bell_state_circuit(which) do
+  def bell_pair(%QuantumCircuit{}, _q0, _q1, which) do
     raise Qx.OptionError,
           {:which, which, "Expected :phi_plus, :phi_minus, :psi_plus, or :psi_minus."}
+  end
+
+  # Thin wrapper: creates a fresh 2-qubit circuit and appends the Bell-pair
+  # gates via bell_pair/4, which owns the which-dispatch AND the OptionError
+  # fallback (byte-identical to the pre-reframe explicit clauses).
+  @doc false
+  @spec bell_state_circuit(bell_state_type()) :: QuantumCircuit.t()
+  def bell_state_circuit(which \\ :phi_plus) do
+    QuantumCircuit.new(2)
+    |> bell_pair(0, 1, which)
   end
 
   @doc false
@@ -345,8 +443,7 @@ defmodule Qx.Patterns do
 
   def ghz_state_circuit(num_qubits) when is_integer(num_qubits) and num_qubits >= 2 do
     QuantumCircuit.new(num_qubits)
-    |> Operations.h(0)
-    |> cx_chain(Enum.to_list(0..(num_qubits - 1)))
+    |> ghz(0..(num_qubits - 1))
   end
 
   # Fallbacks (sweep #3): an integer < 2 or a non-integer count fell through to

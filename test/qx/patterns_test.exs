@@ -1,6 +1,8 @@
 defmodule Qx.PatternsTest do
   use ExUnit.Case, async: true
 
+  doctest Qx.Patterns
+
   alias Qx.{Patterns, QuantumCircuit}
 
   describe "h_all/1" do
@@ -461,6 +463,177 @@ defmodule Qx.PatternsTest do
       Enum.each(0..7, fn i ->
         assert_in_delta Enum.at(probs, i), 0.125, 1.0e-5
       end)
+    end
+  end
+
+  describe "bell_pair/4" do
+    test "appends onto an offset, non-empty circuit (does not create a new one)" do
+      qc = QuantumCircuit.new(3, 0) |> Patterns.bell_pair(1, 2, :phi_plus)
+
+      assert qc.num_qubits == 3
+
+      assert QuantumCircuit.get_instructions(qc) == [
+               {:h, [1], []},
+               {:cx, [1, 2], []}
+             ]
+    end
+
+    test "default which is :phi_plus" do
+      offset = QuantumCircuit.new(2, 0)
+      assert Patterns.bell_pair(offset, 0, 1) == Patterns.bell_pair(offset, 0, 1, :phi_plus)
+    end
+
+    test ":phi_plus emits h(q0), cx(q0, q1)" do
+      qc = QuantumCircuit.new(2, 0) |> Patterns.bell_pair(0, 1, :phi_plus)
+
+      assert QuantumCircuit.get_instructions(qc) == [
+               {:h, [0], []},
+               {:cx, [0, 1], []}
+             ]
+    end
+
+    test ":phi_minus emits x(q0), h(q0), cx(q0, q1)" do
+      qc = QuantumCircuit.new(2, 0) |> Patterns.bell_pair(0, 1, :phi_minus)
+
+      assert QuantumCircuit.get_instructions(qc) == [
+               {:x, [0], []},
+               {:h, [0], []},
+               {:cx, [0, 1], []}
+             ]
+    end
+
+    test ":psi_plus emits x(q1), h(q0), cx(q0, q1)" do
+      qc = QuantumCircuit.new(2, 0) |> Patterns.bell_pair(0, 1, :psi_plus)
+
+      assert QuantumCircuit.get_instructions(qc) == [
+               {:x, [1], []},
+               {:h, [0], []},
+               {:cx, [0, 1], []}
+             ]
+    end
+
+    test ":psi_minus emits x(q0), x(q1), h(q0), cx(q0, q1)" do
+      qc = QuantumCircuit.new(2, 0) |> Patterns.bell_pair(0, 1, :psi_minus)
+
+      assert QuantumCircuit.get_instructions(qc) == [
+               {:x, [0], []},
+               {:x, [1], []},
+               {:h, [0], []},
+               {:cx, [0, 1], []}
+             ]
+    end
+
+    test "equal qubits raise Qx.QubitIndexError (via cx, Iron Law #7)" do
+      qc = QuantumCircuit.new(2, 0)
+
+      assert_raise Qx.QubitIndexError, ~r/must be distinct/, fn ->
+        Patterns.bell_pair(qc, 0, 0, :phi_plus)
+      end
+    end
+
+    test "out-of-range qubit raises Qx.QubitIndexError (Iron Law #7)" do
+      qc = QuantumCircuit.new(2, 0)
+
+      assert_raise Qx.QubitIndexError, ~r/Qubit index 5 out of range/, fn ->
+        Patterns.bell_pair(qc, 0, 5, :phi_plus)
+      end
+    end
+
+    test "unknown which raises Qx.OptionError (Iron Law #7)" do
+      qc = QuantumCircuit.new(2, 0)
+
+      assert_raise Qx.OptionError, ~r/Invalid value for option :which/, fn ->
+        Patterns.bell_pair(qc, 0, 1, :bogus)
+      end
+    end
+
+    test "Qx.bell_pair/4 facade delegates to Patterns.bell_pair/4" do
+      base = QuantumCircuit.new(3, 0)
+      assert Qx.bell_pair(base, 1, 2) == Patterns.bell_pair(base, 1, 2)
+      assert Qx.bell_pair(base, 0, 1, :psi_minus) == Patterns.bell_pair(base, 0, 1, :psi_minus)
+    end
+  end
+
+  describe "ghz/2" do
+    test "appends H(first) + cx_chain onto an offset circuit (range input)" do
+      qc = QuantumCircuit.new(4, 0) |> Patterns.ghz(1..3)
+
+      assert qc.num_qubits == 4
+
+      assert QuantumCircuit.get_instructions(qc) == [
+               {:h, [1], []},
+               {:cx, [1, 2], []},
+               {:cx, [2, 3], []}
+             ]
+    end
+
+    test "accepts a list of qubits (non-contiguous order respected)" do
+      qc = QuantumCircuit.new(4, 0) |> Patterns.ghz([3, 0, 2])
+
+      assert QuantumCircuit.get_instructions(qc) == [
+               {:h, [3], []},
+               {:cx, [3, 0], []},
+               {:cx, [0, 2], []}
+             ]
+    end
+
+    test "list and equivalent range produce identical circuits" do
+      base = QuantumCircuit.new(4, 0)
+      assert Patterns.ghz(base, [1, 2, 3]) == Patterns.ghz(base, 1..3)
+    end
+
+    test "empty qubit list raises Qx.QubitCountError (needs >= 2)" do
+      qc = QuantumCircuit.new(3, 0)
+
+      assert_raise Qx.QubitCountError, fn ->
+        Patterns.ghz(qc, [])
+      end
+    end
+
+    test "single qubit raises Qx.QubitCountError (needs >= 2)" do
+      qc = QuantumCircuit.new(3, 0)
+
+      assert_raise Qx.QubitCountError, fn ->
+        Patterns.ghz(qc, [0])
+      end
+    end
+
+    test "exactly two qubits is the minimum valid case (H + one CX)" do
+      qc = QuantumCircuit.new(3, 0) |> Patterns.ghz([0, 1])
+
+      assert QuantumCircuit.get_instructions(qc) == [
+               {:h, [0], []},
+               {:cx, [0, 1], []}
+             ]
+    end
+
+    test "out-of-range qubit raises Qx.QubitIndexError (via h/cx_chain, Iron Law #7)" do
+      qc = QuantumCircuit.new(3, 0)
+
+      assert_raise Qx.QubitIndexError, ~r/Qubit index 5 out of range/, fn ->
+        Patterns.ghz(qc, [0, 1, 5])
+      end
+    end
+
+    test "Qx.ghz/2 facade delegates to Patterns.ghz/2" do
+      base = QuantumCircuit.new(4, 0)
+      assert Qx.ghz(base, 0..2) == Patterns.ghz(base, 0..2)
+      assert Qx.ghz(base, [1, 2, 3]) == Patterns.ghz(base, [1, 2, 3])
+    end
+  end
+
+  describe "creator reframe invariants (byte-identical to the appenders)" do
+    test "bell_state_circuit(w) == new(2) |> bell_pair(0, 1, w) for all four variants" do
+      for w <- [:phi_plus, :phi_minus, :psi_plus, :psi_minus] do
+        assert Patterns.bell_state_circuit(w) ==
+                 Patterns.bell_pair(QuantumCircuit.new(2), 0, 1, w)
+      end
+    end
+
+    test "ghz_state_circuit(n) == new(n) |> ghz(0..(n - 1)) for n in {2, 3, 5}" do
+      for n <- [2, 3, 5] do
+        assert Patterns.ghz_state_circuit(n) == Patterns.ghz(QuantumCircuit.new(n), 0..(n - 1))
+      end
     end
   end
 end

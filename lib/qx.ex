@@ -1078,6 +1078,59 @@ defmodule Qx do
   defdelegate cx_chain(circuit, qubits), to: Patterns
 
   @doc """
+  Appends the gates that entangle qubits `q0` and `q1` into one of the four
+  Bell states onto an existing `circuit`.
+
+  Where `Qx.bell_state/1` *creates* a fresh 2-qubit circuit, `bell_pair/4`
+  *appends* onto `circuit` at caller-chosen qubits, so it composes inside a
+  larger pipeline. See `Qx.Patterns.bell_pair/4` for the per-`which` gate
+  sequence.
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(3) |> Qx.bell_pair(1, 2)
+      iex> Qx.QuantumCircuit.get_instructions(qc)
+      [{:h, [1], []}, {:cx, [1, 2], []}]
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If `q0` or `q1` is out of range, or if `q0 == q1`
+    * `Qx.OptionError` - If `which` is not one of `:phi_plus`, `:phi_minus`, `:psi_plus`, `:psi_minus`
+  """
+  @spec bell_pair(circuit(), non_neg_integer(), non_neg_integer(), Patterns.bell_state_type()) ::
+          circuit()
+  defdelegate bell_pair(circuit, q0, q1, which \\ :phi_plus), to: Patterns
+
+  @doc """
+  Appends the GHZ-preparation gates over `qubits` onto an existing `circuit`.
+
+  Where `Qx.ghz_state/1` *creates* a fresh `n`-qubit circuit over `0..n-1`,
+  `ghz/2` *appends* onto `circuit` at caller-chosen qubits (a list or range of
+  at least two indices). See `Qx.Patterns.ghz/2` for the gate sequence.
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(4) |> Qx.ghz(1..3)
+      iex> Qx.QuantumCircuit.get_instructions(qc)
+      [{:h, [1], []}, {:cx, [1, 2], []}, {:cx, [2, 3], []}]
+
+  ## Raises
+
+    * `Qx.QubitCountError` - If fewer than two qubits are given
+    * `Qx.QubitIndexError` - If any qubit index is out of range
+  """
+  @spec ghz(circuit(), Patterns.qubits()) :: circuit()
+  defdelegate ghz(circuit, qubits), to: Patterns
+
+  @doc """
   Applies gates conditionally based on a classical bit value.
 
   Enables mid-circuit measurement with classical feedback - a key capability
