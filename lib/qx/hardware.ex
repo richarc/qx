@@ -1,5 +1,8 @@
 defmodule Qx.Hardware do
   @moduledoc """
+  Utility module: reached from `Qx.*` in normal use — the documented tier-2
+  surface for running circuits on cloud QPUs.
+
   Execute Qx circuits on real IBM Quantum hardware.
 
   Orchestrates the full pipeline:

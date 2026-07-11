@@ -1,5 +1,8 @@
 defmodule Qx.Simulation do
   @moduledoc """
+  Utility module: reached from `Qx.*` in normal use — `Qx.run/2`, `Qx.steps/2`,
+  `Qx.get_state/1`, and `Qx.get_probabilities/1` front this engine.
+
   Simulation engine for executing quantum circuits with full complex number support.
 
   This module runs circuit instructions and applies quantum gates to evolve the

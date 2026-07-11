@@ -64,6 +64,7 @@ defmodule Qx.Draw do
       result = Qx.run(qc)
       Qx.Draw.plot(result, title: "Bell State")
   """
+  @spec plot(Qx.SimulationResult.t(), keyword()) :: VegaLite.t()
   def plot(result, options \\ []) do
     ensure_vega_lite!()
     title = Keyword.get(options, :title, "Quantum State Probabilities")
@@ -103,6 +104,7 @@ defmodule Qx.Draw do
       result = Qx.run(qc)
       Qx.Draw.counts(result)
   """
+  @spec counts(Qx.SimulationResult.t(), keyword()) :: VegaLite.t()
   def counts(result, options \\ []) do
     ensure_vega_lite!()
     title = Keyword.get(options, :title, "Measurement Counts")
@@ -137,6 +139,7 @@ defmodule Qx.Draw do
       probs = Qx.get_probabilities(qc)
       Qx.Draw.histogram(probs)
   """
+  @spec histogram(Nx.Tensor.t(), keyword()) :: VegaLite.t()
   def histogram(probabilities, options \\ []) do
     ensure_vega_lite!()
     title = Keyword.get(options, :title, "Probability Histogram")
@@ -178,6 +181,7 @@ defmodule Qx.Draw do
       image = Qx.Draw.bloch(state, title: "Plus state")
       File.write!("bloch.svg", image.svg)
   """
+  @spec bloch(Nx.Tensor.t(), keyword()) :: Image.t()
   def bloch(qubit, options \\ []) do
     title = Keyword.get(options, :title, "Bloch Sphere")
     size = Keyword.get(options, :size, 400)
@@ -212,6 +216,7 @@ defmodule Qx.Draw do
       table.text
       # => "Basis State | Amplitude ..."
   """
+  @spec state_table(Nx.Tensor.t(), keyword()) :: Qx.Draw.StateTable.t()
   def state_table(register_or_state, options \\ []) do
     Tables.render(register_or_state, options)
   end
@@ -239,6 +244,7 @@ defmodule Qx.Draw do
       image = Qx.Draw.circuit(qc, "Bell State Circuit")
       File.write!("bell.svg", image.svg)
   """
+  @spec circuit(Qx.QuantumCircuit.t(), String.t() | nil) :: Image.t()
   def circuit(%Qx.QuantumCircuit{} = circuit, title \\ nil) do
     %Image{svg: Circuit.render(circuit, title), title: title}
   end

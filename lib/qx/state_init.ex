@@ -2,7 +2,7 @@ defmodule Qx.StateInit do
   @moduledoc """
   State initialization utilities for quantum systems.
 
-  The public surface of this module is `basis_state/3` — the raw
+  The public surface of this module is `basis_state/2,3` — the raw
   state-vector constructor used by `Qx.QuantumCircuit`.
 
   The named-state constructors (`zero_state`, `one_state`, `plus_state`,
@@ -63,6 +63,7 @@ defmodule Qx.StateInit do
     * `Qx.BasisError` - If `dimension` is not a positive integer, `index` is not
       an integer, `index` is negative, or `index >= dimension`
   """
+  @spec basis_state(non_neg_integer(), pos_integer(), Nx.Type.t()) :: Nx.Tensor.t()
   def basis_state(index, dimension, type \\ :c64)
 
   def basis_state(index, dimension, type)

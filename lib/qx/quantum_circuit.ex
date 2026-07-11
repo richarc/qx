@@ -1,5 +1,9 @@
 defmodule Qx.QuantumCircuit do
   @moduledoc """
+  Tier 1: a core Qx type. Circuits are created and threaded by the `Qx.*`
+  facade (`Qx.create_circuit/2`, the gate builders, `Qx.run/2`); direct use
+  of this module is rarely needed.
+
   Functions for creating and managing quantum circuits.
 
   This module provides the core structure for quantum circuits, maintaining
@@ -46,6 +50,7 @@ defmodule Qx.QuantumCircuit do
       iex> qc.num_classical_bits
       2
   """
+  @spec new(pos_integer(), non_neg_integer()) :: t()
   def new(num_qubits, num_classical_bits) do
     # Validate up front (Iron Law #7). A single unguarded clause raises the
     # typed error directly — `Qx.QubitCountError` (non-integer or outside 1..20)
@@ -83,6 +88,7 @@ defmodule Qx.QuantumCircuit do
       iex> qc.num_classical_bits
       0
   """
+  @spec new(pos_integer()) :: t()
   def new(num_qubits) do
     # `new/2` validates `num_qubits`; a non-integer or out-of-range value raises
     # `Qx.QubitCountError` there.
@@ -203,6 +209,7 @@ defmodule Qx.QuantumCircuit do
       iex> Nx.shape(state)
       {2}
   """
+  @spec get_state(t()) :: Nx.Tensor.t()
   def get_state(%__MODULE__{} = circuit) do
     circuit.state
   end
@@ -225,6 +232,7 @@ defmodule Qx.QuantumCircuit do
       iex> Nx.shape(qc.state)
       {2}
   """
+  @spec set_state(t(), Nx.Tensor.t()) :: t()
   def set_state(%__MODULE__{} = circuit, state) do
     expected_size = trunc(:math.pow(2, circuit.num_qubits))
 
@@ -251,6 +259,7 @@ defmodule Qx.QuantumCircuit do
       iex> {gate_name, qubits}
       {:h, [0]}
   """
+  @spec get_instructions(t()) :: [instruction()]
   def get_instructions(%__MODULE__{} = circuit) do
     circuit.instructions
   end
@@ -265,6 +274,7 @@ defmodule Qx.QuantumCircuit do
       iex> {qubit, classical_bit}
       {0, 0}
   """
+  @spec get_measurements(t()) :: [measurement()]
   def get_measurements(%__MODULE__{} = circuit) do
     circuit.measurements
   end
@@ -294,6 +304,7 @@ defmodule Qx.QuantumCircuit do
       iex> Qx.QuantumCircuit.depth(qc)
       2
   """
+  @spec depth(t()) :: non_neg_integer()
   def depth(%__MODULE__{} = circuit) do
     length(circuit.instructions)
   end
@@ -315,6 +326,7 @@ defmodule Qx.QuantumCircuit do
       iex> length(qc_reset.measurements)
       0
   """
+  @spec reset(t()) :: t()
   def reset(%__MODULE__{} = circuit) do
     state_size = trunc(:math.pow(2, circuit.num_qubits))
     initial_state = complex_basis_state(0, state_size)

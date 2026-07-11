@@ -1,5 +1,8 @@
 defmodule Qx.Patterns do
   @moduledoc """
+  Utility module: reached from `Qx.*` in normal use — the `_all`, `cx_chain`,
+  and state-prep helpers front `Qx.h_all/1`, `Qx.cx_chain/2`, `Qx.bell_state/1`, etc.
+
   Composite circuit-building patterns: thin wrappers that emit multiple
   instructions in one call.
 

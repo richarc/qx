@@ -1,5 +1,8 @@
 defmodule Qx.Operations do
   @moduledoc """
+  Utility module: reached from `Qx.*` in normal use — every gate here has a
+  `Qx.*` facade delegate (`Qx.h/2` fronts `h/2`, `Qx.rx/3` fronts `rx/3`).
+
   Quantum gate operations for quantum circuits.
 
   This module provides functions for applying quantum gates to quantum circuits,
@@ -32,6 +35,7 @@ defmodule Qx.Operations do
       iex> {gate, qubits}
       {:h, [0]}
   """
+  @spec h(QuantumCircuit.t(), non_neg_integer()) :: QuantumCircuit.t()
   def h(%QuantumCircuit{} = circuit, qubit) do
     QuantumCircuit.add_gate(circuit, :h, qubit)
   end
@@ -53,6 +57,7 @@ defmodule Qx.Operations do
       iex> {gate, qubits}
       {:x, [0]}
   """
+  @spec x(QuantumCircuit.t(), non_neg_integer()) :: QuantumCircuit.t()
   def x(%QuantumCircuit{} = circuit, qubit) do
     QuantumCircuit.add_gate(circuit, :x, qubit)
   end
@@ -74,6 +79,7 @@ defmodule Qx.Operations do
       iex> {gate, qubits}
       {:y, [0]}
   """
+  @spec y(QuantumCircuit.t(), non_neg_integer()) :: QuantumCircuit.t()
   def y(%QuantumCircuit{} = circuit, qubit) do
     QuantumCircuit.add_gate(circuit, :y, qubit)
   end
@@ -95,6 +101,7 @@ defmodule Qx.Operations do
       iex> {gate, qubits}
       {:z, [0]}
   """
+  @spec z(QuantumCircuit.t(), non_neg_integer()) :: QuantumCircuit.t()
   def z(%QuantumCircuit{} = circuit, qubit) do
     QuantumCircuit.add_gate(circuit, :z, qubit)
   end
@@ -117,6 +124,7 @@ defmodule Qx.Operations do
       iex> {gate, qubits}
       {:cx, [0, 1]}
   """
+  @spec cx(QuantumCircuit.t(), non_neg_integer(), non_neg_integer()) :: QuantumCircuit.t()
   def cx(%QuantumCircuit{} = circuit, control_qubit, target_qubit) do
     QuantumCircuit.add_two_qubit_gate(circuit, :cx, control_qubit, target_qubit)
   end
@@ -140,6 +148,8 @@ defmodule Qx.Operations do
       iex> {gate, qubits}
       {:ccx, [0, 1, 2]}
   """
+  @spec ccx(QuantumCircuit.t(), non_neg_integer(), non_neg_integer(), non_neg_integer()) ::
+          QuantumCircuit.t()
   def ccx(%QuantumCircuit{} = circuit, control1, control2, target) do
     QuantumCircuit.add_three_qubit_gate(circuit, :ccx, control1, control2, target)
   end
@@ -167,6 +177,8 @@ defmodule Qx.Operations do
   ## Raises
     * `Qx.QubitIndexError` - If any two qubit indices are equal or any index is out of range
   """
+  @spec cswap(QuantumCircuit.t(), non_neg_integer(), non_neg_integer(), non_neg_integer()) ::
+          QuantumCircuit.t()
   def cswap(%QuantumCircuit{} = circuit, control, target_a, target_b) do
     QuantumCircuit.add_three_qubit_gate(circuit, :cswap, control, target_a, target_b)
   end
@@ -192,6 +204,7 @@ defmodule Qx.Operations do
     * `Qx.ParameterError` - If `theta` is not a number (validated at build time)
     * `Qx.QubitIndexError` - If qubit index is out of range or not an integer
   """
+  @spec rx(QuantumCircuit.t(), non_neg_integer(), number()) :: QuantumCircuit.t()
   def rx(%QuantumCircuit{} = circuit, qubit, theta) do
     Validation.validate_parameter!(theta)
     QuantumCircuit.add_gate(circuit, :rx, qubit, [theta])
@@ -218,6 +231,7 @@ defmodule Qx.Operations do
     * `Qx.ParameterError` - If `theta` is not a number (validated at build time)
     * `Qx.QubitIndexError` - If qubit index is out of range or not an integer
   """
+  @spec ry(QuantumCircuit.t(), non_neg_integer(), number()) :: QuantumCircuit.t()
   def ry(%QuantumCircuit{} = circuit, qubit, theta) do
     Validation.validate_parameter!(theta)
     QuantumCircuit.add_gate(circuit, :ry, qubit, [theta])
@@ -244,6 +258,7 @@ defmodule Qx.Operations do
     * `Qx.ParameterError` - If `theta` is not a number (validated at build time)
     * `Qx.QubitIndexError` - If qubit index is out of range or not an integer
   """
+  @spec rz(QuantumCircuit.t(), non_neg_integer(), number()) :: QuantumCircuit.t()
   def rz(%QuantumCircuit{} = circuit, qubit, theta) do
     Validation.validate_parameter!(theta)
     QuantumCircuit.add_gate(circuit, :rz, qubit, [theta])
@@ -270,6 +285,7 @@ defmodule Qx.Operations do
     * `Qx.ParameterError` - If `phi` is not a number (validated at build time)
     * `Qx.QubitIndexError` - If qubit index is out of range or not an integer
   """
+  @spec phase(QuantumCircuit.t(), non_neg_integer(), number()) :: QuantumCircuit.t()
   def phase(%QuantumCircuit{} = circuit, qubit, phi) do
     Validation.validate_parameter!(phi)
     QuantumCircuit.add_gate(circuit, :phase, qubit, [phi])
@@ -313,6 +329,8 @@ defmodule Qx.Operations do
     * `Qx.ParameterError` - if theta, phi, or lambda is not a number
     * `Qx.QubitIndexError` - if qubit index is out of range
   """
+  @spec u(QuantumCircuit.t(), non_neg_integer(), number(), number(), number()) ::
+          QuantumCircuit.t()
   def u(%QuantumCircuit{} = circuit, qubit, theta, phi, lambda)
       when is_integer(qubit) do
     Validation.validate_parameter!(theta)
@@ -336,6 +354,7 @@ defmodule Qx.Operations do
       iex> {gate, qubits}
       {:s, [0]}
   """
+  @spec s(QuantumCircuit.t(), non_neg_integer()) :: QuantumCircuit.t()
   def s(%QuantumCircuit{} = circuit, qubit) do
     QuantumCircuit.add_gate(circuit, :s, qubit)
   end
@@ -355,6 +374,7 @@ defmodule Qx.Operations do
       iex> {gate, qubits}
       {:sdg, [0]}
   """
+  @spec sdg(QuantumCircuit.t(), non_neg_integer()) :: QuantumCircuit.t()
   def sdg(%QuantumCircuit{} = circuit, qubit) do
     QuantumCircuit.add_gate(circuit, :sdg, qubit)
   end
@@ -374,6 +394,7 @@ defmodule Qx.Operations do
       iex> {gate, qubits}
       {:t, [0]}
   """
+  @spec t(QuantumCircuit.t(), non_neg_integer()) :: QuantumCircuit.t()
   def t(%QuantumCircuit{} = circuit, qubit) do
     QuantumCircuit.add_gate(circuit, :t, qubit)
   end
@@ -396,6 +417,7 @@ defmodule Qx.Operations do
       iex> {gate, qubits}
       {:cz, [0, 1]}
   """
+  @spec cz(QuantumCircuit.t(), non_neg_integer(), non_neg_integer()) :: QuantumCircuit.t()
   def cz(%QuantumCircuit{} = circuit, control_qubit, target_qubit) do
     QuantumCircuit.add_two_qubit_gate(circuit, :cz, control_qubit, target_qubit)
   end
@@ -420,6 +442,7 @@ defmodule Qx.Operations do
 
     * `Qx.QubitIndexError` - If qubit indices are out of range or equal
   """
+  @spec swap(QuantumCircuit.t(), non_neg_integer(), non_neg_integer()) :: QuantumCircuit.t()
   def swap(%QuantumCircuit{} = circuit, qubit_a, qubit_b) do
     QuantumCircuit.add_two_qubit_gate(circuit, :swap, qubit_a, qubit_b)
   end
@@ -445,6 +468,7 @@ defmodule Qx.Operations do
 
     * `Qx.QubitIndexError` - If qubit indices are out of range or equal
   """
+  @spec iswap(QuantumCircuit.t(), non_neg_integer(), non_neg_integer()) :: QuantumCircuit.t()
   def iswap(%QuantumCircuit{} = circuit, qubit_a, qubit_b) do
     QuantumCircuit.add_two_qubit_gate(circuit, :iswap, qubit_a, qubit_b)
   end
@@ -474,6 +498,8 @@ defmodule Qx.Operations do
     * `Qx.QubitIndexError` - If qubit indices are out of range or equal
     * `Qx.ParameterError` - If theta is not a number
   """
+  @spec cp(QuantumCircuit.t(), non_neg_integer(), non_neg_integer(), number()) ::
+          QuantumCircuit.t()
   def cp(%QuantumCircuit{} = circuit, control_qubit, target_qubit, theta) do
     Validation.validate_parameter!(theta)
     QuantumCircuit.add_two_qubit_gate(circuit, :cp, control_qubit, target_qubit, [theta])
@@ -503,6 +529,7 @@ defmodule Qx.Operations do
 
     * `Qx.QubitIndexError` - If qubit indices are out of range or equal
   """
+  @spec cy(QuantumCircuit.t(), non_neg_integer(), non_neg_integer()) :: QuantumCircuit.t()
   def cy(%QuantumCircuit{} = circuit, control_qubit, target_qubit) do
     QuantumCircuit.add_two_qubit_gate(circuit, :cy, control_qubit, target_qubit)
   end
@@ -532,6 +559,8 @@ defmodule Qx.Operations do
     * `Qx.QubitIndexError` - If qubit indices are out of range or equal
     * `Qx.ParameterError` - If `theta` is not a number
   """
+  @spec crx(QuantumCircuit.t(), non_neg_integer(), non_neg_integer(), number()) ::
+          QuantumCircuit.t()
   def crx(%QuantumCircuit{} = circuit, control_qubit, target_qubit, theta) do
     Validation.validate_parameter!(theta)
     QuantumCircuit.add_two_qubit_gate(circuit, :crx, control_qubit, target_qubit, [theta])
@@ -562,6 +591,8 @@ defmodule Qx.Operations do
     * `Qx.QubitIndexError` - If qubit indices are out of range or equal
     * `Qx.ParameterError` - If `theta` is not a number
   """
+  @spec cry(QuantumCircuit.t(), non_neg_integer(), non_neg_integer(), number()) ::
+          QuantumCircuit.t()
   def cry(%QuantumCircuit{} = circuit, control_qubit, target_qubit, theta) do
     Validation.validate_parameter!(theta)
     QuantumCircuit.add_two_qubit_gate(circuit, :cry, control_qubit, target_qubit, [theta])
@@ -596,6 +627,8 @@ defmodule Qx.Operations do
     * `Qx.QubitIndexError` - If qubit indices are out of range or equal
     * `Qx.ParameterError` - If `theta` is not a number
   """
+  @spec crz(QuantumCircuit.t(), non_neg_integer(), non_neg_integer(), number()) ::
+          QuantumCircuit.t()
   def crz(%QuantumCircuit{} = circuit, control_qubit, target_qubit, theta) do
     Validation.validate_parameter!(theta)
     QuantumCircuit.add_two_qubit_gate(circuit, :crz, control_qubit, target_qubit, [theta])
@@ -619,6 +652,7 @@ defmodule Qx.Operations do
       iex> {gate, qubits}
       {:barrier, [0, 1, 2]}
   """
+  @spec barrier(QuantumCircuit.t(), [non_neg_integer()]) :: QuantumCircuit.t()
   def barrier(%QuantumCircuit{} = circuit, qubits) when is_list(qubits) do
     Validation.validate_qubit_indices!(qubits, circuit.num_qubits)
 
@@ -642,6 +676,7 @@ defmodule Qx.Operations do
       iex> {qubit, classical_bit}
       {0, 0}
   """
+  @spec measure(QuantumCircuit.t(), non_neg_integer(), non_neg_integer()) :: QuantumCircuit.t()
   def measure(%QuantumCircuit{} = circuit, qubit, classical_bit) do
     QuantumCircuit.add_measurement(circuit, qubit, classical_bit)
   end
@@ -659,6 +694,7 @@ defmodule Qx.Operations do
       iex> Qx.QuantumCircuit.get_measurements(qc)
       [{0, 0}]
   """
+  @spec measure_z(QuantumCircuit.t(), non_neg_integer(), non_neg_integer()) :: QuantumCircuit.t()
   def measure_z(%QuantumCircuit{} = circuit, qubit, classical_bit) do
     QuantumCircuit.add_measurement(circuit, qubit, classical_bit)
   end
@@ -692,6 +728,7 @@ defmodule Qx.Operations do
     * `Qx.QubitIndexError` - If qubit index is out of range
     * `Qx.ClassicalBitError` - If classical bit index is out of range
   """
+  @spec measure_x(QuantumCircuit.t(), non_neg_integer(), non_neg_integer()) :: QuantumCircuit.t()
   def measure_x(%QuantumCircuit{} = circuit, qubit, classical_bit) do
     circuit
     |> h(qubit)
@@ -723,6 +760,7 @@ defmodule Qx.Operations do
     * `Qx.QubitIndexError` - If qubit index is out of range
     * `Qx.ClassicalBitError` - If classical bit index is out of range
   """
+  @spec measure_y(QuantumCircuit.t(), non_neg_integer(), non_neg_integer()) :: QuantumCircuit.t()
   def measure_y(%QuantumCircuit{} = circuit, qubit, classical_bit) do
     circuit
     |> sdg(qubit)
@@ -757,6 +795,9 @@ defmodule Qx.Operations do
     - Gates in conditional block cannot contain measurements
     - No nesting of conditional blocks
   """
+  @spec c_if(QuantumCircuit.t(), non_neg_integer(), 0 | 1, (QuantumCircuit.t() ->
+                                                              QuantumCircuit.t())) ::
+          QuantumCircuit.t()
   def c_if(%QuantumCircuit{} = circuit, classical_bit, value, gate_fn)
       when is_integer(classical_bit) and classical_bit >= 0 and
              classical_bit < circuit.num_classical_bits and

@@ -85,6 +85,10 @@ defmodule Qx do
     * `num_qubits` - Number of qubits (1-20 recommended)
     * `num_classical_bits` - Number of classical bits for measurements
 
+  ## Returns
+
+  A new `Qx.QuantumCircuit` initialised in the |0…0⟩ state.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(2, 2)
@@ -106,6 +110,10 @@ defmodule Qx do
 
   ## Parameters
     * `num_qubits` - Number of qubits (1-20 recommended)
+
+  ## Returns
+
+  A new `Qx.QuantumCircuit` initialised in the |0…0⟩ state.
 
   ## Examples
 
@@ -131,6 +139,10 @@ defmodule Qx do
     * `circuit` - Quantum circuit
     * `qubit` - Target qubit index
 
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(1) |> Qx.h(0)
@@ -152,6 +164,10 @@ defmodule Qx do
   ## Parameters
     * `circuit` - Quantum circuit
     * `qubit` - Target qubit index
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
 
   ## Examples
 
@@ -175,6 +191,10 @@ defmodule Qx do
     * `circuit` - Quantum circuit
     * `qubit` - Target qubit index
 
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(1) |> Qx.y(0)
@@ -196,6 +216,10 @@ defmodule Qx do
   ## Parameters
     * `circuit` - Quantum circuit
     * `qubit` - Target qubit index
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
 
   ## Examples
 
@@ -219,6 +243,10 @@ defmodule Qx do
     * `circuit` - Quantum circuit
     * `control_qubit` - Control qubit index
     * `target_qubit` - Target qubit index
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
 
   ## Examples
 
@@ -244,11 +272,19 @@ defmodule Qx do
     * `control_qubit` - Control qubit index
     * `target_qubit` - Target qubit index
 
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(2) |> Qx.cz(0, 1)
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit indices are out of range or equal
   """
   @spec cz(circuit(), non_neg_integer(), non_neg_integer()) :: circuit()
   defdelegate cz(circuit, control_qubit, target_qubit), to: Operations
@@ -262,6 +298,10 @@ defmodule Qx do
     * `circuit` - Quantum circuit
     * `qubit_a` - Index of the first qubit
     * `qubit_b` - Index of the second qubit
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
 
   ## Examples
 
@@ -288,6 +328,10 @@ defmodule Qx do
     * `qubit_a` - Index of the first qubit
     * `qubit_b` - Index of the second qubit
 
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(2) |> Qx.iswap(0, 1)
@@ -313,6 +357,10 @@ defmodule Qx do
     * `target_qubit` - Target qubit index
     * `theta` - Phase angle in radians
 
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(2) |> Qx.cp(0, 1, :math.pi())
@@ -330,6 +378,10 @@ defmodule Qx do
   @doc """
   Applies a controlled-Y (CY) gate. See `Qx.Operations.cy/3`.
 
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(2) |> Qx.cy(0, 1)
@@ -345,6 +397,10 @@ defmodule Qx do
 
   @doc """
   Applies a controlled rotation about the X-axis. See `Qx.Operations.crx/4`.
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
 
   ## Examples
 
@@ -363,6 +419,10 @@ defmodule Qx do
   @doc """
   Applies a controlled rotation about the Y-axis. See `Qx.Operations.cry/4`.
 
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(2) |> Qx.cry(0, 1, :math.pi() / 2)
@@ -379,6 +439,10 @@ defmodule Qx do
 
   @doc """
   Applies a controlled rotation about the Z-axis. See `Qx.Operations.crz/4`.
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
 
   ## Examples
 
@@ -405,11 +469,19 @@ defmodule Qx do
     * `control2` - Second control qubit index
     * `target` - Target qubit index
 
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(3) |> Qx.ccx(0, 1, 2)
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit indices are out of range or equal
   """
   @spec ccx(circuit(), non_neg_integer(), non_neg_integer(), non_neg_integer()) :: circuit()
   defdelegate ccx(circuit, control1, control2, target), to: Operations
@@ -425,6 +497,10 @@ defmodule Qx do
     * `control` - Control qubit index (0-based)
     * `target_a` - First target qubit index (0-based)
     * `target_b` - Second target qubit index (0-based)
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
 
   ## Examples
 
@@ -447,11 +523,19 @@ defmodule Qx do
     * `circuit` - Quantum circuit
     * `qubit` - Target qubit index
 
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(1) |> Qx.s(0)
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit index is out of range
   """
   @spec s(circuit(), non_neg_integer()) :: circuit()
   defdelegate s(circuit, qubit), to: Operations
@@ -465,11 +549,19 @@ defmodule Qx do
     * `circuit` - Quantum circuit
     * `qubit` - Target qubit index
 
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(1) |> Qx.sdg(0)
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit index is out of range
   """
   @spec sdg(circuit(), non_neg_integer()) :: circuit()
   defdelegate sdg(circuit, qubit), to: Operations
@@ -481,11 +573,19 @@ defmodule Qx do
     * `circuit` - Quantum circuit
     * `qubit` - Target qubit index
 
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(1) |> Qx.t(0)
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       1
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit index is out of range
   """
   @spec t(circuit(), non_neg_integer()) :: circuit()
   defdelegate t(circuit, qubit), to: Operations
@@ -498,6 +598,10 @@ defmodule Qx do
     * `qubit` - Target qubit index
     * `theta` - Rotation angle in radians
 
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(1) |> Qx.rx(0, :math.pi/2)
@@ -509,7 +613,7 @@ defmodule Qx do
     * `Qx.ParameterError` - If `theta` is not a number (validated at build time)
     * `Qx.QubitIndexError` - If qubit index is out of range or not an integer
   """
-  @spec rx(circuit(), non_neg_integer(), float()) :: circuit()
+  @spec rx(circuit(), non_neg_integer(), number()) :: circuit()
   defdelegate rx(circuit, qubit, theta), to: Operations
 
   @doc """
@@ -519,6 +623,10 @@ defmodule Qx do
     * `circuit` - Quantum circuit
     * `qubit` - Target qubit index
     * `theta` - Rotation angle in radians
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
 
   ## Examples
 
@@ -531,7 +639,7 @@ defmodule Qx do
     * `Qx.ParameterError` - If `theta` is not a number (validated at build time)
     * `Qx.QubitIndexError` - If qubit index is out of range or not an integer
   """
-  @spec ry(circuit(), non_neg_integer(), float()) :: circuit()
+  @spec ry(circuit(), non_neg_integer(), number()) :: circuit()
   defdelegate ry(circuit, qubit, theta), to: Operations
 
   @doc """
@@ -541,6 +649,10 @@ defmodule Qx do
     * `circuit` - Quantum circuit
     * `qubit` - Target qubit index
     * `theta` - Rotation angle in radians
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
 
   ## Examples
 
@@ -553,7 +665,7 @@ defmodule Qx do
     * `Qx.ParameterError` - If `theta` is not a number (validated at build time)
     * `Qx.QubitIndexError` - If qubit index is out of range or not an integer
   """
-  @spec rz(circuit(), non_neg_integer(), float()) :: circuit()
+  @spec rz(circuit(), non_neg_integer(), number()) :: circuit()
   defdelegate rz(circuit, qubit, theta), to: Operations
 
   @doc """
@@ -563,6 +675,10 @@ defmodule Qx do
     * `circuit` - Quantum circuit
     * `qubit` - Target qubit index
     * `phi` - Phase angle in radians
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
 
   ## Examples
 
@@ -575,7 +691,7 @@ defmodule Qx do
     * `Qx.ParameterError` - If `phi` is not a number (validated at build time)
     * `Qx.QubitIndexError` - If qubit index is out of range or not an integer
   """
-  @spec phase(circuit(), non_neg_integer(), float()) :: circuit()
+  @spec phase(circuit(), non_neg_integer(), number()) :: circuit()
   defdelegate phase(circuit, qubit, phi), to: Operations
 
   @doc """
@@ -597,6 +713,10 @@ defmodule Qx do
     * `theta` (θ) - Polar rotation angle in radians
     * `phi` (φ) - Phase angle in radians
     * `lambda` (λ) - Phase angle in radians
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
 
   ## Examples
 
@@ -621,6 +741,10 @@ defmodule Qx do
     * `qubit` - Qubit index to measure
     * `classical_bit` - Classical bit index to store result
 
+  ## Returns
+
+  The updated `Qx.QuantumCircuit` with the measurement appended.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(2, 2) |> Qx.measure(0, 0)
@@ -639,17 +763,30 @@ defmodule Qx do
   Performs a Z-basis (computational) measurement. Alias of `measure/3` for
   symmetry with `measure_x/3` and `measure_y/3`. See `Qx.Operations.measure_z/3`.
 
+  ## Returns
+
+  The updated `Qx.QuantumCircuit` with the measurement appended.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(1, 1) |> Qx.measure_z(0, 0)
       iex> length(Qx.QuantumCircuit.get_measurements(qc))
       1
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit index is out of range
+    * `Qx.ClassicalBitError` - If classical bit index is out of range
   """
   @spec measure_z(circuit(), non_neg_integer(), non_neg_integer()) :: circuit()
   defdelegate measure_z(circuit, qubit, classical_bit), to: Operations
 
   @doc """
   Performs an X-basis measurement. See `Qx.Operations.measure_x/3`.
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit` with the measurement appended.
 
   ## Examples
 
@@ -667,6 +804,10 @@ defmodule Qx do
 
   @doc """
   Performs a Y-basis measurement. See `Qx.Operations.measure_y/3`.
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit` with the measurement appended.
 
   ## Examples
 
@@ -689,6 +830,10 @@ defmodule Qx do
   motif (Grover diffuser, Bernstein-Vazirani oracle, equal-superposition
   preparation). See `Qx.Patterns` for the full set of composite patterns.
 
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(3) |> Qx.h_all()
@@ -702,17 +847,29 @@ defmodule Qx do
   Applies a Hadamard gate to every qubit in the given list or range.
   See `Qx.Patterns.h_all/2`.
 
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(5) |> Qx.h_all(0..2)
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       3
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If any listed qubit index is out of range
   """
   @spec h_all(circuit(), Patterns.qubits()) :: circuit()
   defdelegate h_all(circuit, qubits), to: Patterns
 
   @doc """
   Applies a Pauli-X gate to every qubit in the circuit.
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
 
   ## Examples
 
@@ -726,12 +883,24 @@ defmodule Qx do
   @doc """
   Applies a Pauli-X gate to every qubit in the given list or range.
   See `Qx.Patterns.x_all/2`.
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If any listed qubit index is out of range
   """
   @spec x_all(circuit(), Patterns.qubits()) :: circuit()
   defdelegate x_all(circuit, qubits), to: Patterns
 
   @doc """
   Applies a Pauli-Y gate to every qubit in the circuit.
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
 
   ## Examples
 
@@ -745,12 +914,24 @@ defmodule Qx do
   @doc """
   Applies a Pauli-Y gate to every qubit in the given list or range.
   See `Qx.Patterns.y_all/2`.
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If any listed qubit index is out of range
   """
   @spec y_all(circuit(), Patterns.qubits()) :: circuit()
   defdelegate y_all(circuit, qubits), to: Patterns
 
   @doc """
   Applies a Pauli-Z gate to every qubit in the circuit.
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
 
   ## Examples
 
@@ -764,6 +945,14 @@ defmodule Qx do
   @doc """
   Applies a Pauli-Z gate to every qubit in the given list or range.
   See `Qx.Patterns.z_all/2`.
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If any listed qubit index is out of range
   """
   @spec z_all(circuit(), Patterns.qubits()) :: circuit()
   defdelegate z_all(circuit, qubits), to: Patterns
@@ -773,6 +962,10 @@ defmodule Qx do
 
   Raises `Qx.ClassicalBitError` if `circuit.num_classical_bits < num_qubits` —
   the caller owns the circuit shape (see `Qx.Patterns.measure_all/1`).
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit` with the measurement appended.
 
   ## Examples
 
@@ -790,6 +983,10 @@ defmodule Qx do
   @doc """
   Measures every qubit in the given list or range into its same-index
   classical bit. See `Qx.Patterns.measure_all/2`.
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit` with the measurement appended.
 
   ## Raises
 
@@ -809,17 +1006,29 @@ defmodule Qx do
   See `Qx.Operations.barrier/2`. For a barrier across every qubit,
   see `Qx.barrier_all/1`.
 
+  ## Returns
+
+  The updated `Qx.QuantumCircuit` with the barrier appended.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(3) |> Qx.barrier([0, 2])
       iex> Qx.QuantumCircuit.get_instructions(qc)
       [{:barrier, [0, 2], []}]
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If any qubit index is out of range
   """
   @spec barrier(circuit(), list(non_neg_integer())) :: circuit()
   defdelegate barrier(circuit, qubits), to: Operations
 
   @doc """
   Adds a single barrier instruction spanning every qubit.
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit` with the barrier appended.
 
   ## Examples
 
@@ -833,6 +1042,14 @@ defmodule Qx do
   @doc """
   Adds a single barrier spanning the given list or range of qubits.
   See `Qx.Patterns.barrier_all/2`. Empty list/range is a no-op.
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit` with the barrier appended.
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If any listed qubit index is out of range
   """
   @spec barrier_all(circuit(), Patterns.qubits()) :: circuit()
   defdelegate barrier_all(circuit, qubits), to: Patterns
@@ -842,6 +1059,10 @@ defmodule Qx do
 
   For `qubits = [q0, q1, …, qk]`, emits `cx(q0, q1) → cx(q1, q2) → …`. Empty
   and single-element lists are no-ops. See `Qx.Patterns.cx_chain/2`.
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
 
   ## Examples
 
@@ -868,6 +1089,10 @@ defmodule Qx do
     * `value` - Value to compare (0 or 1)
     * `gate_fn` - Function that applies gates when condition is true
 
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
   ## Examples
 
       # Apply X gate to qubit 1 if classical bit 0 equals 1
@@ -886,6 +1111,11 @@ defmodule Qx do
       ...>    end)
       iex> length(Qx.QuantumCircuit.get_instructions(qc))
       2
+
+  ## Raises
+
+    * `Qx.ClassicalBitError` - If `classical_bit` is not a valid classical bit index
+    * `Qx.ConditionalError` - If `value` is not 0 or 1, the block nests another conditional, or `gate_fn` is not a 1-arity function
 
   ## See Also
     * OpenQASM 3.0 if-statements for hardware compatibility
@@ -963,6 +1193,10 @@ defmodule Qx do
     * `:backend` - Nx backend to use, e.g. `Nx.BinaryBackend` (default) or
       `{EXLA.Backend, client: :host}` if EXLA is added to your deps (see README)
 
+  ## Returns
+
+  An `Nx.Tensor` statevector (complex `:c64`) of length `2^n`.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(1) |> Qx.h(0)
@@ -992,6 +1226,10 @@ defmodule Qx do
   ## Options
     * `:backend` - Nx backend to use, e.g. `Nx.BinaryBackend` (default) or
       `{EXLA.Backend, client: :host}` if EXLA is added to your deps (see README)
+
+  ## Returns
+
+  An `Nx.Tensor` of real probabilities over the `2^n` basis states.
 
   ## Examples
 
@@ -1065,6 +1303,10 @@ defmodule Qx do
       entropy per materialisation)
     * `:backend` - Nx backend, same pass-through as `run/2`
     * `:renormalize` - same contract as `run/2` (default: `false`)
+
+  ## Returns
+
+  A lazy `Enumerable` of `Qx.Step` structs, one per executed operation.
 
   ## Examples
 
@@ -1167,6 +1409,10 @@ defmodule Qx do
     * `probabilities` - Nx tensor of probabilities (should sum to 1.0)
     * `options` - Optional plotting parameters
 
+  ## Returns
+
+  A `VegaLite.t()` chart specification.
+
   ## Examples
 
       # Visualize probabilities without full simulation
@@ -1175,6 +1421,10 @@ defmodule Qx do
       iex> hist = Qx.draw_histogram(probs)
       iex> is_struct(hist, VegaLite)
       true
+
+  ## Raises
+
+    * `Qx.MissingDependencyError` - If the optional `:vega_lite` dependency is not available
 
   ## See Also
     * `draw/2` - For plotting from simulation results
@@ -1310,6 +1560,10 @@ defmodule Qx do
   | `:psi_plus`   | `\|Ψ+⟩ = (\|01⟩ + \|10⟩)/√2`           |
   | `:psi_minus`  | `\|Ψ-⟩ = (\|01⟩ - \|10⟩)/√2`           |
 
+  ## Returns
+
+  A `Qx.QuantumCircuit` that prepares the selected Bell state.
+
   ## Examples
 
       iex> bell_circuit = Qx.bell_state()
@@ -1319,6 +1573,10 @@ defmodule Qx do
       iex> bell_circuit = Qx.bell_state(:psi_minus)
       iex> bell_circuit.num_qubits
       2
+
+  ## Raises
+
+    * `Qx.OptionError` - If `which` is not one of `:phi_plus`, `:phi_minus`, `:psi_plus`, `:psi_minus`
 
   ## See Also
 
@@ -1336,6 +1594,10 @@ defmodule Qx do
   Returns a circuit that prepares `|GHZ⟩ = (|0…0⟩ + |1…1⟩)/√2` on a
   `|0…0⟩` input. See `Qx.Patterns.ghz_state_circuit/1`.
 
+  ## Returns
+
+  A `Qx.QuantumCircuit` that prepares the `n`-qubit GHZ state.
+
   ## Examples
 
       iex> ghz_circuit = Qx.ghz_state()
@@ -1345,6 +1607,10 @@ defmodule Qx do
       iex> ghz_circuit = Qx.ghz_state(5)
       iex> ghz_circuit.num_qubits
       5
+
+  ## Raises
+
+    * `Qx.QubitCountError` - If `num_qubits` is not an integer in the range 2..20
 
   ## See Also
 
@@ -1358,6 +1624,10 @@ defmodule Qx do
   @doc """
   Creates an `n`-qubit equal-superposition circuit (Hadamard on every
   qubit). Default is 1 qubit. See `Qx.Patterns.superposition_circuit/1`.
+
+  ## Returns
+
+  A `Qx.QuantumCircuit` that prepares the equal superposition.
 
   ## Examples
 
@@ -1374,6 +1644,10 @@ defmodule Qx do
 
   @doc """
   Returns version information for the Qx library.
+
+  ## Returns
+
+  The Qx version string (or `unknown` if the application spec is unavailable).
 
   ## Examples
 
@@ -1396,6 +1670,14 @@ defmodule Qx do
 
   See `Qx.Operations.tap_circuit/2` for full documentation.
 
+  **Debugging aid.** Runs `fun` for its side effects and returns the
+  circuit unchanged. Unlike `tap_state/2` it does not execute the
+  circuit, so it carries no simulation cost.
+
+  ## Returns
+
+  The original `Qx.QuantumCircuit`, unchanged — the tap is transparent in a pipeline.
+
   ## Examples
 
       # Inspect instructions while building circuit
@@ -1413,6 +1695,13 @@ defmodule Qx do
 
   See `Qx.Operations.tap_state/2` for full documentation.
 
+  **Important:** This executes all instructions so far to get the current
+  state. Use sparingly in performance-critical code.
+
+  ## Returns
+
+  The original `Qx.QuantumCircuit`, unchanged — the tap is transparent in a pipeline.
+
   ## Examples
 
       # Inspect quantum state while building circuit
@@ -1421,6 +1710,9 @@ defmodule Qx do
         |> Qx.tap_state(fn s -> IO.puts("State shape: #\{inspect(Nx.shape(s))}") end)
         |> Qx.z(0)
 
+  ## Raises
+
+    * `Qx.MeasurementError` - If the circuit so far contains measurements or conditionals (tap before the first `measure/3` or `c_if/4`)
   """
   @spec tap_state(circuit(), (Nx.Tensor.t() -> any())) :: circuit()
   defdelegate tap_state(circuit, fun), to: Operations
@@ -1430,6 +1722,13 @@ defmodule Qx do
 
   See `Qx.Operations.tap_probabilities/2` for full documentation.
 
+  **Important:** This executes all instructions so far to get the current
+  probabilities. Use sparingly in performance-critical code.
+
+  ## Returns
+
+  The original `Qx.QuantumCircuit`, unchanged — the tap is transparent in a pipeline.
+
   ## Examples
 
       # Inspect probabilities while building circuit
@@ -1438,6 +1737,9 @@ defmodule Qx do
         |> Qx.tap_probabilities(fn p -> IO.puts("Probs: #\{inspect(Nx.shape(p))}") end)
         |> Qx.cx(0, 1)
 
+  ## Raises
+
+    * `Qx.MeasurementError` - If the circuit so far contains measurements or conditionals (tap before the first `measure/3` or `c_if/4`)
   """
   @spec tap_probabilities(circuit(), (Nx.Tensor.t() -> any())) :: circuit()
   defdelegate tap_probabilities(circuit, fun), to: Operations

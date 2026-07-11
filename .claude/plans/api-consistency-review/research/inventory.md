@@ -25,8 +25,9 @@ delegate. Doc: `yes` / `NONE` / `hidden`.
 | 1 | Qx | `cy/3` | `cy(circuit, control_qubit, target_qubit)` | yes | yes |  | Qx.Operations.cy/3 |
 | 1 | Qx | `cz/3` | `cz(circuit, control_qubit, target_qubit)` | yes | yes |  | Qx.Operations.cz/3 |
 | 1 | Qx | `draw/2` | `draw(result, options \\ [])` | yes | yes |  | Qx.Draw.plot/2 |
-| 1 | Qx | `draw_bloch/2` | `draw_bloch(qubit, options \\ [])` | yes | yes |  | Qx.Draw.bloch_sphere/2 |
-| 1 | Qx | `draw_counts/2` | `draw_counts(result, options \\ [])` | yes | yes |  | Qx.Draw.plot_counts/2 |
+| 1 | Qx | `draw_bloch/2` | `draw_bloch(qubit, options \\ [])` | yes | yes |  | Qx.Draw.bloch/2 |
+| 1 | Qx | `draw_circuit/2` | `draw_circuit(circuit, title \\ nil)` | yes | yes |  | Qx.Draw.circuit/2 |
+| 1 | Qx | `draw_counts/2` | `draw_counts(result, options \\ [])` | yes | yes |  | Qx.Draw.counts/2 |
 | 1 | Qx | `draw_histogram/2` | `draw_histogram(probabilities, options \\ [])` | yes | yes |  | Qx.Draw.histogram/2 |
 | 1 | Qx | `draw_state/2` | `draw_state(register_or_state, options \\ [])` | yes | yes |  | Qx.Draw.state_table/2 |
 | 1 | Qx | `get_probabilities/2` | `get_probabilities(circuit, options \\ [])` | yes | yes |  |  |
@@ -73,47 +74,47 @@ delegate. Doc: `yes` / `NONE` / `hidden`.
 | 2 | Qx.QuantumCircuit | `add_measurement/3` | `add_measurement(circuit, qubit, classical_bit)` | hidden | NONE |  |  |
 | 2 | Qx.QuantumCircuit | `add_three_qubit_gate/6` | `add_three_qubit_gate(circuit, gate_name, control1, control2, target, params \\ [])` | hidden | NONE |  |  |
 | 2 | Qx.QuantumCircuit | `add_two_qubit_gate/5` | `add_two_qubit_gate(circuit, gate_name, control_qubit, target_qubit, params \\ [])` | hidden | NONE |  |  |
-| 2 | Qx.QuantumCircuit | `depth/1` | `depth(circuit)` | yes | NONE |  |  |
-| 2 | Qx.QuantumCircuit | `get_instructions/1` | `get_instructions(circuit)` | yes | NONE |  |  |
-| 2 | Qx.QuantumCircuit | `get_measurements/1` | `get_measurements(circuit)` | yes | NONE |  |  |
-| 2 | Qx.QuantumCircuit | `get_state/1` | `get_state(circuit)` | yes | NONE |  |  |
+| 2 | Qx.QuantumCircuit | `depth/1` | `depth(circuit)` | yes | yes |  |  |
+| 2 | Qx.QuantumCircuit | `get_instructions/1` | `get_instructions(circuit)` | yes | yes |  |  |
+| 2 | Qx.QuantumCircuit | `get_measurements/1` | `get_measurements(circuit)` | yes | yes |  |  |
+| 2 | Qx.QuantumCircuit | `get_state/1` | `get_state(circuit)` | yes | yes |  |  |
 | 2 | Qx.QuantumCircuit | `measured?/2` | `measured?(circuit, qubit)` | yes | yes |  |  |
-| 2 | Qx.QuantumCircuit | `new/1` | `new(num_qubits)` | yes | NONE |  |  |
-| 2 | Qx.QuantumCircuit | `new/2` | `new(num_qubits, num_classical_bits)` | yes | NONE |  |  |
-| 2 | Qx.QuantumCircuit | `reset/1` | `reset(circuit)` | yes | NONE |  |  |
-| 2 | Qx.QuantumCircuit | `set_state/2` | `set_state(circuit, state)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `barrier/2` | `barrier(circuit, qubits)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `c_if/4` | `c_if(circuit, classical_bit, value, gate_fn)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `ccx/4` | `ccx(circuit, control1, control2, target)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `cp/4` | `cp(circuit, control_qubit, target_qubit, theta)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `crx/4` | `crx(circuit, control_qubit, target_qubit, theta)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `cry/4` | `cry(circuit, control_qubit, target_qubit, theta)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `crz/4` | `crz(circuit, control_qubit, target_qubit, theta)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `cswap/4` | `cswap(circuit, control, target_a, target_b)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `cx/3` | `cx(circuit, control_qubit, target_qubit)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `cy/3` | `cy(circuit, control_qubit, target_qubit)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `cz/3` | `cz(circuit, control_qubit, target_qubit)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `h/2` | `h(circuit, qubit)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `iswap/3` | `iswap(circuit, qubit_a, qubit_b)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `measure/3` | `measure(circuit, qubit, classical_bit)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `measure_x/3` | `measure_x(circuit, qubit, classical_bit)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `measure_y/3` | `measure_y(circuit, qubit, classical_bit)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `measure_z/3` | `measure_z(circuit, qubit, classical_bit)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `phase/3` | `phase(circuit, qubit, phi)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `rx/3` | `rx(circuit, qubit, theta)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `ry/3` | `ry(circuit, qubit, theta)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `rz/3` | `rz(circuit, qubit, theta)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `s/2` | `s(circuit, qubit)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `sdg/2` | `sdg(circuit, qubit)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `swap/3` | `swap(circuit, qubit_a, qubit_b)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `t/2` | `t(circuit, qubit)` | yes | NONE |  |  |
+| 2 | Qx.QuantumCircuit | `new/1` | `new(num_qubits)` | yes | yes |  |  |
+| 2 | Qx.QuantumCircuit | `new/2` | `new(num_qubits, num_classical_bits)` | yes | yes |  |  |
+| 2 | Qx.QuantumCircuit | `reset/1` | `reset(circuit)` | yes | yes |  |  |
+| 2 | Qx.QuantumCircuit | `set_state/2` | `set_state(circuit, state)` | yes | yes |  |  |
+| 2 | Qx.Operations | `barrier/2` | `barrier(circuit, qubits)` | yes | yes |  |  |
+| 2 | Qx.Operations | `c_if/4` | `c_if(circuit, classical_bit, value, gate_fn)` | yes | yes |  |  |
+| 2 | Qx.Operations | `ccx/4` | `ccx(circuit, control1, control2, target)` | yes | yes |  |  |
+| 2 | Qx.Operations | `cp/4` | `cp(circuit, control_qubit, target_qubit, theta)` | yes | yes |  |  |
+| 2 | Qx.Operations | `crx/4` | `crx(circuit, control_qubit, target_qubit, theta)` | yes | yes |  |  |
+| 2 | Qx.Operations | `cry/4` | `cry(circuit, control_qubit, target_qubit, theta)` | yes | yes |  |  |
+| 2 | Qx.Operations | `crz/4` | `crz(circuit, control_qubit, target_qubit, theta)` | yes | yes |  |  |
+| 2 | Qx.Operations | `cswap/4` | `cswap(circuit, control, target_a, target_b)` | yes | yes |  |  |
+| 2 | Qx.Operations | `cx/3` | `cx(circuit, control_qubit, target_qubit)` | yes | yes |  |  |
+| 2 | Qx.Operations | `cy/3` | `cy(circuit, control_qubit, target_qubit)` | yes | yes |  |  |
+| 2 | Qx.Operations | `cz/3` | `cz(circuit, control_qubit, target_qubit)` | yes | yes |  |  |
+| 2 | Qx.Operations | `h/2` | `h(circuit, qubit)` | yes | yes |  |  |
+| 2 | Qx.Operations | `iswap/3` | `iswap(circuit, qubit_a, qubit_b)` | yes | yes |  |  |
+| 2 | Qx.Operations | `measure/3` | `measure(circuit, qubit, classical_bit)` | yes | yes |  |  |
+| 2 | Qx.Operations | `measure_x/3` | `measure_x(circuit, qubit, classical_bit)` | yes | yes |  |  |
+| 2 | Qx.Operations | `measure_y/3` | `measure_y(circuit, qubit, classical_bit)` | yes | yes |  |  |
+| 2 | Qx.Operations | `measure_z/3` | `measure_z(circuit, qubit, classical_bit)` | yes | yes |  |  |
+| 2 | Qx.Operations | `phase/3` | `phase(circuit, qubit, phi)` | yes | yes |  |  |
+| 2 | Qx.Operations | `rx/3` | `rx(circuit, qubit, theta)` | yes | yes |  |  |
+| 2 | Qx.Operations | `ry/3` | `ry(circuit, qubit, theta)` | yes | yes |  |  |
+| 2 | Qx.Operations | `rz/3` | `rz(circuit, qubit, theta)` | yes | yes |  |  |
+| 2 | Qx.Operations | `s/2` | `s(circuit, qubit)` | yes | yes |  |  |
+| 2 | Qx.Operations | `sdg/2` | `sdg(circuit, qubit)` | yes | yes |  |  |
+| 2 | Qx.Operations | `swap/3` | `swap(circuit, qubit_a, qubit_b)` | yes | yes |  |  |
+| 2 | Qx.Operations | `t/2` | `t(circuit, qubit)` | yes | yes |  |  |
 | 2 | Qx.Operations | `tap_circuit/2` | `tap_circuit(circuit, fun)` | yes | yes |  |  |
 | 2 | Qx.Operations | `tap_probabilities/2` | `tap_probabilities(circuit, fun)` | yes | yes |  |  |
 | 2 | Qx.Operations | `tap_state/2` | `tap_state(circuit, fun)` | yes | yes |  |  |
-| 2 | Qx.Operations | `u/5` | `u(circuit, qubit, theta, phi, lambda)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `x/2` | `x(circuit, qubit)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `y/2` | `y(circuit, qubit)` | yes | NONE |  |  |
-| 2 | Qx.Operations | `z/2` | `z(circuit, qubit)` | yes | NONE |  |  |
+| 2 | Qx.Operations | `u/5` | `u(circuit, qubit, theta, phi, lambda)` | yes | yes |  |  |
+| 2 | Qx.Operations | `x/2` | `x(circuit, qubit)` | yes | yes |  |  |
+| 2 | Qx.Operations | `y/2` | `y(circuit, qubit)` | yes | yes |  |  |
+| 2 | Qx.Operations | `z/2` | `z(circuit, qubit)` | yes | yes |  |  |
 | 2 | Qx.Patterns | `barrier_all/1` | `barrier_all(circuit)` | yes | yes |  |  |
 | 2 | Qx.Patterns | `barrier_all/2` | `barrier_all(circuit, qubits)` | yes | yes |  |  |
 | 2 | Qx.Patterns | `bell_state_circuit/1` | `bell_state_circuit(which \\ :phi_plus)` | hidden | yes |  |  |
@@ -145,47 +146,46 @@ delegate. Doc: `yes` / `NONE` / `hidden`.
 | 2 | Qx.Step | `__struct__/1` | `__struct__(kv)` | hidden | NONE |  |  |
 | 2 | Qx.Step | `basis_terms/1` | `basis_terms(step)` | hidden | yes |  |  |
 | 2 | Qx.Step | `show/1` | `show(step)` | yes | yes |  |  |
-| 2 | Qx.StateInit | `basis_state/3` | `basis_state(index, dimension, type \\ :c64)` | yes | NONE |  |  |
-| 2 | Qx.StateInit | `bell_state_vector/2` | `bell_state_vector(which \\ :phi_plus, type \\ :c64)` | yes | yes |  |  |
-| 2 | Qx.StateInit | `ghz_state_vector/2` | `ghz_state_vector(num_qubits, type \\ :c64)` | yes | yes |  |  |
-| 2 | Qx.StateInit | `minus_state/1` | `minus_state(type \\ :c64)` | yes | NONE |  |  |
-| 2 | Qx.StateInit | `one_state/1` | `one_state(type \\ :c64)` | yes | NONE |  |  |
-| 2 | Qx.StateInit | `plus_state/1` | `plus_state(type \\ :c64)` | yes | NONE |  |  |
-| 2 | Qx.StateInit | `random_state/2` | `random_state(num_qubits, type \\ :c64)` | yes | NONE |  |  |
-| 2 | Qx.StateInit | `superposition_state/2` | `superposition_state(num_qubits, type \\ :c64)` | yes | NONE |  |  |
-| 2 | Qx.StateInit | `w_state/2` | `w_state(num_qubits, type \\ :c64)` | yes | NONE |  |  |
-| 2 | Qx.StateInit | `zero_state/2` | `zero_state(num_qubits, type \\ :c64)` | yes | NONE |  |  |
+| 2 | Qx.StateInit | `basis_state/3` | `basis_state(index, dimension, type \\ :c64)` | yes | yes |  |  |
+| 2 | Qx.StateInit | `bell_state_vector/2` | `bell_state_vector(which \\ :phi_plus, type \\ :c64)` | yes | yes | Use `Qx.bell_state/1` (circuit mode). Will be removed in Qx 1.0 |  |
+| 2 | Qx.StateInit | `ghz_state_vector/2` | `ghz_state_vector(num_qubits, type \\ :c64)` | yes | yes | Use `Qx.ghz_state/0` (circuit mode). Will be removed in Qx 1.0 |  |
+| 2 | Qx.StateInit | `minus_state/1` | `minus_state(type \\ :c64)` | yes | NONE | Prepare |−⟩ in circuit mode: `Qx.create_circuit(1) |> Qx.x(0) |> Qx.h(0)`. Will be removed in Qx 1.0 |  |
+| 2 | Qx.StateInit | `one_state/1` | `one_state(type \\ :c64)` | yes | NONE | Use `basis_state(1, 2)`. Will be removed in Qx 1.0 |  |
+| 2 | Qx.StateInit | `plus_state/1` | `plus_state(type \\ :c64)` | yes | NONE | Prepare |+⟩ in circuit mode: `Qx.create_circuit(1) |> Qx.h(0)`. Will be removed in Qx 1.0 |  |
+| 2 | Qx.StateInit | `random_state/2` | `random_state(num_qubits, type \\ :c64)` | yes | NONE | No direct replacement — build random amplitudes and normalize: `(for _ <- 1..dimension, do: Complex.new(:rand.uniform() * 2 - 1, :rand.uniform() * 2 - 1)) |> Nx.tensor(type: :c64) |> Qx.Math.normalize()`. Will be removed in Qx 1.0 |  |
+| 2 | Qx.StateInit | `superposition_state/2` | `superposition_state(num_qubits, type \\ :c64)` | yes | NONE | Use `Qx.Patterns.superposition_circuit/1` (circuit mode). Will be removed in Qx 1.0 |  |
+| 2 | Qx.StateInit | `w_state/2` | `w_state(num_qubits, type \\ :c64)` | yes | NONE | No replacement — build the state with `basis_state/2` sums or gates in circuit mode. Will be removed in Qx 1.0 |  |
+| 2 | Qx.StateInit | `zero_state/2` | `zero_state(num_qubits, type \\ :c64)` | yes | NONE | Use `basis_state(0, Integer.pow(2, num_qubits))` — circuits already start in |0…0⟩. Will be removed in Qx 1.0 |  |
 | 2 | Qx.Math | `__defn:apply_gate__/2` | `__defn:apply_gate__(gate, state)` | hidden | NONE |  |  |
 | 2 | Qx.Math | `__defn:inner_product__/2` | `__defn:inner_product__(state1, state2)` | hidden | NONE |  |  |
 | 2 | Qx.Math | `__defn:kron__/2` | `__defn:kron__(a, b)` | hidden | NONE |  |  |
-| 2 | Qx.Math | `__defn:normalize__/1` | `__defn:normalize__(state)` | hidden | NONE |  |  |
+| 2 | Qx.Math | `__defn:normalize_unchecked__/1` | `__defn:normalize_unchecked__(state)` | hidden | NONE |  |  |
 | 2 | Qx.Math | `__defn:outer_product__/2` | `__defn:outer_product__(state1, state2)` | hidden | NONE |  |  |
 | 2 | Qx.Math | `__defn:probabilities__/1` | `__defn:probabilities__(state)` | hidden | NONE |  |  |
 | 2 | Qx.Math | `__defn:trace__/1` | `__defn:trace__(matrix)` | hidden | NONE |  |  |
-| 2 | Qx.Math | `apply_gate/2` | `apply_gate(gate, state)` | yes | NONE |  |  |
-| 2 | Qx.Math | `complex/2` | `complex(real, imag \\ 0.0)` | yes | NONE |  |  |
+| 2 | Qx.Math | `apply_gate/2` | `apply_gate(gate, state)` | yes | NONE | Use `Nx.dot/2`. Will be removed in Qx 1.0 |  |
+| 2 | Qx.Math | `complex/2` | `complex(real, imag \\ 0.0)` | yes | NONE | Use `Complex.new/2`. Will be removed in Qx 1.0 |  |
 | 2 | Qx.Math | `complex_matrix/1` | `complex_matrix(matrix)` | hidden | NONE |  |  |
-| 2 | Qx.Math | `complex_to_tensor/1` | `complex_to_tensor(c)` | hidden | NONE |  |  |
-| 2 | Qx.Math | `identity/1` | `identity(n)` | yes | NONE |  |  |
-| 2 | Qx.Math | `inner_product/2` | `inner_product(state1, state2)` | yes | NONE |  |  |
-| 2 | Qx.Math | `kron/2` | `kron(a, b)` | yes | NONE |  |  |
-| 2 | Qx.Math | `normalize/1` | `normalize(state)` | yes | NONE |  |  |
-| 2 | Qx.Math | `outer_product/2` | `outer_product(state1, state2)` | yes | NONE |  |  |
-| 2 | Qx.Math | `probabilities/1` | `probabilities(state)` | yes | NONE |  |  |
-| 2 | Qx.Math | `tensor_to_complex/1` | `tensor_to_complex(tensor)` | hidden | NONE |  |  |
-| 2 | Qx.Math | `trace/1` | `trace(matrix)` | yes | NONE |  |  |
-| 2 | Qx.Math | `unitary?/1` | `unitary?(matrix)` | yes | yes |  |  |
-| 2 | Qx.Draw | `bloch_sphere/2` | `bloch_sphere(qubit, options \\ [])` | yes | NONE |  |  |
-| 2 | Qx.Draw | `circuit/2` | `circuit(circuit, title \\ nil)` | yes | NONE |  |  |
-| 2 | Qx.Draw | `histogram/2` | `histogram(probabilities, options \\ [])` | yes | NONE |  |  |
-| 2 | Qx.Draw | `plot/2` | `plot(result, options \\ [])` | yes | NONE |  |  |
-| 2 | Qx.Draw | `plot_counts/2` | `plot_counts(result, options \\ [])` | yes | NONE |  |  |
-| 2 | Qx.Draw | `state_table/2` | `state_table(register_or_state, options \\ [])` | yes | NONE |  |  |
+| 2 | Qx.Math | `identity/1` | `identity(n)` | yes | NONE | Use `Nx.eye/1`. Will be removed in Qx 1.0 |  |
+| 2 | Qx.Math | `inner_product/2` | `inner_product(state1, state2)` | yes | NONE | Use `Nx.sum(Nx.multiply(Nx.conjugate(state1), state2))`. Will be removed in Qx 1.0 |  |
+| 2 | Qx.Math | `kron/2` | `kron(a, b)` | yes | NONE | Inline the Nx pipeline: `a |> Nx.reshape({m, 1, n, 1}) |> Nx.multiply(Nx.reshape(b, {1, p, 1, q})) |> Nx.reshape({m * p, n * q})`. Will be removed in Qx 1.0 |  |
+| 2 | Qx.Math | `normalize/1` | `normalize(state)` | yes | yes |  |  |
+| 2 | Qx.Math | `normalize_unchecked/1` | `normalize_unchecked(state)` | hidden | NONE |  |  |
+| 2 | Qx.Math | `outer_product/2` | `outer_product(state1, state2)` | yes | NONE | Use `Nx.outer(state1, Nx.conjugate(state2))`. Will be removed in Qx 1.0 |  |
+| 2 | Qx.Math | `probabilities/1` | `probabilities(state)` | yes | yes |  |  |
+| 2 | Qx.Math | `trace/1` | `trace(matrix)` | yes | NONE | Use `Nx.sum(Nx.take_diagonal(matrix))`. Will be removed in Qx 1.0 |  |
+| 2 | Qx.Math | `unitary?/1` | `unitary?(matrix)` | yes | yes | Check U†U ≈ I directly with Nx (recipe in the docs). Will be removed in Qx 1.0 |  |
+| 2 | Qx.Draw | `bloch/2` | `bloch(qubit, options \\ [])` | yes | yes |  |  |
+| 2 | Qx.Draw | `circuit/2` | `circuit(circuit, title \\ nil)` | yes | yes |  |  |
+| 2 | Qx.Draw | `counts/2` | `counts(result, options \\ [])` | yes | yes |  |  |
+| 2 | Qx.Draw | `histogram/2` | `histogram(probabilities, options \\ [])` | yes | yes |  |  |
+| 2 | Qx.Draw | `plot/2` | `plot(result, options \\ [])` | yes | yes |  |  |
+| 2 | Qx.Draw | `state_table/2` | `state_table(register_or_state, options \\ [])` | yes | yes |  |  |
 | 2 | Qx.Export.OpenQASM | `from_qasm!/1` | `from_qasm!(source)` | yes | yes |  |  |
 | 2 | Qx.Export.OpenQASM | `from_qasm/1` | `from_qasm(source)` | yes | yes |  |  |
 | 2 | Qx.Export.OpenQASM | `from_qasm_function!/1` | `from_qasm_function!(source)` | yes | yes |  |  |
 | 2 | Qx.Export.OpenQASM | `from_qasm_function/1` | `from_qasm_function(source)` | yes | yes |  |  |
-| 2 | Qx.Export.OpenQASM | `to_qasm/2` | `to_qasm(circuit, options \\ [])` | yes | NONE |  |  |
+| 2 | Qx.Export.OpenQASM | `to_qasm/2` | `to_qasm(circuit, options \\ [])` | yes | yes |  |  |
 | 2 | Qx.Hardware | `cancel/3` | `cancel(job_id, config, opts \\ [])` | yes | yes |  |  |
 | 2 | Qx.Hardware | `connect/2` | `connect(config, opts \\ [])` | yes | yes |  |  |
 | 2 | Qx.Hardware | `list_backends/2` | `list_backends(config, opts \\ [])` | yes | yes |  |  |
@@ -202,5 +202,5 @@ delegate. Doc: `yes` / `NONE` / `hidden`.
 
 ## Totals
 
-- functions: 192 (tier 1: 60, tier 2: 132)
-- missing @doc: 0; @doc false: 25; missing @spec: 83; deprecated: 0
+- functions: 192 (tier 1: 61, tier 2: 131)
+- missing @doc: 0; @doc false: 24; missing @spec: 35; deprecated: 17

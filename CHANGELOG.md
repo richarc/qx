@@ -59,6 +59,36 @@ and will be **removed in Qx 1.0**:
   `Qx.ParameterError` immediately rather than letting a non-numeric
   parameter detonate later inside the simulator. Non-breaking (matches
   the existing `u/cp/crx/cry/crz` behaviour).
+- Docs sweep: the `Qx.rx/ry/rz/phase` angle-parameter `@spec`s widened
+  from `float()` to `number()`, matching the already-`number()`
+  `u/cp/crx/cry/crz` family and the runtime behaviour (integer angles
+  have always been accepted). Additive/non-breaking; documents an
+  existing contract, no version bump.
+
+### Documentation
+
+- Docs sweep across the tier-1/2 surface (findings
+  B-08/B-15/R-12/R-15/T1-11/15/16): mechanical, non-breaking.
+  - Added `@spec` to the 47 supported public functions that lacked one
+    (`Qx.Operations` gate builders, `Qx.QuantumCircuit`, `Qx.Draw`,
+    `Qx.Math.normalize/1` + `probabilities/1`, `Qx.StateInit.basis_state/3`,
+    `Qx.Export.OpenQASM.to_qasm/2`). The declared-public surface is now
+    fully specced except the `@deprecated` orphans (removed at 1.0).
+  - Added a one-line `## Returns` section to the 55 `Qx` facade functions
+    that lacked one, and grounded `## Raises` sections to the 18 facade
+    functions that raise a typed error but did not document it.
+  - The tier-2 utility modules `Operations`, `Patterns`, `Simulation`,
+    `Draw`, `Export.OpenQASM`, and `Hardware` now open their moduledoc
+    with the §3 tier marker ("Utility module: reached from `Qx.*` in
+    normal use"). `Math` and `StateInit` keep the trimmed-supported-
+    surface framing they got in the v0.11 tier trim. The tier-1 struct
+    modules (`QuantumCircuit`, `SimulationResult`, `Step`) open with a
+    tier-1 marker instead.
+  - The `tap_state`/`tap_probabilities` "executes all instructions —
+    use sparingly" warning is now on the `Qx` facade docs, not only the
+    `Qx.Operations` docs.
+  - Fixed stale `Qx.Export.OpenQASM` doc examples (`Qx.circuit` →
+    `Qx.create_circuit`, `Qx.cnot` → `Qx.cx`).
 
 ### Fixed
 

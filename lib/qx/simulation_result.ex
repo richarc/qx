@@ -1,5 +1,8 @@
 defmodule Qx.SimulationResult do
   @moduledoc """
+  Tier 1: a core Qx type — the struct `Qx.run/2` hands back. Inspect it with
+  its own helpers (`most_frequent/1`, `outcomes/1`, `probability/2`).
+
   Result of quantum circuit simulation.
 
   This struct encapsulates all information from a circuit execution,

@@ -74,6 +74,7 @@ defmodule Qx.Math do
       vector has no defined normalization; this previously returned a silent
       `NaN` tensor)
   """
+  @spec normalize(Nx.Tensor.t()) :: Nx.Tensor.t()
   def normalize(state) do
     norm = Nx.abs(state) |> Nx.pow(2) |> Nx.sum() |> Nx.sqrt() |> Nx.to_number()
 
@@ -165,6 +166,7 @@ defmodule Qx.Math do
         [0.49999037, 0.49999037]
       >
   """
+  @spec probabilities(Nx.Tensor.t()) :: Nx.Tensor.t()
   defn probabilities(state) do
     Nx.abs(state) ** 2
   end

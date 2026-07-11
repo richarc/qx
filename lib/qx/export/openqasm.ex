@@ -1,5 +1,8 @@
 defmodule Qx.Export.OpenQASM do
   @moduledoc """
+  Utility module: reached from `Qx.*` in normal use — export/import is the
+  documented tier-2 escape hatch for OpenQASM interop.
+
   Export Qx quantum circuits to OpenQASM format **and import** OpenQASM 3.0
   source back into a `Qx.QuantumCircuit`.
 
@@ -84,9 +87,9 @@ defmodule Qx.Export.OpenQASM do
   ## Examples
 
       # Export a Bell state circuit to OpenQASM 3.0
-      circuit = Qx.circuit(2)
+      circuit = Qx.create_circuit(2)
         |> Qx.h(0)
-        |> Qx.cnot(0, 1)
+        |> Qx.cx(0, 1)
         |> Qx.measure(0, 0)
         |> Qx.measure(1, 1)
 
@@ -163,7 +166,7 @@ defmodule Qx.Export.OpenQASM do
 
   ## Examples
 
-      circuit = Qx.circuit(2) |> Qx.h(0) |> Qx.cnot(0, 1)
+      circuit = Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1)
       qasm = Qx.Export.OpenQASM.to_qasm(circuit)
 
       # Output:
@@ -176,6 +179,7 @@ defmodule Qx.Export.OpenQASM do
       # h q[0];
       # cx q[0], q[1];
   """
+  @spec to_qasm(QuantumCircuit.t(), keyword()) :: String.t()
   def to_qasm(%QuantumCircuit{} = circuit, options \\ []) do
     version = Keyword.get(options, :version, 3)
     include_comments = Keyword.get(options, :include_comments, false)

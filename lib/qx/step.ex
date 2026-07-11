@@ -1,5 +1,8 @@
 defmodule Qx.Step do
   @moduledoc """
+  Tier 1: a core Qx type — the struct `Qx.steps/2` yields, one per executed
+  operation. Render it with `Qx.Step.show/1`.
+
   One executed operation from `Qx.steps/2`: what ran, where in the
   circuit, and the state right after it.
 
