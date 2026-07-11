@@ -203,6 +203,16 @@ steps 2–5. It still stops at the merge gate for your authorization.
 1. Tests written before implementation code — always
 2. Existing tests never modified without explicit human approval (PreToolUse hook enforces this)
 3. Newly written tests must fail before implementation begins
+4. **Every module with `iex>` examples in its `@doc`/`@moduledoc` MUST have a
+   matching `doctest <Module>` directive in a test module.** Doctests are
+   opt-in per module — without the directive ExUnit never runs them, so they
+   render fine in `mix docs` and look like coverage while being silently
+   unverified (a wrong expected value stays green). Note `defdelegate` does
+   **not** carry the target module's doctests: a facade needs its own
+   `doctest Facade` for facade-level examples, and the target still needs
+   `doctest Target`. When adding a doctest, confirm the module's doctest count
+   in `mix test <file>` output actually increases. See
+   `.claude/solutions/testing-issues/missing-doctest-directive-silent-uncovered-doctests-qx-patterns-20260711.md`.
 
 ### Branch Strategy
 
