@@ -97,6 +97,11 @@ and will be **removed in Qx 1.0**:
 
 ### Documentation
 
+- `Qx.Export.OpenQASM.from_qasm_function/1`: documented the safe way to obtain
+  the callable generated module — compile `source` and use the module atom that
+  `Code.compile_string/1` returns (`[{mod, _bin}] = Code.compile_string(source)`)
+  — with an explicit caveat against interning the `module` string into an atom
+  yourself on untrusted input (atom-table exhaustion). Moduledoc + README.
 - Docs sweep across the tier-1/2 surface (findings
   B-08/B-15/R-12/R-15/T1-11/15/16): mechanical, non-breaking.
   - Added `@spec` to the 47 supported public functions that lacked one

@@ -42,6 +42,18 @@ defmodule Qx.Export.OpenQASM do
   that isolated module (named by `module`), so the helper can never be injected
   into the caller's own module.
 
+  To *call* the generated function, compile `source` and use the module atom
+  that `Code.compile_string/1` hands back:
+
+      [{mod, _bin}] = Code.compile_string(source)
+      circuit = mod.bell(Qx.create_circuit(2), 0, 1)
+
+  `module` in the result map is that module's name as a **string** — for display
+  or storage. Do **not** convert it to an atom yourself (e.g. `String.to_atom/1`
+  or `Module.concat/1`) for untrusted input: compiling `source` interns the atom
+  safely and only when the module actually loads, whereas eagerly interning one
+  atom per distinct incoming program risks atom-table exhaustion.
+
   ### Supported gate set on import
 
   Direct mappings: `h, x, y, z, s, sdg, t, tdg, rx, ry, rz, p, phase, u,

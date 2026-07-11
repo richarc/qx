@@ -481,9 +481,14 @@ gate bell a, b {
 #     end
 #   end
 
-# Compile and call it:
-{{:module, mod, _bin, _}, _binding} = Code.eval_string(source)
+# Compile it and call the generated module directly — Code.compile_string/1
+# hands back the module atom (interned safely, only when the module loads):
+[{mod, _bin}] = Code.compile_string(source)
 new_circuit = mod.bell(Qx.create_circuit(2), 0, 1)
+
+# `module` in the result map is the module *name as a string* (for display or
+# storage). Don't turn it into an atom yourself for untrusted input — eagerly
+# interning one atom per incoming program risks atom-table exhaustion.
 ```
 
 The signature is `(circuit, params…, qubits…)` — circuit first, then declared parameters in source order, then qubit arguments in source order.
