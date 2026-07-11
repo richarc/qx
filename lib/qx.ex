@@ -74,6 +74,7 @@ defmodule Qx do
   """
 
   alias Qx.{Draw, Operations, Patterns, QuantumCircuit, Simulation}
+  alias Qx.Export.OpenQASM
 
   @type circuit :: QuantumCircuit.t()
   @type simulation_result :: Simulation.simulation_result()
@@ -589,6 +590,31 @@ defmodule Qx do
   """
   @spec t(circuit(), non_neg_integer()) :: circuit()
   defdelegate t(circuit, qubit), to: Operations
+
+  @doc """
+  Applies a T† (T-dagger) gate — the adjoint of `t/2` (−π/4 phase on |1⟩).
+
+  ## Parameters
+    * `circuit` - Quantum circuit
+    * `qubit` - Target qubit index
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
+  ## Examples
+
+      iex> qc = Qx.create_circuit(1) |> Qx.tdg(0)
+      iex> [{gate, qubits, _params}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> {gate, qubits}
+      {:tdg, [0]}
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If qubit index is out of range
+  """
+  @spec tdg(circuit(), non_neg_integer()) :: circuit()
+  defdelegate tdg(circuit, qubit), to: Operations
 
   @doc """
   Applies a rotation around the X-axis.
@@ -1599,6 +1625,68 @@ defmodule Qx do
   """
   @spec draw_circuit(circuit(), String.t() | nil) :: Qx.Draw.Image.t()
   defdelegate draw_circuit(circuit, title \\ nil), to: Draw, as: :circuit
+
+  # OpenQASM interoperability — thin facade over Qx.Export.OpenQASM.
+
+  @doc """
+  Exports `circuit` to an OpenQASM program string. See
+  `Qx.Export.OpenQASM.to_qasm/2` for options and the supported gate set.
+
+  ## Returns
+
+  The OpenQASM program as a `String.t()`.
+
+  ## Examples
+
+      iex> qasm = Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1) |> Qx.to_qasm()
+      iex> qasm =~ "OPENQASM 3.0;"
+      true
+
+  ## Raises
+
+    * `Qx.OptionError` - If `:version` is not a supported QASM version
+  """
+  @spec to_qasm(circuit(), keyword()) :: String.t()
+  defdelegate to_qasm(circuit, options \\ []), to: OpenQASM
+
+  @doc """
+  Parses an OpenQASM program string into a `Qx.QuantumCircuit`. See
+  `Qx.Export.OpenQASM.from_qasm/1`.
+
+  ## Returns
+
+    * `{:ok, circuit}` on success
+    * `{:error, exception}` on a parse/lowering failure
+
+  ## Examples
+
+      iex> {:ok, circuit} = Qx.from_qasm("OPENQASM 3.0;\\nqubit[1] q;\\nh q[0];\\n")
+      iex> Qx.QuantumCircuit.get_instructions(circuit)
+      [{:h, [0], []}]
+  """
+  @spec from_qasm(String.t()) :: {:ok, circuit()} | {:error, Exception.t()}
+  defdelegate from_qasm(source), to: OpenQASM
+
+  @doc """
+  Like `from_qasm/1` but returns the circuit directly and raises on error.
+  See `Qx.Export.OpenQASM.from_qasm!/1`.
+
+  ## Returns
+
+  The parsed `Qx.QuantumCircuit`.
+
+  ## Examples
+
+      iex> circuit = Qx.from_qasm!("OPENQASM 3.0;\\nqubit[1] q;\\ntdg q[0];\\n")
+      iex> Qx.QuantumCircuit.get_instructions(circuit)
+      [{:tdg, [0], []}]
+
+  ## Raises
+
+    * `Qx.QasmParseError` / `Qx.QasmUnsupportedError` - On invalid or unsupported input
+  """
+  @spec from_qasm!(String.t()) :: circuit()
+  defdelegate from_qasm!(source), to: OpenQASM
 
   # Convenience functions for creating common quantum states and circuits
 

@@ -113,6 +113,54 @@ defmodule Qx.Export.OpenQASMTest do
       assert qasm =~ "t q[0];"
     end
 
+    test "exports T† gate as native tdg" do
+      circuit = Qx.create_circuit(1) |> Qx.Operations.tdg(0)
+      qasm = OpenQASM.to_qasm(circuit)
+
+      assert qasm =~ "tdg q[0];"
+    end
+
+    test "tdg round-trips through to_qasm |> from_qasm! as native :tdg" do
+      circuit = Qx.create_circuit(2) |> Qx.h(0) |> Qx.Operations.tdg(1)
+
+      restored = circuit |> OpenQASM.to_qasm() |> OpenQASM.from_qasm!()
+
+      assert Qx.QuantumCircuit.get_instructions(restored) == [
+               {:h, [0], []},
+               {:tdg, [1], []}
+             ]
+    end
+  end
+
+  describe "Qx facade delegates for OpenQASM" do
+    test "Qx.to_qasm/2 delegates to Qx.Export.OpenQASM.to_qasm/2" do
+      circuit = Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1)
+      assert Qx.to_qasm(circuit) == OpenQASM.to_qasm(circuit)
+      assert Qx.to_qasm(circuit, version: 2) == OpenQASM.to_qasm(circuit, version: 2)
+    end
+
+    test "Qx.from_qasm/1 delegates to Qx.Export.OpenQASM.from_qasm/1" do
+      source = """
+      OPENQASM 3.0;
+      qubit[1] q;
+      h q[0];
+      """
+
+      assert Qx.from_qasm(source) == OpenQASM.from_qasm(source)
+      assert {:ok, %Qx.QuantumCircuit{}} = Qx.from_qasm(source)
+    end
+
+    test "Qx.from_qasm!/1 delegates to Qx.Export.OpenQASM.from_qasm!/1" do
+      source = """
+      OPENQASM 3.0;
+      qubit[1] q;
+      tdg q[0];
+      """
+
+      assert Qx.from_qasm!(source) == OpenQASM.from_qasm!(source)
+      assert Qx.QuantumCircuit.get_instructions(Qx.from_qasm!(source)) == [{:tdg, [0], []}]
+    end
+
     test "exports multiple gates in sequence" do
       circuit = Qx.create_circuit(1) |> Qx.h(0) |> Qx.x(0) |> Qx.z(0)
       qasm = OpenQASM.to_qasm(circuit)

@@ -44,11 +44,11 @@ defmodule Qx.Export.OpenQASM do
 
   ### Supported gate set on import
 
-  Direct mappings: `h, x, y, z, s, sdg, t, rx, ry, rz, p, phase, u, u3,
-  cx, CX, cz, swap, iswap, cp, cphase, ccx, cswap`.
+  Direct mappings: `h, x, y, z, s, sdg, t, tdg, rx, ry, rz, p, phase, u,
+  u3, cx, CX, cz, swap, iswap, cp, cphase, ccx, cswap`.
 
-  Decompositions: `tdg → phase(-π/4)`, `sx → u(π/2, -π/2, π/2)`,
-  `u1(λ) → phase(λ)`, `u2(φ, λ) → u(π/2, φ, λ)`. `id` is dropped.
+  Decompositions: `sx → u(π/2, -π/2, π/2)`, `u1(λ) → phase(λ)`,
+  `u2(φ, λ) → u(π/2, φ, λ)`. `id` is dropped.
 
   ### Not supported (raises `Qx.QasmUnsupportedError`)
 
@@ -287,6 +287,9 @@ defmodule Qx.Export.OpenQASM do
 
       {:t, qubits, params} ->
         single_qubit_gate_to_qasm("t", qubits, params)
+
+      {:tdg, qubits, params} ->
+        single_qubit_gate_to_qasm("tdg", qubits, params)
 
       {:rx, qubits, params} ->
         parametric_gate_to_qasm("rx", qubits, params)

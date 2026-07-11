@@ -120,4 +120,16 @@ defmodule Qx.Draw.CircuitTest do
              "Arrowhead height (#{height}) is too small to be visible"
     end
   end
+
+  describe "Draw.circuit/2 — dagger gate labels (tdg + sdg draw-gap fix)" do
+    test "tdg renders a T† gate box" do
+      svg = Qx.create_circuit(1) |> Qx.Operations.tdg(0) |> Qx.Draw.circuit() |> Map.fetch!(:svg)
+      assert svg =~ "T†"
+    end
+
+    test "sdg renders an S† gate box (previously raised {:unsupported_gate, :sdg})" do
+      svg = Qx.create_circuit(1) |> Qx.Operations.sdg(0) |> Qx.Draw.circuit() |> Map.fetch!(:svg)
+      assert svg =~ "S†"
+    end
+  end
 end

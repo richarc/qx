@@ -24,7 +24,7 @@ the 1.0 gate list in the Backlog).
 
 - [x] Typed-error sweep #3: raw `FunctionClauseError`/`ArgumentError` still escaping tier 1/2 — `create_circuit` (docs advertise the raw error), `bell_state(:bogus)`, `ghz_state(1)`, `h(qc, "0")`, `c_if` type slips, seven `StateInit` constructors (scoped to `basis_state/2,3` — the other constructors were deprecated by the v0.11 tier trim), `filter_by_probability(result, 1)`, `Math.normalize` zero-vector NaN; plus `rx/ry/rz/phase` gaining the `validate_parameter!` their `u/cp/cr*` siblings already run (findings B-09, B-14, T1-10, R-04, R-09, R-10)
 - [x] Docs sweep: the 83 missing `@spec`s, `## Returns`/`## Raises` on tier 1 functions, §3 tier-annotation openers on tier-2 moduledocs, the tap_* simulation warning copied up to the facade docs, angle types unified to `number()` (findings B-08, B-15, R-12, R-15, T1-11/15/16) — landed as 47 supported `@spec`s (the other 36 were `@deprecated`/`@doc false`, exempt), 55 `## Returns` + 18 grounded `## Raises`, tier openers, tap warning copy-up, and the OpenQASM doc-rot fix
-- [ ] Additive surface: `bell_pair(circuit, q0, q1, which)` and `ghz(circuit, qubits)` appenders with the creators reframed as wrappers (principles §8; must land before the v0.15 building-block work multiplies the creator shape), `tdg/2` (QASM round-trip parity), `to_qasm`/`from_qasm`/`from_qasm!` facade delegates on `Qx` (findings T1-05/07/12, B-10)
+- [x] Additive surface: `bell_pair(circuit, q0, q1, which)` and `ghz(circuit, qubits)` appenders with the creators reframed as wrappers (principles §8; must land before the v0.15 building-block work multiplies the creator shape), `tdg/2` (QASM round-trip parity), `to_qasm`/`from_qasm`/`from_qasm!` facade delegates on `Qx` (findings T1-05/07/12, B-10)
 - [ ] Producer hygiene: `Patterns.measure_all` composes `Operations.measure/3` instead of a hidden internal; single producer path for barrier/c_if instruction tuples; `add_gate` validates gate names or moves internal (findings B-04/11/12; Iron Law #9 pressure)
 - [ ] `from_qasm_function/1` returns `module:` as an atom instead of a string (callers currently must capture the module from `Code.eval_string`'s return; the name is qx-generated so `Module.concat/1` is safe). Found by the post-release README audit (findings addendum 2026-07-04). **SemVer note:** as written this is a breaking return-type change on a declared-public module, at odds with this release's non-breaking framing — the plan must pick one of: make it additive (keep the string, add the atom under a new key), ship it as v0.11's one explicitly flagged break in the CHANGELOG, or move it to the 1.0 breaking bucket
 - [ ] Deprecation batch (window opens this minor, removals at 1.0): `barrier_all/2` (vs `barrier/2` range support), `run/2`'s integer-shots overload, `superposition/1` (fails the README test), `QuantumCircuit.get_state/1` → `initial_state/1` + `reset/1` + `depth/1` (misleading names, near-zero callers), `draw_state`'s tier-3 Register escape hatch in the tier-1 spec (findings T1-04/06/08/14, R-02, B-01/05/06/07)
@@ -94,6 +94,13 @@ surface those tutorials call.
 ## Backlog / Under Consideration
 
 These have no commitment and no scheduled version. They may move up, move down, or be dropped.
+
+- [ ] Fix the 5 pre-existing broken `Qx.Operations` doctests currently excluded
+  via `:except` in `test/qx/operations_test.exs` (`tap_circuit/2`, `tap_state/2`,
+  `tap_probabilities/2`, `c_if/4` — they rely on `IO.inspect`/`IO.puts`
+  side-output + `%Qx.QuantumCircuit{...}` ellipsis that never validated). Rewrite
+  as valid doctests, then remove from the `:except` list. Surfaced by wiring
+  `doctest Qx.Operations` in `feat/qasm-facade-tdg`.
 
 - Stream the IBM `/results` body via Req `into:` with a size cap that aborts
   over ~50 MB (real OOM/DoS protection). Deferred from `ibm-client-hardening`:

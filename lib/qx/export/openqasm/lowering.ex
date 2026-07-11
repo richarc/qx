@@ -16,6 +16,7 @@ defmodule Qx.Export.OpenQASM.Lowering do
     "s" => {:s, 1, 0},
     "sdg" => {:sdg, 1, 0},
     "t" => {:t, 1, 0},
+    "tdg" => {:tdg, 1, 0},
     # Parametric single-qubit
     "rx" => {:rx, 1, 1},
     "ry" => {:ry, 1, 1},
@@ -222,7 +223,7 @@ defmodule Qx.Export.OpenQASM.Lowering do
 
   # --- Gate dispatch + decomposition -----------------------------------
 
-  @decomposable_gates ~w(tdg sx u1 u2 id)
+  @decomposable_gates ~w(sx u1 u2 id)
 
   defp lookup_gate(name, line) do
     case Map.fetch(@stdgate_table, name) do
@@ -269,9 +270,6 @@ defmodule Qx.Export.OpenQASM.Lowering do
         {:ok, [{atom, qubits, params}]}
     end
   end
-
-  defp expand_gate({:decompose, "tdg"}, [q], [], _name, _line),
-    do: {:ok, [{:phase, [q], [-:math.pi() / 4]}]}
 
   defp expand_gate({:decompose, "sx"}, [q], [], _name, _line),
     do: {:ok, [{:u, [q], [:math.pi() / 2, -:math.pi() / 2, :math.pi() / 2]}]}

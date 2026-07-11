@@ -69,7 +69,8 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
           {"z", :z},
           {"s", :s},
           {"sdg", :sdg},
-          {"t", :t}
+          {"t", :t},
+          {"tdg", :tdg}
         ] do
       test "#{qasm_name} maps to #{atom}" do
         circuit =
@@ -156,18 +157,9 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
   end
 
   describe "decompositions" do
-    test "tdg → phase(-pi/4)" do
-      circuit =
-        lower!("""
-        OPENQASM 3.0;
-        qubit[1] q;
-        tdg q[0];
-        """)
-
-      assert [{:phase, [0], [theta]}] = circuit.instructions
-      assert_in_delta theta, -:math.pi() / 4, 1.0e-12
-    end
-
+    # NOTE: `tdg` moved from decomposition (→ phase(-π/4)) to a NATIVE `:tdg`
+    # instruction in the qasm-facade-tdg branch; it's now covered by the
+    # "direct stdgate mapping" loop above. See CHANGELOG (Changed).
     test "sx → u(pi/2, -pi/2, pi/2)" do
       circuit =
         lower!("""

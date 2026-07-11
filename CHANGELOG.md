@@ -19,6 +19,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now thin wrappers over these appenders — no behaviour change (output
   circuits and raised errors are byte-identical). Purely additive,
   non-breaking.
+- `Qx.tdg/2` — native T† (T-dagger) gate, completing the `{s, sdg, t,
+  tdg}` phase-gate family. Full support across `run/2`/`steps/2`
+  simulation, circuit drawing (`"T†"`), and OpenQASM export/import
+  round-trip.
+- `Qx.to_qasm/2`, `Qx.from_qasm/1`, `Qx.from_qasm!/1` — facade delegates
+  to `Qx.Export.OpenQASM`, so OpenQASM interop is reachable directly from
+  the top-level `Qx` module. (`from_qasm_function/1` remains on
+  `Qx.Export.OpenQASM` pending a separate atom-vs-string change.)
+
+### Changed
+
+- OpenQASM import (`from_qasm`) now maps the `tdg` stdgate to a native
+  `:tdg` instruction instead of decomposing it to `phase(-π/4)`.
+  Semantically identical simulation result; enables an instruction-exact
+  `tdg` round-trip. Fixed the circuit-drawing labels for `sdg` (`"S†"`)
+  and `tdg` (`"T†"`) — `sdg` previously raised `{:unsupported_gate, :sdg}`
+  when drawn.
 
 ### Deprecated
 

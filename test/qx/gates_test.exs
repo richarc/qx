@@ -109,6 +109,30 @@ defmodule Qx.GatesTest do
         assert complex_approx_equal?(matrix_elem(product, i, j), matrix_elem(id, i, j))
       end
     end
+
+    test "t_dagger has correct matrix elements" do
+      tdg = Gates.t_dagger()
+      assert Nx.shape(tdg) == {2, 2}
+
+      # T† = [[1, 0], [0, e^(-iπ/4)]]
+      e_neg_i_pi_4 = C.new(:math.cos(:math.pi() / 4), -:math.sin(:math.pi() / 4))
+
+      assert complex_approx_equal?(matrix_elem(tdg, 0, 0), C.new(1.0, 0.0))
+      assert complex_approx_equal?(matrix_elem(tdg, 0, 1), C.new(0.0, 0.0))
+      assert complex_approx_equal?(matrix_elem(tdg, 1, 0), C.new(0.0, 0.0))
+      assert complex_approx_equal?(matrix_elem(tdg, 1, 1), e_neg_i_pi_4)
+    end
+
+    test "T†T = I (T† is the inverse of T)" do
+      t = Gates.t_gate()
+      tdg = Gates.t_dagger()
+      product = Nx.dot(tdg, t)
+      id = Gates.identity()
+
+      for i <- 0..1, j <- 0..1 do
+        assert complex_approx_equal?(matrix_elem(product, i, j), matrix_elem(id, i, j))
+      end
+    end
   end
 
   describe "Rotation gates" do

@@ -115,7 +115,9 @@ defmodule Qx.Draw.SVG.Circuit do
       :y,
       :z,
       :s,
+      :sdg,
       :t,
+      :tdg,
       :rx,
       :ry,
       :rz,
@@ -666,6 +668,7 @@ defmodule Qx.Draw.SVG.Circuit do
     """
   end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp gate_label_and_color(gate_name, params) do
     case gate_name do
       :h -> {"H", @color_hadamard}
@@ -673,7 +676,9 @@ defmodule Qx.Draw.SVG.Circuit do
       :y -> {"Y", @color_pauli_x}
       :z -> {"Z", @color_pauli_x}
       :s -> {"S", @color_hadamard}
+      :sdg -> {"S†", @color_hadamard}
       :t -> {"T", @color_hadamard}
+      :tdg -> {"T†", @color_hadamard}
       _ -> parameterized_gate_label(gate_name, params)
     end
   end

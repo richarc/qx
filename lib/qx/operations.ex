@@ -400,6 +400,34 @@ defmodule Qx.Operations do
   end
 
   @doc """
+  Applies a T† (T-dagger) gate (−π/4 phase on |1⟩) — the adjoint of `t/2`.
+
+  ## Parameters
+    * `circuit` - The quantum circuit
+    * `qubit` - Target qubit index
+
+  ## Returns
+
+  The updated `Qx.QuantumCircuit`, so calls chain in a pipeline.
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(1, 0)
+      iex> qc = Qx.Operations.tdg(qc, 0)
+      iex> [{gate, qubits, _params}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> {gate, qubits}
+      {:tdg, [0]}
+
+  ## Raises
+
+    * `Qx.QubitIndexError` - If `qubit` is out of range
+  """
+  @spec tdg(QuantumCircuit.t(), non_neg_integer()) :: QuantumCircuit.t()
+  def tdg(%QuantumCircuit{} = circuit, qubit) do
+    QuantumCircuit.add_gate(circuit, :tdg, qubit)
+  end
+
+  @doc """
   Applies a controlled-Z (CZ) gate.
 
   The CZ gate applies a phase of -1 if and only if both qubits are |1⟩.

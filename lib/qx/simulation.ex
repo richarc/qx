@@ -499,6 +499,7 @@ defmodule Qx.Simulation do
 
   @spec apply_single_qubit_op(gate_name(), [qubit()], [number()], state(), non_neg_integer()) ::
           state()
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp apply_single_qubit_op(gate_name, [qubit], params, state, num_qubits) do
     case gate_name do
       :h -> Calc.apply_single_qubit_gate(state, Gates.hadamard(), qubit, num_qubits)
@@ -508,6 +509,7 @@ defmodule Qx.Simulation do
       :s -> Calc.apply_single_qubit_gate(state, Gates.s_gate(), qubit, num_qubits)
       :sdg -> Calc.apply_single_qubit_gate(state, Gates.s_dagger(), qubit, num_qubits)
       :t -> Calc.apply_single_qubit_gate(state, Gates.t_gate(), qubit, num_qubits)
+      :tdg -> Calc.apply_single_qubit_gate(state, Gates.t_dagger(), qubit, num_qubits)
       _ -> apply_parameterized_single_qubit_op(gate_name, qubit, params, state, num_qubits)
     end
   end
