@@ -387,7 +387,7 @@ If code would violate ANY of these:
 1. STOP. 2. Show the problematic code. 3. Show the correct pattern. 4. Ask permission to apply the fix.
 
 **Elixir / OTP**
-1. NO `String.to_atom/1` on caller-supplied strings — atom-table exhaustion. Use `String.to_existing_atom/1` or keep strings.
+1. NO `String.to_atom/1` on caller-supplied strings — atom-table exhaustion. Use `String.to_existing_atom/1` or keep strings. **This includes `Module.concat/1`, `:erlang.binary_to_atom/2`, and `:erlang.list_to_atom/1`** — they intern immediately and unconditionally, so building a module/atom from a *parse- or request-derived* name (a generated module name, user identifier, or hash of input) is the same hazard wearing a different name. Ask: **is the set of distinct inputs bounded?** Unbounded → one permanent, non-GC'd atom per distinct input → table exhaustion → BEAM crash (a DoS surface for parsers/transpilers/codegen). "The atom will exist later anyway once the source compiles" is NOT a license to intern it eagerly now — prefer letting `Code.compile_string/1` mint the module atom at load time, or `Module.safe_concat/1` (raises unless the atom already exists). See `.claude/solutions/security-issues/eager-atom-intern-from-generated-name-unbounded-qx-openqasm-codegen-20260712.md`.
 2. NO process (GenServer / Agent / Task started under a supervisor) without a runtime reason. Qx is a *library*; processes force callers to supervise. Justify with: concurrency, isolated state, or fault isolation.
 
 **Nx kernels (`lib/qx/calc*.ex`, any `defn`)**
