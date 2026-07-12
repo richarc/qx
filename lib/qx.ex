@@ -1042,11 +1042,15 @@ defmodule Qx do
       iex> Qx.QuantumCircuit.get_instructions(qc)
       [{:barrier, [0, 2], []}]
 
+      iex> qc = Qx.create_circuit(3) |> Qx.barrier(0..2)
+      iex> Qx.QuantumCircuit.get_instructions(qc)
+      [{:barrier, [0, 1, 2], []}]
+
   ## Raises
 
     * `Qx.QubitIndexError` - If any qubit index is out of range
   """
-  @spec barrier(circuit(), list(non_neg_integer())) :: circuit()
+  @spec barrier(circuit(), [non_neg_integer()] | Range.t()) :: circuit()
   defdelegate barrier(circuit, qubits), to: Operations
 
   @doc """
@@ -1067,7 +1071,11 @@ defmodule Qx do
 
   @doc """
   Adds a single barrier spanning the given list or range of qubits.
-  See `Qx.Patterns.barrier_all/2`. Empty list/range is a no-op.
+
+  > #### Deprecated {: .warning}
+  > Use `Qx.barrier/2`, which now accepts a list **or range** and produces the
+  > same single-barrier instruction. `barrier_all/2` is redundant and will be
+  > removed in Qx 1.0. (`barrier_all/1` — barrier over every qubit — stays.)
 
   ## Returns
 
@@ -1077,6 +1085,7 @@ defmodule Qx do
 
     * `Qx.QubitIndexError` - If any listed qubit index is out of range
   """
+  @deprecated "Use `Qx.barrier/2`, which now accepts a list or range. Will be removed in Qx 1.0"
   @spec barrier_all(circuit(), Patterns.qubits()) :: circuit()
   defdelegate barrier_all(circuit, qubits), to: Patterns
 
@@ -1208,7 +1217,11 @@ defmodule Qx do
 
   ## Parameters
     * `circuit` - Quantum circuit to execute
-    * `options` - Optional parameters (can be keyword list or integer for backward compatibility)
+    * `options` - A keyword list of options (see below). Passing a bare integer
+      as the number of shots (`Qx.run(qc, 1000)`) is a **soft-deprecated**
+      shorthand for `Qx.run(qc, shots: 1000)`: it still works exactly as before
+      (no warning), but prefer the keyword form — the integer overload may be
+      removed in Qx 1.0.
 
   ## Options
     * `:shots` - Number of measurement shots (default: 1024)
@@ -1764,7 +1777,11 @@ defmodule Qx do
 
   @doc """
   Creates an `n`-qubit equal-superposition circuit (Hadamard on every
-  qubit). Default is 1 qubit. See `Qx.Patterns.superposition_circuit/1`.
+  qubit). Default is 1 qubit.
+
+  > #### Deprecated {: .warning}
+  > Use `Qx.create_circuit(n) |> Qx.h_all()` — it is the same circuit, expressed
+  > through the primary gate surface. `superposition/1` will be removed in Qx 1.0.
 
   ## Returns
 
@@ -1780,6 +1797,7 @@ defmodule Qx do
       iex> length(Qx.QuantumCircuit.get_instructions(sup_circuit))
       3
   """
+  @deprecated "Use `Qx.create_circuit(n) |> Qx.h_all()`. Will be removed in Qx 1.0"
   @spec superposition(pos_integer()) :: circuit()
   defdelegate superposition(num_qubits \\ 1), to: Patterns, as: :superposition_circuit
 

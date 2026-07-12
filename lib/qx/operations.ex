@@ -670,7 +670,7 @@ defmodule Qx.Operations do
 
   ## Parameters
     * `circuit` - The quantum circuit
-    * `qubits` - List of qubit indices the barrier spans
+    * `qubits` - A list or range of qubit indices the barrier spans
 
   ## Examples
 
@@ -679,8 +679,18 @@ defmodule Qx.Operations do
       iex> [{gate, qubits, _params}] = Qx.QuantumCircuit.get_instructions(qc)
       iex> {gate, qubits}
       {:barrier, [0, 1, 2]}
+
+      iex> qc = Qx.QuantumCircuit.new(3, 0)
+      iex> qc = Qx.Operations.barrier(qc, 0..2)
+      iex> [{gate, qubits, _params}] = Qx.QuantumCircuit.get_instructions(qc)
+      iex> {gate, qubits}
+      {:barrier, [0, 1, 2]}
   """
-  @spec barrier(QuantumCircuit.t(), [non_neg_integer()]) :: QuantumCircuit.t()
+  @spec barrier(QuantumCircuit.t(), [non_neg_integer()] | Range.t()) :: QuantumCircuit.t()
+  def barrier(%QuantumCircuit{} = circuit, %Range{} = qubits) do
+    barrier(circuit, Enum.to_list(qubits))
+  end
+
   def barrier(%QuantumCircuit{} = circuit, qubits) when is_list(qubits) do
     Validation.validate_qubit_indices!(qubits, circuit.num_qubits)
     QuantumCircuit.add_barrier(circuit, qubits)

@@ -196,8 +196,10 @@ defmodule Qx.Draw do
   Shows basis states with their complex amplitudes and probabilities.
 
   ## Parameters
-    * `register_or_state` - An `Nx.Tensor` state vector (an internal
-      calc-engine register struct also works)
+    * `state` - An `Nx.Tensor` state vector (e.g. from `Qx.get_state/1` or a
+      `Qx.Step`). Passing an internal calc-engine Qx.Register struct is
+      **deprecated** (emits a runtime warning; removed in Qx 1.0) — use circuit
+      mode instead.
     * `options` - Optional formatting parameters (default: [])
 
   ## Options

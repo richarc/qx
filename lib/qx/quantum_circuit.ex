@@ -235,7 +235,32 @@ defmodule Qx.QuantumCircuit do
   end
 
   @doc """
-  Gets the current quantum state of the circuit.
+  Returns the circuit's **initial** state vector — the `|0…0⟩` recipe start,
+  not the result of running the circuit.
+
+  A `Qx.QuantumCircuit` is a recipe: gates are recorded, then applied when you
+  run it. This returns the stored starting state (`circuit.state`). To get the
+  state *after* the gates, run the circuit: `Qx.get_state/1` (1-qubit) or
+  `Qx.run/2` + `Qx.SimulationResult`. See also `reset/1` and `depth/1`.
+
+  ## Returns
+
+  The initial state vector as an `Nx.Tensor` of shape `{2^n}`.
+
+  ## Examples
+
+      iex> qc = Qx.QuantumCircuit.new(1, 0)
+      iex> state = Qx.QuantumCircuit.initial_state(qc)
+      iex> Nx.shape(state)
+      {2}
+  """
+  @spec initial_state(t()) :: Nx.Tensor.t()
+  def initial_state(%__MODULE__{} = circuit) do
+    circuit.state
+  end
+
+  @doc """
+  Gets the initial quantum state of the circuit.
 
   ## Examples
 
@@ -244,9 +269,10 @@ defmodule Qx.QuantumCircuit do
       iex> Nx.shape(state)
       {2}
   """
+  @deprecated "Use `initial_state/1` (this returns the circuit's INITIAL state, not a run result; `Qx.get_state/1` runs the circuit). Will be removed in Qx 1.0"
   @spec get_state(t()) :: Nx.Tensor.t()
   def get_state(%__MODULE__{} = circuit) do
-    circuit.state
+    initial_state(circuit)
   end
 
   @doc """

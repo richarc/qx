@@ -33,6 +33,13 @@ defmodule Qx.Draw.Tables do
     state =
       case register_or_state do
         %Qx.Register{state: s} ->
+          IO.warn(
+            "Passing a Qx.Register to Qx.draw_state/2 (Qx.Draw.state_table/2) is " <>
+              "deprecated and will be removed in Qx 1.0. Use circuit mode: run the " <>
+              "circuit and pass the state vector (`Qx.get_state/1` or a `Qx.Step`).",
+            []
+          )
+
           s
 
         tensor when is_struct(tensor, Nx.Tensor) ->

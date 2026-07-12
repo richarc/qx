@@ -27,6 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to `Qx.Export.OpenQASM`, so OpenQASM interop is reachable directly from
   the top-level `Qx` module. (`from_qasm_function/1` remains on
   `Qx.Export.OpenQASM` pending a separate atom-vs-string change.)
+- `Qx.barrier/2` now accepts a **range** (e.g. `Qx.barrier(qc, 0..3)`) as well
+  as a list — the same single-barrier instruction either way.
+- `Qx.QuantumCircuit.initial_state/1` — returns the circuit's initial (`|0…0⟩`)
+  state vector, a clearly-named replacement for the misleadingly-named
+  `get_state/1` (see Deprecated).
 
 ### Changed
 
@@ -38,6 +43,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when drawn.
 
 ### Deprecated
+
+Deprecation batch (findings T1-04/06/08/14, R-02, B-01/05/06/07) — the v0.11
+window opens; all still work, removals at 1.0:
+
+- `Qx.barrier_all/2` → use `Qx.barrier/2` (now accepts a list or range; the two
+  produce the same single-barrier instruction). `barrier_all/1` (barrier over
+  every qubit) stays.
+- `Qx.superposition/1` → use `Qx.create_circuit(n) |> Qx.h_all()`.
+- `Qx.QuantumCircuit.get_state/1` → use `Qx.QuantumCircuit.initial_state/1`. The
+  old name was misleading: it returns the circuit's *initial* recipe state, not
+  a run result (`Qx.get_state/1` runs the circuit). `reset/1`/`depth/1` cover the
+  other intents.
+- Passing a Qx.Register to `Qx.draw_state/2` / `Qx.Draw.state_table/2` — emits
+  a runtime warning; use circuit mode (`Qx.get_state/1` or a `Qx.Step`).
+- **Soft (documentation-only, no warning):** `Qx.run/2`'s bare-integer shots
+  shorthand `Qx.run(qc, 1000)` — prefer `Qx.run(qc, shots: 1000)`. Still fully
+  supported; the integer overload may be removed in Qx 1.0.
 
 The v0.11 StateInit/Math tier trim (findings R-07/R-08/R-13): both
 modules stay public with a trimmed supported surface — `StateInit`

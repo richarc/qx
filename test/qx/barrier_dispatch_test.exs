@@ -160,4 +160,20 @@ defmodule Qx.BarrierDispatchTest do
       assert Qx.QuantumCircuit.get_instructions(qc) == [{:barrier, [0, 2], []}]
     end
   end
+
+  describe "barrier/2 range support" do
+    test "accepts a range, byte-identical to the equivalent list" do
+      via_range = Qx.create_circuit(4) |> Qx.barrier(0..2)
+      via_list = Qx.create_circuit(4) |> Qx.barrier([0, 1, 2])
+
+      assert Qx.QuantumCircuit.get_instructions(via_range) == [{:barrier, [0, 1, 2], []}]
+      assert via_range == via_list
+    end
+
+    test "out-of-range qubit in a range still raises Qx.QubitIndexError" do
+      qc = Qx.create_circuit(3)
+
+      assert_raise Qx.QubitIndexError, fn -> Qx.barrier(qc, 0..5) end
+    end
+  end
 end
