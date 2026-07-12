@@ -1,5 +1,9 @@
 defmodule Qx.Math do
   @moduledoc """
+  Utility module: a documented tier-2 escape hatch below the circuit API
+  (normal use never reaches it — `normalize/1` and `probabilities/1` are
+  the supported surface).
+
   Core mathematical functions for quantum mechanics calculations.
 
   The public surface of this module is `normalize/1` and `probabilities/1`

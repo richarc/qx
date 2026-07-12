@@ -1,5 +1,8 @@
 defmodule Qx.StateInit do
   @moduledoc """
+  Utility module: a documented tier-2 escape hatch below the circuit API
+  (normal use never reaches it — circuits are the primary path).
+
   State initialization utilities for quantum systems.
 
   The public surface of this module is `basis_state/2,3` — the raw

@@ -1,7 +1,7 @@
 defmodule Qx.Draw.Image do
   @moduledoc """
-  An SVG image artifact produced by `Qx.draw_bloch/2` and
-  `Qx.draw_circuit/2`.
+  Tier 1: a core Qx type — the SVG image artifact produced by
+  `Qx.draw_bloch/2` and `Qx.draw_circuit/2`.
 
   The struct is plain data with one static shape in every environment
   (see `spec/api-design-principles.md` §6): Livebook renders it

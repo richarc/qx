@@ -119,6 +119,17 @@ and will be **removed in Qx 1.0**:
 
 ### Documentation
 
+- Principles-doc post-review edits (findings T1-09/17/18, B-13; tension #7):
+  `spec/api-design-principles.md` §6 gains naming-family rows for
+  `run`/`steps`, `c_if`, `barrier`, `*_chain`, and the prep appenders
+  (`bell_pair`, `ghz`), plus a **Documented exceptions** subsection
+  (`Qx.version/0`, the `measure_z/3` basis-teaching alias, and
+  `Qx.get_state/2`'s typed raise on measured circuits); tensions #6/#7/#8
+  recorded as adjudicated. Iron Law #6's covered surface is now defined by
+  each module's **moduledoc tier annotation** (§3) instead of a
+  hand-maintained flat list — tier openers added to the five modules that
+  lacked one (`StateInit`, `Math`, `Hardware.Config`, `Draw.Image`,
+  `Draw.StateTable`).
 - `Qx.Export.OpenQASM.from_qasm_function/1`: documented the safe way to obtain
   the callable generated module — compile `source` and use the module atom that
   `Code.compile_string/1` returns (`[{mod, _bin}] = Code.compile_string(source)`)

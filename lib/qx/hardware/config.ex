@@ -1,5 +1,7 @@
 defmodule Qx.Hardware.Config do
   @moduledoc """
+  Utility module: the tier-2 configuration struct for `Qx.Hardware`.
+
   Configuration for `Qx.Hardware` execution against IBM Quantum via the
   qxportal transpilation service.
 

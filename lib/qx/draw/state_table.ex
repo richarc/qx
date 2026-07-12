@@ -1,8 +1,8 @@
 defmodule Qx.Draw.StateTable do
   @moduledoc """
-  A quantum-state table artifact produced by `Qx.draw_state/2`: every
-  basis state with its amplitude and probability, pre-rendered in
-  three encodings.
+  Tier 1: a core Qx type — the quantum-state table artifact produced by
+  `Qx.draw_state/2`: every basis state with its amplitude and
+  probability, pre-rendered in three encodings.
 
   The struct is plain data with one static shape in every environment
   (see `spec/api-design-principles.md` §6): Livebook renders the

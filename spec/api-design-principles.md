@@ -54,21 +54,26 @@ documented, listed in HexDocs, and still be the wrong thing to teach.
 "Public" conflates two questions. Split them:
 
 - **Tier 1, taught.** `Qx` plus the structs it hands back
-  (`QuantumCircuit`, `SimulationResult`, `Step`). This is the entire
-  surface the README, tutorials, and guides may use. A learner needs
-  zero aliases.
-- **Tier 2, documented utilities.** `StateInit`, `Math`, `Patterns`,
-  `Draw`, `Export.OpenQASM`, `Hardware.*`. For library authors and
-  advanced escape hatches. Documented, stable, covered by Iron Law #6,
-  and absent from learning material.
+  (`QuantumCircuit`, `SimulationResult`, `Step`, and the `Draw.Image` /
+  `Draw.StateTable` artifacts the `draw_*` functions return). This is
+  the entire surface the README, tutorials, and guides may use. A
+  learner needs zero aliases.
+- **Tier 2, documented utilities.** `Operations`, `Simulation`,
+  `Patterns`, `StateInit`, `Math`, `Draw`, `Export.OpenQASM`,
+  `Hardware`, `Hardware.Config`. For library authors and advanced
+  escape hatches. Documented, stable, covered by Iron Law #6, and
+  absent from learning material.
 - **Tier 3, internal.** `@moduledoc false`. No stability promise.
   `Qubit`, `Register`, `Format`, `Validation`, the Draw and QASM
   internals live here.
 
 Every module belongs to exactly one tier, recorded in its moduledoc
-(tier 2 modules open with "Utility module: reached from `Qx.*` in
-normal use"). A tutorial importing tier 2 is a bug. A tier 2 module
-that tier 1 never delegates to should justify its existence.
+opener — the annotation is the declaration: tier 2 moduledocs open
+with "Utility module: …" (most continue "reached from `Qx.*` in
+normal use"; escape hatches say so instead), tier 1 structs open with
+"Tier 1: a core Qx type". A tutorial importing tier 2 is a bug. A
+tier 2 module that tier 1 never delegates to should justify its
+existence.
 
 ## 4. Simplicity: one obvious way
 
@@ -117,12 +122,16 @@ the return kind (see orthogonality).
 | `measure*` | add measurement instructions | `measure`, `measure_x/y/z`, `measure_all` |
 | `*_all` | broadcast over qubits | `h_all`, `x_all`, `y_all`, `z_all`, `barrier_all`, `measure_all` |
 | `tap_*` | peek mid-pipeline, return the circuit | `tap_circuit`, `tap_state`, `tap_probabilities` |
-| `to_* / from_*` | leave / enter another format | `to_qasm`, `from_qasm` |
-| `*dg` | dagger (inverse) gate | `sdg` |
+| `to_* / from_*` | leave / enter another format | `to_qasm`, `from_qasm`, `from_qasm!` |
+| `*dg` | dagger (inverse) gate | `sdg`, `tdg` |
+| `run` / `steps` | execute a circuit / replay it stepwise | `run` (eager, `%SimulationResult{}`), `steps` (lazy stream of `%Step{}`) |
+| `c_if` | wrap gates behind a classical condition | `c_if` (single member by design — the only classical-feedback entry point) |
+| `barrier` | visual grouping marker, no state effect | `barrier` (list or range), `barrier_all/1` |
+| `*_chain` | linear cascade along a qubit sequence | `cx_chain` |
+| prep appenders | append a named preparation at chosen qubits | `bell_pair`, `ghz` (their creators `bell_state`, `ghz_state` are thin teaching wrappers over them — §8) |
 
 New functions join a family or argue for a new row here. Predicates
-end in `?`. The `sdg` row implies a `tdg` question the review should
-answer: either add it or document why `phase(-π/4)` is the answer.
+end in `?`.
 
 **Return shapes.** Same family, same shape. Builders return the
 circuit for piping. `run` returns `%SimulationResult{}` and nothing
@@ -171,6 +180,26 @@ stable. Where behaviour differs in and out of Livebook, the doc says
 so in the first paragraph, and a single "Visualisation in and out of
 Livebook" guide owns the full story.
 
+**Documented exceptions.** Deviations the review adjudicated as
+deliberate (per the contract in the preamble: a deviation is a finding
+or it is listed here, with the reason):
+
+- `Qx.version/0` (T1-09). No subject argument and no naming family —
+  the standard zero-arg library-metadata idiom over
+  `Application.spec/2`. Exempt from the argument-order rule; too small
+  to warrant a family row.
+- `Qx.measure_z/3`. Byte-identical alias of `measure/3`, a deliberate
+  violation of §4's one-obvious-way rule: it exists so the basis triad
+  `measure_x` / `measure_y` / `measure_z` reads symmetrically when
+  teaching measurement bases. Tutorials teach `measure/3`; the
+  basis-explicit forms are for the measurement-bases lesson only.
+- `Qx.get_state/2` raises `Qx.MeasurementError` on circuits containing
+  measurements or conditionals — a `get_*` ("pure read") that can
+  raise. The read is still non-mutating; the raise is a typed guard
+  against a question with no pure answer (the post-measurement state is
+  shot-dependent), and the message steers to `run/2`. Not a return-type
+  change, so the orthogonality rule is intact.
+
 ## 7. Learnability tests
 
 Fast smell tests, applied per function during review:
@@ -218,9 +247,10 @@ above it.
 inside an error-corrected register. A creator (`bell_state/1`) can't
 nest; it can only start. So every block ships as an appender, and a
 from-scratch creator is only added where teaching wants a one-liner,
-as a thin wrapper over the appender. `Patterns` currently mixes the
-two shapes with no appender underneath its creators; that's a tension
-for the review (section 9).
+as a thin wrapper over the appender. (Resolved in v0.11 — tension #8:
+`Patterns` gained the `bell_pair/4` and `ghz/2` appenders and its
+creators are now thin wrappers over them, byte-identical by invariant
+test. This paragraph is the standing rule for every future block.)
 
 **Blocks compose operations; they never invent instruction shapes.**
 A building block calls tier 1 and 2 functions and nothing else. The
@@ -261,8 +291,16 @@ purpose:
 5. `measure_x/y` post-measurement state staying Z-aligned
    mid-circuit (documented today; is documentation enough?).
 6. Missing `tdg` versus the `phase(-π/4)` idiom the tutorials teach.
+   → **Adjudicated (v0.11):** `tdg` added as a native gate — own
+   instruction, simulation dispatch via `Gates.t_dagger()`, `"T†"`
+   drawing, and an instruction-exact QASM round-trip. The
+   `phase(-π/4)` spelling remains valid but is no longer the only one.
 7. Whether Iron Law #6's flat "public surface" list should become
    the tier annotations from section 3.
+   → **Adjudicated (v0.11):** yes. Iron Law #6 now defines its
+   covered surface by the moduledoc tier annotations (§3); the module
+   enumeration it carries is an explicitly-labelled snapshot, not the
+   source of truth.
 8. `Patterns` mixes appenders (`cx_chain`, `*_all`) with creators
    (`bell_state`, `ghz_state`, `superposition`). Review evidence
    (build-layer report B-10): `superposition_circuit` already wraps
@@ -271,6 +309,10 @@ purpose:
    work multiplies whichever shape stands: add the missing appender
    forms (e.g. `bell_pair(circuit, q0, q1)`) and reframe the creators
    as wrappers, or grandfather the creators as teaching facades.
+   → **Adjudicated (v0.11):** appenders added (`bell_pair/4`,
+   `ghz/2`); `bell_state`/`ghz_state` reframed as byte-identical thin
+   wrappers (invariant-tested); `superposition/1` deprecated in the
+   v0.11 batch in favour of `create_circuit(n) |> h_all()`.
 
 ## 10. How the review applies this
 
