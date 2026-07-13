@@ -4,33 +4,14 @@ What's planned for Qx, by release version. Released versions and the
 changes they shipped live in [`CHANGELOG.md`](CHANGELOG.md) — shipped
 milestone sections are removed from this file once they're on Hex.
 
-Last updated: 2026-07-08. Restructured: the old three-theme v0.11 is
-now one release per theme — API follow-through (v0.11), simulation
-refactor & performance (v0.12), visualization & hardware (v0.13) —
-with noise and algorithms shifting down to v0.14/v0.15. The API
+Last updated: 2026-07-13. v0.11 (API Review Follow-Through) is
+complete — its scope moved to `CHANGELOG.md` for the 0.11.0 release,
+per the shipped-milestone convention above. Next up: simulation
+refactor & performance (v0.12), visualization & hardware (v0.13),
+with noise and algorithms in v0.14/v0.15. The API
 consistency review's yardstick is `spec/api-design-principles.md`; its
 findings and triage buckets are in
 `.claude/plans/api-consistency-review/findings.md`.
-
----
-
-## v0.11: API Review Follow-Through
-
-The API consistency review's non-breaking follow-through: the
-typed-error and docs sweeps, the additive surface the review called
-for, and the deprecations whose window opens this minor. A minor
-release: additive and internal, no breaking changes (those wait for
-the 1.0 gate list in the Backlog).
-
-- [x] Typed-error sweep #3: raw `FunctionClauseError`/`ArgumentError` still escaping tier 1/2 — `create_circuit` (docs advertise the raw error), `bell_state(:bogus)`, `ghz_state(1)`, `h(qc, "0")`, `c_if` type slips, seven `StateInit` constructors (scoped to `basis_state/2,3` — the other constructors were deprecated by the v0.11 tier trim), `filter_by_probability(result, 1)`, `Math.normalize` zero-vector NaN; plus `rx/ry/rz/phase` gaining the `validate_parameter!` their `u/cp/cr*` siblings already run (findings B-09, B-14, T1-10, R-04, R-09, R-10)
-- [x] Docs sweep: the 83 missing `@spec`s, `## Returns`/`## Raises` on tier 1 functions, §3 tier-annotation openers on tier-2 moduledocs, the tap_* simulation warning copied up to the facade docs, angle types unified to `number()` (findings B-08, B-15, R-12, R-15, T1-11/15/16) — landed as 47 supported `@spec`s (the other 36 were `@deprecated`/`@doc false`, exempt), 55 `## Returns` + 18 grounded `## Raises`, tier openers, tap warning copy-up, and the OpenQASM doc-rot fix
-- [x] Additive surface: `bell_pair(circuit, q0, q1, which)` and `ghz(circuit, qubits)` appenders with the creators reframed as wrappers (principles §8; must land before the v0.15 building-block work multiplies the creator shape), `tdg/2` (QASM round-trip parity), `to_qasm`/`from_qasm`/`from_qasm!` facade delegates on `Qx` (findings T1-05/07/12, B-10)
-- [x] Producer hygiene: `Patterns.measure_all` composes `Operations.measure/3` instead of a hidden internal; single producer path for barrier/c_if instruction tuples (new `@doc false` `QuantumCircuit.add_barrier/2` + `add_conditional/4`, `Operations` delegates); `add_gate` confirmed internal (`@doc false`, no external callers) — no per-name validation (gate atoms are hardcoded by `Operations`; Iron Law #9 is covered by execution-test-per-shape). All six producers now centralized on the `QuantumCircuit.add_*` surface. (findings B-04/11/12; Iron Law #9 pressure)
-- [x] `from_qasm_function/1` module ergonomics. Found by the post-release README audit (findings addendum 2026-07-04). **Resolved (2026-07-12) NOT by returning an atom:** the original idea — return `module:` as an atom via `Module.concat/1` — was rejected under review as an **Iron Law #1 (atom-table exhaustion)** hazard: it would intern one permanent atom per distinct incoming program, eagerly, whether or not the caller ever compiles the source (a DoS surface for a public transpilation service). And it was unnecessary — `Code.compile_string(source)` already hands the caller the module atom safely (interned only on load). Resolved instead by documenting that safe idiom in the moduledoc + README, with an explicit caveat against interning the `module` string on untrusted input. No API/return-type change; stays non-breaking.
-- [x] Deprecation batch (window opens this minor, removals at 1.0): `barrier_all/2` → `barrier/2` (now list-or-range); `superposition/1` → `create_circuit(n) |> h_all()`; `QuantumCircuit.get_state/1` → new `initial_state/1` (misleadingly named — returns the initial recipe state, not a run result); `draw_state` Register input → runtime warn (tier-3 escape hatch out of the tier-1 spec); `run/2`'s integer-shots overload → **soft** (doc-only) deprecation, kept working since it's heavily used in the README + qxportal tutorials. (findings T1-04/06/08/14, R-02, B-01/05/06/07)
-- [x] Decide and execute the StateInit/Math tier trim: tier 1/2 code touches only `basis_state`, `normalize`, `probabilities`; the other 16 public functions are orphans, and `Behaviours.QuantumState` has zero public implementors. Demote/deprecate per findings R-07/R-08/R-13; delete the two dead `@doc false` Math converters outright (plan: stateinit-math-tier-trim)
-- [x] Principles-doc post-review edits: documented exceptions (`version/0`, `measure_z` alias, `get_state`-raises-on-measured), new §6 family rows for run/steps/c_if/barrier/`*_chain` + the prep appenders (`bell_pair`/`ghz`, deferred from circuit-appenders), tensions #6/#7/#8 recorded as adjudicated (findings T1-09/17/18, B-13); Iron Law #6's flat surface list replaced by the §3 moduledoc tier annotations (tension #7) — tier openers added to the five modules that lacked one, and §3's tier lists corrected (`Operations`/`Simulation` were missing; `Draw.Image`/`Draw.StateTable` added to tier 1)
-- [ ] Modernise or retire `test/qx_manual_test.livemd`: partially updated by the Draw rework but still built on calc-mode aliases; either rewrite onto the circuit surface or fold what it covers into the qxportal tutorials and delete
 
 ---
 

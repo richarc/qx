@@ -8,13 +8,12 @@ Mix.install([
   {:kino_vega_lite, "~> 0.1.11"}
 ])
 
-alias Qx.{Qubit, Register}
 pi = :math.pi()
 ```
 
 ## Introduction
 
-This notebook is a **manual visual test suite** for the Qx quantum computing simulator. It is not an automated test — it is a human-facing confirmation tool.
+This notebook is a **manual visual test suite** for the Qx quantum computing simulator. It is not an automated test — it is a human-facing confirmation tool that exercises the visual and interactive surfaces of the tier-1 API (representative cells per family; exhaustive numeric coverage lives in the automated suite).
 
 **How to use this notebook:**
 
@@ -25,18 +24,23 @@ This notebook is a **manual visual test suite** for the Qx quantum computing sim
 
 Each section covers a distinct area of Qx functionality:
 
-- **Single-Qubit Gates** — Bloch sphere visualization per gate (Calc mode)
-- **Two-Qubit Gates** — Probability histograms from statevector
-- **Three-Qubit Gates** — CCX (Toffoli) and CSWAP (Fredkin)
-- **Entanglement & Preset States** — Bell states, GHZ, preset helpers
-- **Circuit Diagrams** — `Qx.draw_circuit/2` images render inline via `Kino.Render`
-- **Measurement & Conditional Gates** — Shot-based simulation and `c_if`
+* **Single-Qubit Gates** — Bloch sphere visualization per gate
+* **Two-Qubit Gates** — Probability histograms from statevector
+* **Three-Qubit Gates** — CCX (Toffoli) and CSWAP (Fredkin)
+* **Entanglement & Preset States** — Bell states, GHZ, preset helpers
+* **Circuit Diagrams** — `Qx.draw_circuit/2` images render inline via `Kino.Render`
+* **Measurement & Conditional Gates** — Shot-based simulation and `c_if`
+* **Step-Through Inspection** — `Qx.steps/2` per-operation replay, seeded trajectories
+* **Composite Patterns & Appenders** — `bell_pair`, `ghz`, `cx_chain`, `h_all` at chosen qubits
+* **OpenQASM Round-Trip** — export, re-import, and code generation
+* **Measurement Bases** — X-, Y-, and Z-basis measurement
+* **Capstone: Quantum Teleportation** — everything composing end-to-end
 
 ---
 
 ## 1. Single-Qubit Gates
 
-Each gate is applied to the |0⟩ state using Calc mode (`Qx.Qubit`). The resulting qubit state is rendered as a Bloch sphere. The dot on the sphere shows where the state vector points.
+Each gate is applied through the circuit API: build a 1-qubit circuit, apply the gate, take the state with `Qx.get_state/1`, and render it as a Bloch sphere. The dot on the sphere shows where the state vector points.
 
 **Reading the Bloch sphere:** |0⟩ is the north pole, |1⟩ is the south pole, and equatorial states are superpositions. The +X axis corresponds to |+⟩ = (|0⟩+|1⟩)/√2, and the +Y axis to |i⟩ = (|0⟩+i|1⟩)/√2.
 
@@ -46,7 +50,10 @@ Creates an equal superposition from a basis state. Rotates the Bloch vector from
 
 ```elixir
 # Expected: Dot at the +X equator (|+⟩ state, Bloch vector pointing right)
-Qubit.new() |> Qubit.h() |> Qx.draw_bloch(title: "H|0⟩ → |+⟩")
+Qx.create_circuit(1)
+|> Qx.h(0)
+|> Qx.get_state()
+|> Qx.draw_bloch(title: "H|0⟩ → |+⟩")
 ```
 
 ### X — Pauli-X (bit flip)
@@ -55,7 +62,10 @@ Flips |0⟩ to |1⟩. Equivalent to a classical NOT gate. Rotates the Bloch vect
 
 ```elixir
 # Expected: Dot at the south pole (|1⟩ state)
-Qubit.new() |> Qubit.x() |> Qx.draw_bloch(title: "X|0⟩ → |1⟩")
+Qx.create_circuit(1)
+|> Qx.x(0)
+|> Qx.get_state()
+|> Qx.draw_bloch(title: "X|0⟩ → |1⟩")
 ```
 
 ### Y — Pauli-Y
@@ -64,7 +74,10 @@ Applies both a bit flip and a phase flip. Like X, it maps |0⟩ to the south pol
 
 ```elixir
 # Expected: Dot at the south pole (i|1⟩ state; global phase i invisible on Bloch sphere)
-Qubit.new() |> Qubit.y() |> Qx.draw_bloch(title: "Y|0⟩ → i|1⟩")
+Qx.create_circuit(1)
+|> Qx.y(0)
+|> Qx.get_state()
+|> Qx.draw_bloch(title: "Y|0⟩ → i|1⟩")
 ```
 
 ### Z — Pauli-Z (phase flip)
@@ -73,7 +86,11 @@ Leaves |0⟩ unchanged (it is an eigenstate of Z). Starting from |+⟩ makes the
 
 ```elixir
 # Expected: Dot at the −X equator (|−⟩ state); |0⟩ is a Z eigenstate so it would stay at north pole
-Qubit.plus() |> Qubit.z() |> Qx.draw_bloch(title: "Z|+⟩ → |−⟩")
+Qx.create_circuit(1)
+|> Qx.h(0)
+|> Qx.z(0)
+|> Qx.get_state()
+|> Qx.draw_bloch(title: "Z|+⟩ → |−⟩")
 ```
 
 ### S — Phase (π/2)
@@ -82,7 +99,25 @@ Applies a π/2 phase shift to |1⟩. Starting from |+⟩, it rotates the equator
 
 ```elixir
 # Expected: Dot at the +Y equator (|i⟩ = (|0⟩ + i|1⟩)/√2)
-Qubit.plus() |> Qubit.s() |> Qx.draw_bloch(title: "S|+⟩ → |i⟩")
+Qx.create_circuit(1)
+|> Qx.h(0)
+|> Qx.s(0)
+|> Qx.get_state()
+|> Qx.draw_bloch(title: "S|+⟩ → |i⟩")
+```
+
+### S† — S-dagger (inverse phase)
+
+The adjoint of S: a −π/2 phase shift. Applying S then S† must return the state exactly to |+⟩ — the round trip is the test.
+
+```elixir
+# Expected: Dot back at the +X equator (S† undid S; same position as H|0⟩)
+Qx.create_circuit(1)
+|> Qx.h(0)
+|> Qx.s(0)
+|> Qx.sdg(0)
+|> Qx.get_state()
+|> Qx.draw_bloch(title: "S†S|+⟩ → |+⟩ (round trip)")
 ```
 
 ### T — Phase (π/4)
@@ -91,7 +126,25 @@ Applies a π/4 phase shift to |1⟩. Starting from |+⟩, it rotates the equator
 
 ```elixir
 # Expected: Dot on the equator at 45° between +X and +Y axes
-Qubit.plus() |> Qubit.t() |> Qx.draw_bloch(title: "T|+⟩ → equator at 45°")
+Qx.create_circuit(1)
+|> Qx.h(0)
+|> Qx.t(0)
+|> Qx.get_state()
+|> Qx.draw_bloch(title: "T|+⟩ → equator at 45°")
+```
+
+### T† — T-dagger (inverse phase)
+
+The adjoint of T: a −π/4 phase shift, added as a native gate in v0.11. Applying T then T† must return the state exactly to |+⟩.
+
+```elixir
+# Expected: Dot back at the +X equator (T† undid T)
+Qx.create_circuit(1)
+|> Qx.h(0)
+|> Qx.t(0)
+|> Qx.tdg(0)
+|> Qx.get_state()
+|> Qx.draw_bloch(title: "T†T|+⟩ → |+⟩ (round trip)")
 ```
 
 ### Rx(π/2) — X-axis rotation
@@ -100,7 +153,10 @@ Rotates the Bloch vector by π/2 around the X axis. From |0⟩ (north pole), thi
 
 ```elixir
 # Expected: Dot at the −Y equator (Bloch vector pointing into the page)
-Qubit.new() |> Qubit.rx(pi / 2) |> Qx.draw_bloch(title: "Rx(π/2)|0⟩ → −Y equator")
+Qx.create_circuit(1)
+|> Qx.rx(0, pi / 2)
+|> Qx.get_state()
+|> Qx.draw_bloch(title: "Rx(π/2)|0⟩ → −Y equator")
 ```
 
 ### Ry(π/2) — Y-axis rotation
@@ -109,7 +165,10 @@ Rotates the Bloch vector by π/2 around the Y axis. From |0⟩, this produces th
 
 ```elixir
 # Expected: Dot at the +X equator (same position as H|0⟩)
-Qubit.new() |> Qubit.ry(pi / 2) |> Qx.draw_bloch(title: "Ry(π/2)|0⟩ → |+⟩")
+Qx.create_circuit(1)
+|> Qx.ry(0, pi / 2)
+|> Qx.get_state()
+|> Qx.draw_bloch(title: "Ry(π/2)|0⟩ → |+⟩")
 ```
 
 ### Rz(π/2) — Z-axis rotation
@@ -118,7 +177,11 @@ Rotates the Bloch vector by π/2 around the Z axis. Starting from |+⟩, this mo
 
 ```elixir
 # Expected: Dot at the +Y equator (|0⟩ would stay at north pole — start from |+⟩ to see the rotation)
-Qubit.plus() |> Qubit.rz(pi / 2) |> Qx.draw_bloch(title: "Rz(π/2)|+⟩ → +Y equator")
+Qx.create_circuit(1)
+|> Qx.h(0)
+|> Qx.rz(0, pi / 2)
+|> Qx.get_state()
+|> Qx.draw_bloch(title: "Rz(π/2)|+⟩ → +Y equator")
 ```
 
 ### Phase(π/4) — Arbitrary phase
@@ -127,19 +190,22 @@ Applies an arbitrary phase e^{iφ} to the |1⟩ component. Starting from |+⟩ w
 
 ```elixir
 # Expected: Dot on the equator, rotated 45° counter-clockwise from +X (same position as T|+⟩)
-Qubit.plus() |> Qubit.phase(pi / 4) |> Qx.draw_bloch(title: "Phase(π/4)|+⟩ → 45° from +X")
+Qx.create_circuit(1)
+|> Qx.h(0)
+|> Qx.phase(0, pi / 4)
+|> Qx.get_state()
+|> Qx.draw_bloch(title: "Phase(π/4)|+⟩ → 45° from +X")
 ```
 
 ### U(π/2, 0, π) — General single-qubit unitary
 
-The U gate is the most general single-qubit gate, parameterised by three Euler angles θ, φ, λ. U(θ, φ, λ) = Rz(φ) · Ry(θ) · Rz(λ). With θ=π/2, φ=0, λ=π this equals the Hadamard gate up to global phase.
+The U gate is the most general single-qubit gate, parameterised by three Euler angles θ, φ, λ. With θ=π/2, φ=0, λ=π this equals the Hadamard gate up to global phase — and unlike the old calc-mode notebook, this cell exercises the real `Qx.u/5`.
 
 ```elixir
 # Expected: Dot at the +X equator (same as H|0⟩, up to invisible global phase)
-# U(θ,φ,λ) = Rz(φ)·Ry(θ)·Rz(λ); pipes apply right-to-left, so Rz(λ=π) first, then Ry(θ=π/2)
-Qubit.new()
-|> Qubit.rz(pi)
-|> Qubit.ry(pi / 2)
+Qx.create_circuit(1)
+|> Qx.u(0, pi / 2, 0, pi)
+|> Qx.get_state()
 |> Qx.draw_bloch(title: "U(π/2, 0, π)|0⟩ ≈ H|0⟩")
 ```
 
@@ -194,6 +260,19 @@ Qx.create_circuit(2)
 |> Qx.draw_histogram(title: "CZ (H-sandwich): phase flip revealed as |11⟩")
 ```
 
+### CY — Controlled-Y
+
+Like CX, but applies Pauli-Y to the target when the control is |1⟩. On a classical input the probability outcome is identical to CX — the extra i phase is invisible — so this cell checks the gate dispatches and lands on the right basis state.
+
+```elixir
+# Expected: Only |11⟩ has P=1.0 — same distribution as CX on |10⟩ (the i phase is invisible)
+Qx.create_circuit(2)
+|> Qx.x(0)
+|> Qx.cy(0, 1)
+|> Qx.get_probabilities()
+|> Qx.draw_histogram(title: "CY: |10⟩ → i|11⟩ (i phase invisible)")
+```
+
 ### SWAP
 
 The SWAP gate exchanges the states of two qubits. Starting from |10⟩ (qubit 0 = |1⟩, qubit 1 = |0⟩), the result is |01⟩.
@@ -237,6 +316,19 @@ Qx.create_circuit(2)
 |> Qx.h(1)
 |> Qx.get_probabilities()
 |> Qx.draw_histogram(title: "CP(π/2): interference pattern")
+```
+
+### CRY(π) — Controlled rotation
+
+The controlled-rotation family (`crx`, `cry`, `crz`) rotates the target only when the control is |1⟩. CRY(π) stands in for the family: a full π Y-rotation flips the target exactly like CX, but with real amplitudes.
+
+```elixir
+# Expected: Only |11⟩ has P=1.0 — CRY(π) with control active flips the target (crx/crz behave analogously)
+Qx.create_circuit(2)
+|> Qx.x(0)
+|> Qx.cry(0, 1, pi)
+|> Qx.get_probabilities()
+|> Qx.draw_histogram(title: "CRY(π): |10⟩ → |11⟩ (control active)")
 ```
 
 ---
@@ -292,7 +384,8 @@ qc =
   |> Qx.x(2)
   |> Qx.cswap(0, 1, 2)
 
-Qx.get_probabilities(qc) |> Qx.draw_histogram(title: "CSWAP: |101⟩ → |110⟩ (control active, targets swapped)")
+Qx.get_probabilities(qc)
+|> Qx.draw_histogram(title: "CSWAP: |101⟩ → |110⟩ (control active, targets swapped)")
 ```
 
 #### Control inactive: |001⟩ → unchanged
@@ -318,10 +411,11 @@ Bell states, the GHZ state, and the built-in preset state helpers are demonstrat
 The four Bell states are the maximally entangled two-qubit states. They are the quantum analogues of the four combinations of two classical bits. In each case, both qubits are in a superposition: measuring one qubit instantly determines the other.
 
 **Bell basis:**
-- **Φ+ (phi_plus)**: (|00⟩ + |11⟩)/√2 — both qubits correlated
-- **Φ− (phi_minus)**: (|00⟩ − |11⟩)/√2 — both qubits correlated, relative phase
-- **Ψ+ (psi_plus)**: (|01⟩ + |10⟩)/√2 — both qubits anti-correlated
-- **Ψ− (psi_minus)**: (|01⟩ − |10⟩)/√2 — both qubits anti-correlated, relative phase
+
+* **Φ+ (phi_plus)**: (|00⟩ + |11⟩)/√2 — both qubits correlated
+* **Φ− (phi_minus)**: (|00⟩ − |11⟩)/√2 — both qubits correlated, relative phase
+* **Ψ+ (psi_plus)**: (|01⟩ + |10⟩)/√2 — both qubits anti-correlated
+* **Ψ− (psi_minus)**: (|01⟩ − |10⟩)/√2 — both qubits anti-correlated, relative phase
 
 **Qubit ordering:** qubit 0 is the most-significant bit. |01⟩ means qubit 0 = |0⟩, qubit 1 = |1⟩.
 
@@ -391,7 +485,7 @@ Qx.create_circuit(3)
 
 ### Preset State Helpers
 
-`Qx.bell_state/1`, `Qx.ghz_state/0`, and `Qx.superposition/0` are convenience functions that return pre-built circuits. Here they are displayed as state tables using `Qx.draw_state/1`, which shows each basis state with its complex amplitude and probability.
+`Qx.bell_state/1` and `Qx.ghz_state/1` are convenience functions that return pre-built circuits. Here they are displayed as state tables using `Qx.draw_state/1`, which shows each basis state with its complex amplitude and probability. (The old `Qx.superposition/1` preset is deprecated — the last cell shows its replacement idiom.)
 
 #### Φ+ preset
 
@@ -420,11 +514,14 @@ Qx.ghz_state()
 |> Qx.draw_state(hide_zeros: true)
 ```
 
-#### Single-qubit superposition preset
+#### Equal superposition (replacement for the deprecated preset)
+
+`Qx.superposition/1` is deprecated (removal at 1.0); the one-liner below is the supported spelling and produces the identical circuit.
 
 ```elixir
 # Expected: table with |0⟩ amplitude ≈ 0.707+0i, |1⟩ amplitude ≈ 0.707+0i
-Qx.superposition()
+Qx.create_circuit(1)
+|> Qx.h_all()
 |> Qx.get_state()
 |> Qx.draw_state()
 ```
@@ -480,6 +577,33 @@ Qx.create_circuit(2)
 |> Qx.draw_circuit("QFT (2-qubit): H + CP(π/2) + H")
 ```
 
+### Dagger Gates: S† and T† labels
+
+The v0.11 draw fix: `sdg` and `tdg` render as labelled boxes (previously `sdg` raised `{:unsupported_gate, :sdg}` when drawn).
+
+```elixir
+# Expected: 1 qubit wire with four boxes in order: S, S†, T, T† (dagger superscripts visible)
+Qx.create_circuit(1)
+|> Qx.s(0)
+|> Qx.sdg(0)
+|> Qx.t(0)
+|> Qx.tdg(0)
+|> Qx.draw_circuit("Dagger gates: S S† T T†")
+```
+
+### Barrier (range form)
+
+`Qx.barrier/2` accepts a list **or a range** (v0.11). Barriers draw as a dashed vertical marker grouping the spanned qubits.
+
+```elixir
+# Expected: 3 qubit wires; H boxes on all three; a dashed vertical barrier spanning q0–q2; then CX q0→q1
+Qx.create_circuit(3)
+|> Qx.h_all()
+|> Qx.barrier(0..2)
+|> Qx.cx(0, 1)
+|> Qx.draw_circuit("Barrier over 0..2 between H layer and CX")
+```
+
 ---
 
 ## 6. Measurement & Conditional Gates
@@ -499,17 +623,16 @@ Qx.create_circuit(1, 1)
 |> Qx.draw_counts(title: "Single-qubit |+⟩ measurement (1024 shots)")
 ```
 
-### Bell State Measurement
+### Bell State Measurement (measure_all)
 
-A Bell state Φ+ = (|00⟩ + |11⟩)/√2 is maximally entangled. When measured, qubits are always correlated: only |00⟩ and |11⟩ outcomes appear, each with approximately 50% frequency.
+A Bell state Φ+ = (|00⟩ + |11⟩)/√2 is maximally entangled. When measured, qubits are always correlated: only |00⟩ and |11⟩ outcomes appear, each with approximately 50% frequency. `Qx.measure_all/1` measures every qubit into its same-index classical bit in one call.
 
 ```elixir
 # Expected: approximately 500 counts each for "00" and "11"; "01" and "10" should be absent
 Qx.create_circuit(2, 2)
 |> Qx.h(0)
 |> Qx.cx(0, 1)
-|> Qx.measure(0, 0)
-|> Qx.measure(1, 1)
+|> Qx.measure_all()
 |> Qx.run(shots: 1024)
 |> Qx.draw_counts(title: "Bell state Φ⁺ measurement (1024 shots)")
 ```
@@ -528,3 +651,298 @@ Qx.create_circuit(2, 2)
 |> Qx.run(shots: 1024)
 |> Qx.draw_counts(title: "c_if: qubit 1 mirrors qubit 0 (1024 shots)")
 ```
+
+---
+
+## 7. Step-Through Inspection
+
+Circuits are recipes — `Qx.steps/2` replays one operation at a time, yielding a `Qx.Step` per instruction. Each step prints as a readable state line, making it the primary state-inspection tool.
+
+### Watch a Bell state build up
+
+```elixir
+# Expected: two printed lines —
+#   #Qx.Step<0: h(0)  0.707|00⟩ + 0.707|10⟩  cbits: [0, 0]>
+#   #Qx.Step<1: cx(0, 1)  0.707|00⟩ + 0.707|11⟩  cbits: [0, 0]>
+Qx.create_circuit(2)
+|> Qx.h(0)
+|> Qx.cx(0, 1)
+|> Qx.steps()
+|> Enum.each(&IO.inspect/1)
+```
+
+### Full display map of a step
+
+`Qx.Step.show/1` exposes everything about one step: the Dirac string, amplitudes, and probabilities.
+
+```elixir
+# Expected: a map with dirac: "0.707|00⟩ + 0.707|11⟩", amplitudes and probabilities
+# lists (|00⟩ and |11⟩ at 0.5 each), index: 1, instruction describing cx(0, 1)
+Qx.create_circuit(2)
+|> Qx.h(0)
+|> Qx.cx(0, 1)
+|> Qx.steps()
+|> Enum.at(-1)
+|> Qx.Step.show()
+```
+
+### Seeded trajectory (deterministic mid-circuit measurement)
+
+With `seed:`, a mid-circuit measurement collapses the same way on every run — the whole trajectory is reproducible, so the expected output is exact, not statistical.
+
+```elixir
+# Expected: exactly three lines (deterministic under seed: 1) —
+#   #Qx.Step<0: h(0)  0.707|00⟩ + 0.707|10⟩  cbits: [0, 0]>
+#   #Qx.Step<1: measure q0 → c0 ⇒ 1.000|10⟩  cbits: [1, 0]>
+#   #Qx.Step<2: c_if(c0==1) x(1) taken  1.000|11⟩  cbits: [1, 0]>
+Qx.create_circuit(2, 2)
+|> Qx.h(0)
+|> Qx.measure(0, 0)
+|> Qx.c_if(0, 1, fn c -> Qx.x(c, 1) end)
+|> Qx.steps(seed: 1)
+|> Enum.each(&IO.inspect/1)
+```
+
+### Tap functions: peek mid-pipeline
+
+`tap_state/2` and `tap_probabilities/2` run a simulation of the circuit-so-far and hand the result to your function, then return the circuit unchanged — immediate feedback while building a pipeline. (They hide a simulation inside a build step; the docs call this out as a deliberate teaching exception.)
+
+```elixir
+# Expected: one printed line — after H: [0.5, 0.0, 0.5, 0.0] — then the final
+# histogram shows the Bell distribution (|00⟩ and |11⟩ at 0.5)
+Qx.create_circuit(2)
+|> Qx.h(0)
+|> Qx.tap_probabilities(fn p -> IO.inspect(Nx.to_flat_list(p), label: "after H") end)
+|> Qx.cx(0, 1)
+|> Qx.get_probabilities()
+|> Qx.draw_histogram(title: "tap_probabilities: peeked mid-build, result unchanged")
+```
+
+---
+
+## 8. Composite Patterns & Appenders
+
+The `Qx.Patterns` surface (fronted by `Qx.*`): appenders add a named preparation **at caller-chosen qubits inside a larger circuit** (v0.11), and the broadcast helpers operate on sub-registers.
+
+### bell_pair/4 — Bell pair at offset qubits
+
+`Qx.bell_pair(circuit, q1, q2)` appends the Bell-pair gates onto qubits 1 and 2 of a 3-qubit circuit; qubit 0 is untouched.
+
+```elixir
+# Expected: |000⟩ and |011⟩ each have P=0.5 — the pair lives on q1,q2; q0 stays |0⟩
+Qx.create_circuit(3)
+|> Qx.bell_pair(1, 2)
+|> Qx.get_probabilities()
+|> Qx.draw_histogram(title: "bell_pair(1, 2): entangles q1,q2 only")
+```
+
+### ghz/2 — GHZ over a sub-range
+
+`Qx.ghz(circuit, 1..3)` prepares a GHZ state across qubits 1–3 of a 4-qubit circuit.
+
+```elixir
+# Expected: |0000⟩ and |0111⟩ each have P=0.5 — GHZ on q1..q3; q0 stays |0⟩
+Qx.create_circuit(4)
+|> Qx.ghz(1..3)
+|> Qx.get_probabilities()
+|> Qx.draw_histogram(title: "ghz(1..3): GHZ on the upper three qubits")
+```
+
+### cx_chain/2 — linear CNOT cascade
+
+```elixir
+# Expected: 4 qubit wires; H on q0 then three CX boxes cascading q0→q1→q2→q3
+Qx.create_circuit(4)
+|> Qx.h(0)
+|> Qx.cx_chain([0, 1, 2, 3])
+|> Qx.draw_circuit("cx_chain: H + CX cascade (4-qubit GHZ)")
+```
+
+### h_all/2 — broadcast over a sub-range
+
+```elixir
+# Expected: |000⟩, |001⟩, |010⟩, |011⟩ each at P=0.25 — H on q1,q2 only; q0 stays |0⟩
+Qx.create_circuit(3)
+|> Qx.h_all(1..2)
+|> Qx.get_probabilities()
+|> Qx.draw_histogram(title: "h_all(1..2): uniform over q1,q2 with q0 = |0⟩")
+```
+
+---
+
+## 9. OpenQASM Round-Trip
+
+Export a circuit to OpenQASM 3.0 text, inspect it, and re-import it — `to_qasm`/`from_qasm!` live on the `Qx` facade (v0.11). Code generation from a QASM `gate` definition uses the tier-2 `Qx.Export.OpenQASM.from_qasm_function/1` directly (it has no facade delegate).
+
+### Export: to_qasm/2
+
+```elixir
+# Expected: printed QASM 3.0 program —
+#   OPENQASM 3.0; / include "stdgates.inc"; / qubit[2] q; / bit[0] c;
+#   then the gate lines: h q[0]; tdg q[0]; cx q[0], q[1]; barrier q[0], q[1];
+Qx.create_circuit(2)
+|> Qx.h(0)
+|> Qx.tdg(0)
+|> Qx.cx(0, 1)
+|> Qx.barrier(0..1)
+|> Qx.to_qasm()
+|> IO.puts()
+```
+
+### Round-trip: from_qasm!/1 back to a drawn circuit
+
+The re-imported circuit is instruction-identical — including the native `tdg` (v0.11: no longer decomposed to `phase(-π/4)` on import).
+
+```elixir
+# Expected: circuit diagram with H box, T† box, CX q0→q1, and the dashed barrier —
+# identical layout to what the exported circuit would draw
+Qx.create_circuit(2)
+|> Qx.h(0)
+|> Qx.tdg(0)
+|> Qx.cx(0, 1)
+|> Qx.barrier(0..1)
+|> Qx.to_qasm()
+|> Qx.from_qasm!()
+|> Qx.draw_circuit("Round-tripped through OpenQASM")
+```
+
+### Code generation: from_qasm_function/1
+
+A QASM `gate` definition becomes a reusable Elixir function (self-contained module source; compile it with `Code.compile_string/1` and call the module it returns).
+
+```elixir
+# Expected: printed Elixir module source —
+#   defmodule Qx.Generated.Bell_<hash> do / def bell(circuit, a, b) do
+#   circuit |> Qx.h(a) |> Qx.cx(a, b) / end / end
+qasm_gate = """
+OPENQASM 3.0;
+include "stdgates.inc";
+gate bell a, b {
+  h a;
+  cx a, b;
+}
+"""
+
+{:ok, %{name: "bell", arity: 3, source: source}} =
+  Qx.Export.OpenQASM.from_qasm_function(qasm_gate)
+
+IO.puts(source)
+```
+
+---
+
+## 10. Measurement Bases
+
+`measure_x/3`, `measure_y/3`, and `measure_z/3` measure in the X, Y, and Z bases. Inputs are chosen as eigenstates so the basis choice changes the outcome from deterministic to random.
+
+### X basis on |+⟩ — deterministic
+
+|+⟩ is the +1 eigenstate of X, so an X-basis measurement always yields 0.
+
+```elixir
+# Expected: ALL 1024 counts on "0" — no "1" outcomes at all
+Qx.create_circuit(1, 1)
+|> Qx.h(0)
+|> Qx.measure_x(0, 0)
+|> Qx.run(shots: 1024)
+|> Qx.draw_counts(title: "measure_x on |+⟩: always 0")
+```
+
+### Y basis on |i⟩ — deterministic
+
+|i⟩ = S|+⟩ is the +1 eigenstate of Y, so a Y-basis measurement always yields 0.
+
+```elixir
+# Expected: ALL 1024 counts on "0" — no "1" outcomes at all
+Qx.create_circuit(1, 1)
+|> Qx.h(0)
+|> Qx.s(0)
+|> Qx.measure_y(0, 0)
+|> Qx.run(shots: 1024)
+|> Qx.draw_counts(title: "measure_y on |i⟩: always 0")
+```
+
+### Z basis on |+⟩ — random
+
+The same |+⟩ state measured in the computational (Z) basis is a coin flip.
+
+```elixir
+# Expected: approximately 500 counts each for "0" and "1" (contrast with the X-basis cell above)
+Qx.create_circuit(1, 1)
+|> Qx.h(0)
+|> Qx.measure_z(0, 0)
+|> Qx.run(shots: 1024)
+|> Qx.draw_counts(title: "measure_z on |+⟩: 50/50")
+```
+
+---
+
+## 11. Capstone: Quantum Teleportation
+
+Everything composing end-to-end: an arbitrary state prepared with `u/5` on q0 is teleported to q2 via a Bell pair (`bell_pair/4`), a Bell measurement (two mid-circuit measurements), and two classically-conditioned corrections (`c_if`). If the whole stack is healthy, q2 ends up in exactly the state q0 started in.
+
+The input state uses θ = 2π/3, so P(|1⟩) = sin²(π/3) = **0.75** — an asymmetric signature that is easy to spot.
+
+### The teleportation circuit
+
+```elixir
+# Expected: 3 qubit wires; U box on q0; H+CX (Bell pair) on q1,q2; CX q0→q1; H q0;
+# two measurement symbols (q0→c0, q1→c1); X and Z boxes on q2 (the conditioned corrections)
+theta = 2 * pi / 3
+
+teleport =
+  Qx.create_circuit(3, 3)
+  |> Qx.u(0, theta, 0, 0)
+  |> Qx.bell_pair(1, 2)
+  |> Qx.cx(0, 1)
+  |> Qx.h(0)
+  |> Qx.measure(0, 0)
+  |> Qx.measure(1, 1)
+  |> Qx.c_if(1, 1, fn c -> Qx.x(c, 2) end)
+  |> Qx.c_if(0, 1, fn c -> Qx.z(c, 2) end)
+
+Qx.draw_circuit(teleport, "Quantum teleportation: q0 → q2")
+```
+
+### Statistical check: q2 carries the 25/75 signature
+
+Measuring all three qubits over many shots: the Bell-measurement prefix (first two bits) is uniformly random across 00/01/10/11, but within **every** prefix the last bit (q2) splits ~25% "0" / ~75% "1" — the teleported state's signature, independent of which corrections fired.
+
+```elixir
+# Expected: 8 bars; within each prefix pair the …1 bar is ≈3× the …0 bar
+# (e.g. "001" ≈ 3 × "000"); overall the last bit is ≈75% "1"
+teleport
+|> Qx.measure(2, 2)
+|> Qx.run(shots: 4096)
+|> Qx.draw_counts(title: "Teleportation: q2 shows 25/75 in every prefix")
+```
+
+### State-level check: seeded run + Bloch comparison
+
+With `seed: 2` both corrections fire (Bell outcome 11). After the corrections, q0 and q1 are collapsed, so the final statevector has exactly one nonzero amplitude pair — q2's state. Extract it and compare Bloch spheres: the dot must sit where the input's dot sits.
+
+```elixir
+# Expected: Bloch dot in the XZ plane, BELOW the equator toward +X
+# (θ = 2π/3 from the north pole) — the input state
+Qx.create_circuit(1)
+|> Qx.u(0, theta, 0, 0)
+|> Qx.get_state()
+|> Qx.draw_bloch(title: "Input state on q0")
+```
+
+```elixir
+# Expected: IDENTICAL dot position to the input-state sphere above
+final = teleport |> Qx.steps(seed: 2) |> Enum.at(-1)
+
+# q0,q1 are collapsed: the only nonzero amplitude pair is q2's state
+{[a0, a1], _prefix} =
+  final.state
+  |> Nx.to_flat_list()
+  |> Enum.chunk_every(2)
+  |> Enum.with_index()
+  |> Enum.find(fn {[x, y], _} -> Complex.abs(x) > 1.0e-6 or Complex.abs(y) > 1.0e-6 end)
+
+Qx.draw_bloch(Nx.tensor([a0, a1], type: :c64), title: "Teleported state on q2 (seed: 2)")
+```
+
+If the two spheres match, state preparation, entanglement, mid-circuit measurement, classical feedback, the stepper, and the Bloch renderer are all working together correctly.

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Release theme — API Review Follow-Through.** The API consistency
+review's non-breaking follow-through, moved here from `ROADMAP.md` on
+release: the typed-error and docs sweeps, the additive surface the
+review called for (circuit appenders, native `tdg`, OpenQASM facade
+delegates), producer hygiene (single instruction-producer surface),
+the `from_qasm_function/1` module-ergonomics resolution, the
+deprecation batch whose removal window opens this minor, the
+StateInit/Math tier trim, the principles-doc post-review edits (Iron
+Law #6 now driven by moduledoc tier annotations), and the manual-test
+Livebook rewrite. A minor release: additive and internal, no breaking
+changes (those wait for the 1.0 gate list in the ROADMAP backlog).
+
 ### Added
 
 - `Qx.bell_pair/4` and `Qx.ghz/2` — circuit *appenders* that add
@@ -119,6 +131,19 @@ and will be **removed in Qx 1.0**:
 
 ### Documentation
 
+- `test/qx_manual_test.livemd` rewritten onto the tier-1 circuit surface and
+  expanded from a gate gallery into a full manual test suite: §1's Bloch cells
+  moved off the demoted calc-mode `Qx.Qubit` API (the U cell now exercises the
+  real `Qx.u/5`), the deprecated `Qx.superposition/1` preset replaced with its
+  `create_circuit |> h_all` idiom, and S†/T† round-trip cells added. Five new
+  sections: Step-Through Inspection (incl. a seeded deterministic trajectory),
+  Composite Patterns & Appenders (`bell_pair`/`ghz` at offset qubits),
+  OpenQASM Round-Trip (incl. the native `tdg` and `from_qasm_function`
+  codegen), Measurement Bases (`measure_x/y/z` eigenstate contrasts), and a
+  Quantum Teleportation capstone (Bell pair + mid-circuit measurement + two
+  `c_if` corrections, verified at state level with a seeded run). All 61
+  content cells verified headlessly; every checkable `# Expected:` claim asserted
+  numerically.
 - Principles-doc post-review edits (findings T1-09/17/18, B-13; tension #7):
   `spec/api-design-principles.md` §6 gains naming-family rows for
   `run`/`steps`, `c_if`, `barrier`, `*_chain`, and the prep appenders

@@ -16,11 +16,11 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 - **Statevector Simulation**: Uses statevector method for accurate quantum state representation
 - **Optional Acceleration**: Add EXLA or EMLX backends for speedup (CPU/GPU)
 - **Visualization**: Built-in plotting capabilities with SVG and VegaLite support, plus circuit diagram generation
-- **Growing Range of Gates**: Supports H, X, Y, Z, S, S†, T, RX, RY, RZ, CNOT, CY, CZ, CP, CRX, CRY, CRZ, SWAP, iSWAP, U (general single-qubit unitary), CSWAP (Fredkin), and Toffoli gates
-- **Composite Patterns** (`Qx.Patterns`): Whole-circuit and sub-register helpers (`h_all`, `x_all`, `y_all`, `z_all`, `measure_all`, `barrier_all`, `cx_chain`). Each `_all` helper accepts an optional list or range — e.g. `Qx.h_all(qc, 0..2)` — to operate on a sub-register
+- **Growing Range of Gates**: Supports H, X, Y, Z, S, S†, T, T†, RX, RY, RZ, CNOT, CY, CZ, CP, CRX, CRY, CRZ, SWAP, iSWAP, U (general single-qubit unitary), CSWAP (Fredkin), and Toffoli gates
+- **Composite Patterns** (`Qx.Patterns`): Whole-circuit and sub-register helpers (`h_all`, `x_all`, `y_all`, `z_all`, `measure_all`, `cx_chain`), plus state-prep **appenders** — `Qx.bell_pair(qc, q0, q1)` and `Qx.ghz(qc, 1..3)` — that entangle chosen qubits inside a larger circuit. Each `_all` helper accepts an optional list or range — e.g. `Qx.h_all(qc, 0..2)` — and `Qx.barrier/2` spans a list or range of qubits
 - **Measurements**: Quantum measurements with classical bit storage; basis-explicit `Qx.measure_x/3`, `Qx.measure_y/3`, `Qx.measure_z/3` for X/Y/Z-basis measurement
 - **Conditional Operations**: Mid-circuit measurement with classical feedback for quantum processes like teleportation and error correction
-- **OpenQASM 3.0 Round-Trip**: Export Qx circuits to OpenQASM 3.0 and import OpenQASM 3.0 source produced by Qx, Qiskit, or IBM Quantum (`Qx.Export.OpenQASM.to_qasm/1` and `from_qasm/1`)
+- **OpenQASM 3.0 Round-Trip**: Export Qx circuits to OpenQASM 3.0 and import OpenQASM 3.0 source produced by Qx, Qiskit, or IBM Quantum — directly from the facade: `Qx.to_qasm/2`, `Qx.from_qasm/1`, and `Qx.from_qasm!/1`
 - **Remote Execution**: Run circuits on real IBM Quantum hardware via `Qx.Hardware`, with transpilation through the Qx Portal service
 - **LiveBook Integration**: Full support with interactive visualizations in LiveBook
 
@@ -102,7 +102,7 @@ circuit = Qx.create_circuit(2, 2)
           |> Qx.measure(0, 0)
           |> Qx.measure(1, 1)
 
-result = Qx.run(circuit, 1000)
+result = Qx.run(circuit, shots: 1000)
 Qx.draw_counts(result)
 ```
 
@@ -161,7 +161,7 @@ qc = Qx.create_circuit(2, 2)
      |> Qx.measure(1, 1)  # Measure qubit 1, store in classical bit 1
 
 # Run the simulation
-result = Qx.run(qc, 1000)  # 1000 measurement shots
+result = Qx.run(qc, shots: 1000)  # 1000 measurement shots
 
 # Display results
 IO.inspect(result.counts)
@@ -190,7 +190,7 @@ result = Qx.create_circuit(2)
   |> Qx.tap_state(&IO.inspect(&1, label: "State after H"))
   |> Qx.cx(0, 1)
   |> Qx.tap_probabilities(fn p -> IO.puts("Bell state created!") end)
-  |> Qx.run(1000)
+  |> Qx.run(shots: 1000)
 ```
 
 ### Conditional Operations & Mid-Circuit Measurement
@@ -210,7 +210,7 @@ qc = Qx.create_circuit(3, 3)
      |> Qx.c_if(0, 1, fn c -> Qx.z(c, 2) end)
      |> Qx.measure(2, 2)
 
-result = Qx.run(qc, 1000)
+result = Qx.run(qc, shots: 1000)
 # Qubit 2 now contains the teleported state!
 ```
 
@@ -270,7 +270,7 @@ qc = Qx.create_circuit(3, 3)
      |> Qx.cx_chain([0, 1, 2])     # CX(0,1) ; CX(1,2)
      |> Qx.measure_all()           # Measure every qubit into its bit
 
-result = Qx.run(qc, 1000)
+result = Qx.run(qc, shots: 1000)
 IO.inspect(result.counts)
 # => %{"000" => ~500, "111" => ~500}
 ```
@@ -291,7 +291,7 @@ qc = Qx.create_circuit(3, 3)
      |> Qx.c_if(0, 1, fn c -> Qx.z(c, 2) end)
      |> Qx.measure(2, 2)                  # Measure teleported qubit
 
-result = Qx.run(qc, 1000)
+result = Qx.run(qc, shots: 1000)
 
 # Analyze results
 {most_common, count} = Qx.SimulationResult.most_frequent(result)
@@ -366,7 +366,7 @@ Qx's visualization functions each return one artifact type that works everywhere
 **Results visualization:**
 
 ```elixir
-result = Qx.bell_state() |> Qx.run(1000)
+result = Qx.bell_state() |> Qx.run(shots: 1000)
 
 Qx.draw(result)                  # Probability distribution (VegaLite spec)
 Qx.draw_counts(result)           # Measurement counts (VegaLite spec)
@@ -428,7 +428,7 @@ Livebook's runtime provides Kino.
 
 ## Importing OpenQASM
 
-Qx can read OpenQASM 3.0 source produced by itself, by Qiskit, or by IBM Quantum. Combined with `Qx.Export.OpenQASM.to_qasm/1` this provides round-trip interoperability.
+Qx can read OpenQASM 3.0 source produced by itself, by Qiskit, or by IBM Quantum. Combined with `Qx.to_qasm/1` this provides round-trip interoperability, straight from the facade.
 
 ### Import a complete program
 
@@ -444,7 +444,7 @@ c[0] = measure q[0];
 c[1] = measure q[1];
 """
 
-{:ok, circuit} = Qx.Export.OpenQASM.from_qasm(qasm)
+{:ok, circuit} = Qx.from_qasm(qasm)
 result = Qx.run(circuit, shots: 1024)
 ```
 

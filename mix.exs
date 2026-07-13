@@ -96,7 +96,8 @@ defmodule Qx.MixProject do
         "Composite Patterns": [Qx.Patterns],
         "Simulation & Results": [
           Qx.Simulation,
-          Qx.SimulationResult
+          Qx.SimulationResult,
+          Qx.Step
         ],
         Visualization: [Qx.Draw, Qx.Draw.Image, Qx.Draw.StateTable],
         "Hardware Execution": [
