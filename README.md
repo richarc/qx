@@ -29,7 +29,7 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 ```elixir
 def deps do
   [
-    {:qx, "~> 0.10", hex: :qx_sim}
+    {:qx, "~> 0.11", hex: :qx_sim}
   ]
 end
 ```
@@ -84,7 +84,7 @@ For the complete API, see the [hexdocs](https://hexdocs.pm/qx_sim/Qx.html).
 
 ```elixir
 Mix.install([
-  {:qx, "~> 0.10", hex: :qx_sim},
+  {:qx, "~> 0.11", hex: :qx_sim},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
   {:kino_vega_lite, "~> 0.1.11"}
@@ -602,7 +602,7 @@ EXLA provides significant speedup through XLA's LLVM optimizations.
 ```elixir
 def deps do
   [
-    {:qx, "~> 0.10", hex: :qx_sim},
+    {:qx, "~> 0.11", hex: :qx_sim},
     {:exla, "~> 0.12"}  # Add this line (match Qx's Nx version)
   ]
 end
@@ -696,7 +696,7 @@ config :nx, :default_backend, {EXLA.Backend, client: :rocm}
 ```elixir
 def deps do
   [
-    {:qx, "~> 0.10", hex: :qx_sim},
+    {:qx, "~> 0.11", hex: :qx_sim},
     {:emlx, github: "elixir-nx/emlx", branch: "main"}  # Add this line
   ]
 end
@@ -750,7 +750,7 @@ For LiveBook, add the acceleration backend to your `Mix.install` call:
 **EXLA CPU (all platforms):**
 ```elixir
 Mix.install([
-  {:qx, "~> 0.10", hex: :qx_sim},
+  {:qx, "~> 0.11", hex: :qx_sim},
   {:exla, "~> 0.12"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -763,7 +763,7 @@ Application.put_env(:nx, :default_backend, EXLA.Backend)
 **EMLX GPU (Apple Silicon):**
 ```elixir
 Mix.install([
-  {:qx, "~> 0.10", hex: :qx_sim},
+  {:qx, "~> 0.11", hex: :qx_sim},
   {:emlx, github: "elixir-nx/emlx", branch: "main"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -776,7 +776,7 @@ Application.put_env(:nx, :default_backend, {EMLX.Backend, device: :gpu})
 **EXLA CUDA (NVIDIA GPU):** Requires `XLA_TARGET` env var set (see [CUDA setup](#exla--nvidia-gpu-cuda)).
 ```elixir
 Mix.install([
-  {:qx, "~> 0.10", hex: :qx_sim},
+  {:qx, "~> 0.11", hex: :qx_sim},
   {:exla, "~> 0.12"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
