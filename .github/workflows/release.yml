@@ -91,8 +91,15 @@ jobs:
           validation_level: warn
 
       - name: Verify CHANGELOG entry exists
+        # The section body is passed via env, NOT interpolated into the script:
+        # `${{ }}` inside `run:` splices the multi-line, backtick-rich CHANGELOG
+        # text directly into bash, where backticks execute as command
+        # substitution (the first v0.11.0 attempt failed exactly this way,
+        # exit 127 "Math: command not found").
+        env:
+          CHANGES: ${{ steps.changelog.outputs.changes }}
         run: |
-          if [ -z "${{ steps.changelog.outputs.changes }}" ]; then
+          if [ -z "$CHANGES" ]; then
             echo "❌ ERROR: No CHANGELOG entry found for version ${{ steps.version.outputs.tag_version }}"
             echo ""
             echo "Please add a CHANGELOG entry following Keep a Changelog format:"
@@ -191,7 +198,7 @@ jobs:
             ```elixir
             def deps do
               [
-                {:qx_sim, "~> ${{ steps.version.outputs.tag_version }}"}
+                {:qx, "~> ${{ steps.version.outputs.tag_version }}", hex: :qx_sim}
               ]
             end
             ```
