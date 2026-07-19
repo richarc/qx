@@ -52,6 +52,11 @@ defmodule Qx.Validation do
       iex> Qx.Validation.valid_register?(reg)
       true
   """
+  # Accepts anything struct-or-map shaped with :state/:num_qubits (in
+  # practice a %Qx.Register{}). Spec is intentionally bare map() rather than
+  # a keyed shape: Dialyzer treats any keyed map/struct-pattern spec here as
+  # closed, which then excludes %Qx.Register{}'s extra :__struct__ key and
+  # reintroduces the false "no local return" this widening fixed.
   @spec valid_register?(map(), float()) :: boolean()
   def valid_register?(%{state: state, num_qubits: num_qubits}, tolerance \\ 1.0e-6) do
     expected_size = trunc(:math.pow(2, num_qubits))
