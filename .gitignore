@@ -51,3 +51,6 @@ cover/
 
 # macOS Finder metadata
 .DS_Store
+
+# Dialyzer PLT cache
+/priv/plts/

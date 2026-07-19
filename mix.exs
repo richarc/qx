@@ -25,6 +25,7 @@ defmodule Qx.MixProject do
       homepage_url: "https://github.com/richarc/qx",
       docs: docs(),
       package: package(),
+      dialyzer: dialyzer(),
       description:
         "A quantum computing library for Elixir with statevector simulation, circuit visualization, and direct execution on IBM Quantum hardware",
       usage_rules: usage_rules()
@@ -71,9 +72,18 @@ defmodule Qx.MixProject do
       {:benchee, "~> 1.3", only: :dev},
       {:benchee_html, "~> 1.0", only: :dev},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.18", only: :test},
       {:plug, "~> 1.0", only: :test},
       {:bypass, "~> 2.1", only: :test}
+    ]
+  end
+
+  defp dialyzer do
+    [
+      plt_add_apps: [:mix, :ex_unit],
+      plt_core_path: "priv/plts",
+      plt_local_path: "priv/plts"
     ]
   end
 

@@ -89,6 +89,23 @@ These have no commitment and no scheduled version. They may move up, move down, 
   side-output + `%Qx.QuantumCircuit{...}` ellipsis that never validated). Rewrite
   as valid doctests, then remove from the `:except` list. Surfaced by wiring
   `doctest Qx.Operations` in `feat/qasm-facade-tdg`.
+- [ ] Fix (or dialyzer-ignore with justification) the 70 `mix dialyzer`
+  warnings surfaced when `dialyxir` was wired into `mix.exs` on 2026-07-19.
+  Root cause: `Nx.Type.t()` (`deps/nx/lib/nx/type.ex`) is typed as only the
+  canonical tuple form (e.g. `{:c, 64}`), not the atom shorthand (`:c64`);
+  Qx's own `@spec`s reuse `Nx.Type.t()` for params that are documented and
+  tested with `:c64` (default arg in `Qx.StateInit.basis_state/3` and
+  everything that calls it — `Register.new/1`, `Qubit.new/0,1`,
+  `Qx.create_circuit/1,2`, `Qx.Patterns.*`, etc.), so Dialyzer sees an
+  unsatisfiable contract and cascades "no local return" up the call chain.
+  Runtime is correct (`Nx.Type.normalize!/1` accepts the shorthand; all 1405
+  tests pass) — this is a typespec/tooling mismatch, not a logic bug. A
+  handful of unrelated findings are mixed in: unknown types
+  `Qx.Hardware.ConfigError.t/0` / `Qx.Hardware.NoMeasurementsError.t/0`
+  (missing `@type t` in those exception modules), two `pattern_match`
+  warnings in `lib/qx/hardware/ibm.ex:416,428` worth a real look, and 5
+  harmless `unused_fun` clauses in the generated OpenQASM parser
+  (`lib/qx/export/openqasm/parser.ex`).
 
 - Stream the IBM `/results` body via Req `into:` with a size cap that aborts
   over ~50 MB (real OOM/DoS protection). Deferred from `ibm-client-hardening`:
