@@ -52,7 +52,7 @@ defmodule Qx.Validation do
       iex> Qx.Validation.valid_register?(reg)
       true
   """
-  @spec valid_register?(%{state: Nx.Tensor.t(), num_qubits: integer()}, float()) :: boolean()
+  @spec valid_register?(map(), float()) :: boolean()
   def valid_register?(%{state: state, num_qubits: num_qubits}, tolerance \\ 1.0e-6) do
     expected_size = trunc(:math.pow(2, num_qubits))
     actual_size = Nx.axis_size(state, 0)

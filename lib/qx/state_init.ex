@@ -66,7 +66,8 @@ defmodule Qx.StateInit do
     * `Qx.BasisError` - If `dimension` is not a positive integer, `index` is not
       an integer, `index` is negative, or `index >= dimension`
   """
-  @spec basis_state(non_neg_integer(), pos_integer(), Nx.Type.t()) :: Nx.Tensor.t()
+  @spec basis_state(non_neg_integer(), pos_integer(), Nx.Type.t() | Nx.Type.short_t()) ::
+          Nx.Tensor.t()
   def basis_state(index, dimension, type \\ :c64)
 
   def basis_state(index, dimension, type)
@@ -306,7 +307,7 @@ defmodule Qx.StateInit do
       want the mathematical state.
   """
   @deprecated "Use `Qx.bell_state/1` (circuit mode). Will be removed in Qx 1.0"
-  @spec bell_state_vector(bell_state_which(), Nx.Type.t()) :: Nx.Tensor.t()
+  @spec bell_state_vector(bell_state_which(), Nx.Type.t() | Nx.Type.short_t()) :: Nx.Tensor.t()
   def bell_state_vector(which \\ :phi_plus, type \\ :c64)
 
   def bell_state_vector(:phi_plus, type) do
@@ -383,7 +384,7 @@ defmodule Qx.StateInit do
       for the mathematical state at any qubit count.
   """
   @deprecated "Use `Qx.ghz_state/0` (circuit mode). Will be removed in Qx 1.0"
-  @spec ghz_state_vector(pos_integer(), Nx.Type.t()) :: Nx.Tensor.t()
+  @spec ghz_state_vector(pos_integer(), Nx.Type.t() | Nx.Type.short_t()) :: Nx.Tensor.t()
   def ghz_state_vector(num_qubits, type \\ :c64)
       when is_integer(num_qubits) and num_qubits >= 2 do
     dimension = trunc(:math.pow(2, num_qubits))

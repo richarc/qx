@@ -379,6 +379,8 @@ defmodule Qx.Hardware.NoMeasurementsError do
   """
   defexception [:circuit_id, :message]
 
+  @type t :: %__MODULE__{circuit_id: term(), message: String.t()}
+
   @impl true
   def exception(%{__struct__: Qx.QuantumCircuit} = circuit) do
     id = Map.get(circuit, :id) || Map.get(circuit, :name)
@@ -432,6 +434,8 @@ defmodule Qx.Hardware.ConfigError do
   carries a human-readable explanation.
   """
   defexception [:field, :reason, :message]
+
+  @type t :: %__MODULE__{field: atom() | nil, reason: term(), message: String.t()}
 
   @impl true
   def exception(opts) when is_list(opts) do

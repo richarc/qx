@@ -89,23 +89,28 @@ These have no commitment and no scheduled version. They may move up, move down, 
   side-output + `%Qx.QuantumCircuit{...}` ellipsis that never validated). Rewrite
   as valid doctests, then remove from the `:except` list. Surfaced by wiring
   `doctest Qx.Operations` in `feat/qasm-facade-tdg`.
-- [ ] Fix (or dialyzer-ignore with justification) the 70 `mix dialyzer`
+- [x] Fix (or dialyzer-ignore with justification) the 70 `mix dialyzer`
   warnings surfaced when `dialyxir` was wired into `mix.exs` on 2026-07-19.
-  Root cause: `Nx.Type.t()` (`deps/nx/lib/nx/type.ex`) is typed as only the
-  canonical tuple form (e.g. `{:c, 64}`), not the atom shorthand (`:c64`);
-  Qx's own `@spec`s reuse `Nx.Type.t()` for params that are documented and
-  tested with `:c64` (default arg in `Qx.StateInit.basis_state/3` and
-  everything that calls it — `Register.new/1`, `Qubit.new/0,1`,
-  `Qx.create_circuit/1,2`, `Qx.Patterns.*`, etc.), so Dialyzer sees an
-  unsatisfiable contract and cascades "no local return" up the call chain.
-  Runtime is correct (`Nx.Type.normalize!/1` accepts the shorthand; all 1405
-  tests pass) — this is a typespec/tooling mismatch, not a logic bug. A
-  handful of unrelated findings are mixed in: unknown types
-  `Qx.Hardware.ConfigError.t/0` / `Qx.Hardware.NoMeasurementsError.t/0`
-  (missing `@type t` in those exception modules), two `pattern_match`
-  warnings in `lib/qx/hardware/ibm.ex:416,428` worth a real look, and 5
-  harmless `unused_fun` clauses in the generated OpenQASM parser
-  (`lib/qx/export/openqasm/parser.ex`).
+  Fixed 2026-07-19: widened `Qx.StateInit.basis_state/3`,
+  `bell_state_vector/2`, `ghz_state_vector/2` from `Nx.Type.t()` to
+  `Nx.Type.t() | Nx.Type.short_t()` (Qx's own default args pass the atom
+  shorthand `:c64`, which `Nx.Type.t()` alone excludes) — this alone cleared
+  56 of the 70 via cascade (`Register.new/1`, `Qubit.new/0,1`,
+  `Qx.create_circuit/1,2`, `Qx.Patterns.*`, etc. all bottomed out in these 3
+  specs). Added missing `@type t` to `Qx.Hardware.ConfigError` /
+  `Qx.Hardware.NoMeasurementsError`. Widened `Qx.Validation.valid_register?/2`'s
+  param spec from an anonymous `%{state: ..., num_qubits: ...}` map shape to
+  `map()` — the closed anonymous shape structurally excluded any struct
+  (extra `:__struct__` key), so `Qx.Register.valid?/1` calling it with
+  `%Qx.Register{}` looked like dead code to Dialyzer. Removed a genuinely
+  dead `:delete` clause from `Qx.Hardware.Ibm.authed_request/5` (no caller
+  ever passes it). Remaining 6 are real false positives, filtered via
+  `.dialyzer_ignore.exs` with justification: 5 `unused_fun` clauses in the
+  generated OpenQASM parser (`lib/qx/export/openqasm/parser.ex`, an artifact
+  of nimble_parsec's dispatch table), and 1 `pattern_match_cov` on
+  `Qx.Hardware.Ibm.maybe_put_retry_delay/1` (analyzes the `:dev` env, where
+  `@ibm_retry_delay` is statically `nil`; it's a real integer only in
+  `:test`).
 
 - Stream the IBM `/results` body via Req `into:` with a size cap that aborts
   over ~50 MB (real OOM/DoS protection). Deferred from `ibm-client-hardening`:

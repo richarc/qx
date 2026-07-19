@@ -413,7 +413,6 @@ defmodule Qx.Hardware.Ibm do
       case method do
         :get -> Req.get(request)
         :post -> Req.post(request)
-        :delete -> Req.delete(request)
       end
 
     handle_response(result)
