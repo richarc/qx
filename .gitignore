@@ -35,9 +35,9 @@ qx_sim-*.tar
 # ignore the history
 /history/
 
-# Ignore agents documentation
-AGENTS.md
-.claude/
+# Machine-local Claude Code state (plans/solutions/agents/hooks ARE tracked)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
 cover/
 *.coverdata
 
