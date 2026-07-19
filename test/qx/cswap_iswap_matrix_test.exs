@@ -68,15 +68,20 @@ defmodule Qx.CswapIswapMatrixTest do
   # Qx.Gates so it is a genuine reference, not a tautology.
   defp identity_with_rows_swapped(n, r1, r2) do
     for i <- 0..(n - 1) do
-      src =
-        cond do
-          i == r1 -> r2
-          i == r2 -> r1
-          true -> i
-        end
-
-      for j <- 0..(n - 1), do: if(j == src, do: 1, else: 0)
+      identity_row(n, swapped_index(i, r1, r2))
     end
+  end
+
+  defp swapped_index(i, r1, r2) do
+    cond do
+      i == r1 -> r2
+      i == r2 -> r1
+      true -> i
+    end
+  end
+
+  defp identity_row(n, src) do
+    for j <- 0..(n - 1), do: if(j == src, do: 1, else: 0)
   end
 
   describe "CSWAP (Fredkin) matrix" do
