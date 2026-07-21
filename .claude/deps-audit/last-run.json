@@ -1,0 +1,115 @@
+{
+  "schema": "deps-audit/v1",
+  "repo": "qx",
+  "run_at": "2026-07-21",
+  "mode": "B",
+  "mode_note": "mix.lock is UNCHANGED vs git HEAD (git diff HEAD -- mix.lock is empty). Zero (old,new) pairs resolved, so the 8 tarball-diff rules had no changed package to scan and did NOT run. All findings below come from Step 4 (mix hex.audit) plus Step 5 OSV/Hex API enrichment. This is an advisory audit of the CURRENT locked tree, not a change audit.",
+  "external_tools": {
+    "mix_hex_audit": "ran",
+    "mix_audit": "not installed - skipped, not installed per Iron Law 2",
+    "osv_scanner": "not installed - skipped, not installed per Iron Law 2",
+    "osv_api": "queried directly for fixed-version ranges (read-only)"
+  },
+  "rules_run": [],
+  "rules_skipped_reason": "no changed packages to diff",
+  "shipped_scope_tool": "scripts/audit_shipped.sh (repo-local gate, exit code 1)",
+  "packages": [
+    {
+      "pkg": "mint",
+      "locked": "1.9.1",
+      "latest_stable": "1.9.3",
+      "shipped": true,
+      "shipped_path": "qx -> req -> finch -> mint",
+      "risk": "high",
+      "score": 16,
+      "remediation": "bump to 1.9.3 (clears all three; finch constraint is ~> 1.8 so no conflict)",
+      "findings": [
+        {
+          "rule_id": "EXT-HEXAUDIT-CVE",
+          "id": "EEF-CVE-2026-58229",
+          "aka": "CVE-2026-58229, GHSA-qrfr-wh4c-3qhw",
+          "severity": "BLOCK",
+          "upstream_severity": "HIGH",
+          "cvss": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N",
+          "fixed_in": "1.9.2",
+          "message": "Unbounded HTTP/1 response-header and chunked-trailer accumulation causes memory-exhaustion DoS",
+          "applicability": "client-side; qx is an HTTP client via lib/qx/hardware/ibm.ex"
+        },
+        {
+          "rule_id": "EXT-HEXAUDIT-CVE",
+          "id": "EEF-CVE-2026-59246",
+          "aka": "CVE-2026-59246, GHSA-8pf6-g464-h6h9",
+          "severity": "WARN",
+          "upstream_severity": "MEDIUM",
+          "fixed_in": "1.9.2",
+          "message": "Zero-length HTTP/2 CONTINUATION frames bypass Mint's header-block byte-size cap and exhaust client memory"
+        },
+        {
+          "rule_id": "EXT-HEXAUDIT-CVE",
+          "id": "EEF-CVE-2026-59249",
+          "aka": "CVE-2026-59249, GHSA-x3x7-96vm-6h2w",
+          "severity": "WARN",
+          "upstream_severity": "MEDIUM",
+          "fixed_in": "1.9.3",
+          "message": "Sign-tolerant HTTP/1 chunk-size parser enables response smuggling against strict intermediaries on pooled connections"
+        }
+      ]
+    },
+    {
+      "pkg": "cowlib",
+      "locked": "2.18.0",
+      "shipped": false,
+      "shipped_path": "test-only: bypass -> cowboy -> cowlib",
+      "risk": "low",
+      "score": 2,
+      "findings": [
+        {
+          "rule_id": "EXT-HEXAUDIT-CVE",
+          "id": "EEF-CVE-2026-43966",
+          "severity": "INFO",
+          "upstream_severity": "MEDIUM",
+          "message": "HTTP Response Splitting via Non-VCHAR Bytes in cow_http_struct_hd:escape_string/2",
+          "downgrade_reason": "not in prod dependency tree; never reaches published qx_sim"
+        },
+        {
+          "rule_id": "EXT-HEXAUDIT-CVE",
+          "id": "EEF-CVE-2026-43969",
+          "severity": "INFO",
+          "upstream_severity": "LOW",
+          "message": "Cookie Request Header Injection via Unvalidated Encoder in cow_cookie:cookie/1",
+          "downgrade_reason": "not in prod dependency tree"
+        }
+      ]
+    },
+    {
+      "pkg": "plug",
+      "locked": "1.20.2",
+      "shipped": false,
+      "shipped_path": "test-only: {:plug, \"~> 1.0\", only: :test}",
+      "risk": "low",
+      "score": 2,
+      "findings": [
+        {
+          "rule_id": "EXT-HEXAUDIT-CVE",
+          "id": "EEF-CVE-2026-56814",
+          "severity": "INFO",
+          "upstream_severity": "MEDIUM",
+          "message": "multipart :length limit is not charged for part headers, enabling unbounded temp-file creation (DoS)",
+          "downgrade_reason": "not in prod dependency tree"
+        },
+        {
+          "rule_id": "EXT-HEXAUDIT-CVE",
+          "id": "EEF-CVE-2026-56813",
+          "severity": "INFO",
+          "upstream_severity": "LOW",
+          "message": "Cookie attribute injection in Plug.Conn.Cookies.encode/2",
+          "downgrade_reason": "not in prod dependency tree"
+        }
+      ]
+    }
+  ],
+  "verdict": "BLOCK",
+  "verdict_reason": "mint 1.9.1 carries 3 CVEs (1 HIGH) and IS in the shipped prod tree via req -> finch -> mint, so published qx_sim consumers inherit them. scripts/audit_shipped.sh exits 1.",
+  "release_gate": "Do not cut a qx release on the current lock. Bump mint to 1.9.3 first.",
+  "mutations_made": "none - skill is non-mutating; mix.exs and mix.lock untouched"
+}
