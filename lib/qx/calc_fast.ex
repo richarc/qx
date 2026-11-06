@@ -8,25 +8,45 @@ defmodule Qx.CalcFast do
 
   import Nx.Defn
 
-  # Bit-manipulation convention shared by every kernel below.
+  # Axis-slicing convention shared by every kernel below.
   #
-  # These kernels evolve the statevector over its 2^n amplitudes without ever
-  # building a 2^n x 2^n gate matrix and without a host-side loop over
-  # amplitudes (Iron Law #5) — all indexing is vectorised Nx.
+  # The {2^n} statevector is reshaped to a rank-n tensor of shape {2, …, 2}.
+  # Qubit 0 is the MOST significant bit of a basis index, so after the
+  # reshape **axis q is qubit q**: slicing axis q at index 0 / 1 selects the
+  # amplitudes with that qubit in |0⟩ / |1⟩. Every gate is then expressed
+  # with static slices of those axes — no gather, no mask, no 2^n × 2^n
+  # matrix and no host-side loop over amplitudes (Iron Laws #3 / #5):
   #
-  # Qubit 0 is the MOST significant bit, so in a basis-state index `i`
-  # (0..2^n-1), qubit `q` is bit `(num_qubits - 1 - q)` of `i`. Every kernel
-  # therefore computes `bit_pos = num_qubits - 1 - q`. Two recurring tricks:
-  #   * value of qubit q in index i      ->  (i >>> bit_pos) &&& 1
-  #   * partner index with qubit q flipped ->  i XOR (1 <<< bit_pos)
-  # A single-bit XOR toggles exactly one qubit — that is how a gate locates the
-  # amplitude(s) it must mix with each basis state.
+  #   * single-qubit U on t   -> split axis t into halves (a0, a1) and
+  #                              recombine: [u00·a0 + u01·a1, u10·a0 + u11·a1]
+  #   * control on c          -> apply the sub-operation only to the c = 1
+  #                              slice; concatenate it back after the c = 0
+  #                              slice. Several controls nest (Toffoli).
+  #   * X on t (CNOT / CCX)   -> reverse axis t of the control slice
+  #   * SWAP a, b (CSWAP)     -> transpose axes a and b (of the control slice)
+  #   * iSWAP a, b            -> exchange the |01⟩ / |10⟩ blocks, phase i
+  #
+  # Sliced axes keep size 1 (they are never squeezed), so axis numbers stay
+  # valid through nested slicing. Qubit indices and `num_qubits` must be
+  # STATIC (they drive shapes), so the `defnp` kernels take them as `opts`;
+  # the public `def` wrappers validate them on the host first. Under EXLA
+  # each distinct (qubits, num_qubits) combination compiles one executable;
+  # the gate matrix is a tensor argument, so parameter changes never
+  # recompile.
+  #
+  # Rank-n slicing was measured against a dense 2^k × 2^k `Nx.dot`
+  # contraction: it is faster for every gate on BinaryBackend (the dense form
+  # multiplies through mostly-zero controlled/permutation blocks) — see
+  # `bench/kernels_bench.exs`.
+
+  # ===========================================================================
+  # Public entry points
+  # ===========================================================================
 
   @doc """
   Applies a single-qubit gate directly to a statevector.
 
-  This function applies a 2x2 gate matrix to a specific qubit in an n-qubit
-  system by manipulating the statevector amplitudes directly.
+  Only the top-left 2×2 block of `gate_matrix` is read.
 
   ## Parameters
     * `state` - State vector (2^n dimensional complex tensor)
@@ -34,14 +54,8 @@ defmodule Qx.CalcFast do
     * `target_qubit` - Index of qubit to apply gate to (0-based)
     * `num_qubits` - Total number of qubits in the system
 
-  ## Algorithm
-
-  For a gate applied to qubit k in an n-qubit system:
-  1. Iterate through statevector indices in pairs that differ only in qubit k
-  2. Apply 2x2 gate matrix to each pair of amplitudes
-  3. Update statevector in-place
-
-  This avoids building a 2^n x 2^n matrix, using only O(2^n) memory.
+  Raises `ArgumentError` for an out-of-range target or a state whose length
+  is not `2^num_qubits`.
   """
   @spec apply_single_qubit_gate(Nx.Tensor.t(), Nx.Tensor.t(), non_neg_integer(), pos_integer()) ::
           Nx.Tensor.t()
@@ -51,67 +65,41 @@ defmodule Qx.CalcFast do
   end
 
   def apply_single_qubit_gate(state, gate_matrix, target_qubit, num_qubits) do
-    # Multi-qubit: apply gate using direct statevector manipulation
-    apply_single_qubit_gate_compiled(state, gate_matrix, target_qubit, num_qubits)
+    validate_qubits!([target_qubit], num_qubits)
+
+    unitary_kernel(state, gate_matrix,
+      controls: [],
+      target: target_qubit,
+      num_qubits: num_qubits
+    )
   end
 
-  @spec apply_single_qubit_gate_compiled(
+  @doc """
+  Applies a controlled single-qubit gate `|0⟩⟨0|⊗I + |1⟩⟨1|⊗U` directly to a
+  statevector: `gate_matrix` (2×2) acts on `target` wherever `control` is |1⟩.
+
+  Covers CP / CY / CZ / CRx / CRy / CRz (and CX, though `apply_cnot/4` is the
+  cheaper permutation-only path).
+
+  Raises `ArgumentError` for out-of-range or equal qubits, a gate that is not
+  2×2, or a state whose length is not `2^num_qubits`.
+  """
+  @spec apply_controlled_gate(
           Nx.Tensor.t(),
           Nx.Tensor.t(),
           non_neg_integer(),
-          pos_integer()
-        ) :: Nx.Tensor.t()
-  defn apply_single_qubit_gate_compiled(state, gate_matrix, target_qubit, num_qubits) do
-    apply_single_qubit_gate_direct(state, gate_matrix, target_qubit, num_qubits)
-  end
-
-  # Direct statevector manipulation for single-qubit gates
-  @spec apply_single_qubit_gate_direct(
-          Nx.Tensor.t(),
-          Nx.Tensor.t(),
           non_neg_integer(),
           pos_integer()
         ) :: Nx.Tensor.t()
-  defnp apply_single_qubit_gate_direct(state, gate, target_qubit, num_qubits) do
-    state_size = Nx.axis_size(state, 0)
+  def apply_controlled_gate(state, gate_matrix, control, target, num_qubits) do
+    validate_qubits!([control, target], num_qubits)
+    validate_2x2!(gate_matrix)
 
-    # A single-qubit gate acts independently on each pair of amplitudes that
-    # differ only in the target qubit, (|...0...⟩, |...1...⟩). We build both
-    # halves of every pair at once and apply the 2x2 matrix to all pairs.
-    indices = Nx.iota({state_size}, type: :s64)
-    qubit_bit_position = num_qubits - 1 - target_qubit
-
-    # Single 1-bit at the target slot: XOR-ing an index by it toggles only the
-    # target, giving that index's partner in its pair.
-    qubit_mask = Nx.left_shift(1, qubit_bit_position)
-
-    # The target qubit's value (0/1) for every basis state.
-    target_bits =
-      Nx.bitwise_and(
-        Nx.right_shift(indices, qubit_bit_position),
-        1
-      )
-
-    paired_indices = Nx.bitwise_xor(indices, qubit_mask)
-
-    # Line up (|0⟩-amp, |1⟩-amp) for the pair each index belongs to: if this
-    # index's target bit is 0 it IS the |0⟩ half (partner is |1⟩); if 1, the
-    # reverse. select/take build both views with no host-side loop.
-    amp_0 = Nx.select(Nx.equal(target_bits, 0), state, Nx.take(state, paired_indices))
-    amp_1 = Nx.select(Nx.equal(target_bits, 1), state, Nx.take(state, paired_indices))
-
-    # Apply gate matrix: [new_0, new_1] = gate * [amp_0, amp_1]
-    # gate = [[g00, g01], [g10, g11]]
-    g00 = gate[0][0]
-    g01 = gate[0][1]
-    g10 = gate[1][0]
-    g11 = gate[1][1]
-
-    new_amp_0 = g00 * amp_0 + g01 * amp_1
-    new_amp_1 = g10 * amp_0 + g11 * amp_1
-
-    # Reconstruct state: use new amplitude based on target qubit value
-    Nx.select(Nx.equal(target_bits, 0), new_amp_0, new_amp_1)
+    unitary_kernel(state, gate_matrix,
+      controls: [control],
+      target: target,
+      num_qubits: num_qubits
+    )
   end
 
   @doc """
@@ -125,94 +113,13 @@ defmodule Qx.CalcFast do
     * `target_qubit` - Index of target qubit
     * `num_qubits` - Total number of qubits in the system
 
-  ## Algorithm
-
-  For each basis state in the statevector:
-  1. Check if control qubit is |1⟩
-  2. If yes, swap amplitude with state that has target qubit flipped
-  3. If no, leave amplitude unchanged
-
-  This is much faster than building a 2^n x 2^n CNOT matrix.
+  Raises `ArgumentError` for out-of-range or equal qubits.
   """
   @spec apply_cnot(Nx.Tensor.t(), non_neg_integer(), non_neg_integer(), pos_integer()) ::
           Nx.Tensor.t()
-  defn apply_cnot(state, control_qubit, target_qubit, num_qubits) do
-    state_size = Nx.axis_size(state, 0)
-
-    # Create index tensor
-    indices = Nx.iota({state_size}, type: :s64)
-
-    # Calculate bit positions (MSB convention)
-    control_bit_pos = num_qubits - 1 - control_qubit
-    target_bit_pos = num_qubits - 1 - target_qubit
-
-    # Extract control bit value for each basis state
-    control_bits =
-      Nx.bitwise_and(
-        Nx.right_shift(indices, control_bit_pos),
-        1
-      )
-
-    # Partner index with the target flipped (XOR-partner trick): flipping the
-    # target qubit swaps each index's amplitude with this partner's.
-    target_mask = Nx.left_shift(1, target_bit_pos)
-    swapped_indices = Nx.bitwise_xor(indices, target_mask)
-    swapped_amps = Nx.take(state, swapped_indices)
-
-    # CNOT flips the target only where control=1: there, take the partner's
-    # amplitude; elsewhere keep the original. One vectorised select, no branch.
-    Nx.select(Nx.equal(control_bits, 1), swapped_amps, state)
-  end
-
-  @doc """
-  Applies a CSWAP (Fredkin) gate directly to a statevector.
-
-  CSWAP swaps the two target qubits if and only if the control qubit is |1⟩.
-
-  ## Parameters
-    * `state` - State vector (2^n dimensional complex tensor)
-    * `control` - Index of the control qubit
-    * `target_a` - Index of the first target qubit
-    * `target_b` - Index of the second target qubit
-    * `num_qubits` - Total number of qubits in the system
-  """
-  @spec apply_cswap(
-          Nx.Tensor.t(),
-          non_neg_integer(),
-          non_neg_integer(),
-          non_neg_integer(),
-          pos_integer()
-        ) :: Nx.Tensor.t()
-  defn apply_cswap(state, control, target_a, target_b, num_qubits) do
-    state_size = Nx.axis_size(state, 0)
-    indices = Nx.iota({state_size}, type: :s64)
-
-    control_bit_pos = num_qubits - 1 - control
-    ta_bit_pos = num_qubits - 1 - target_a
-    tb_bit_pos = num_qubits - 1 - target_b
-
-    control_bits = Nx.bitwise_and(Nx.right_shift(indices, control_bit_pos), 1)
-    ta_bits = Nx.bitwise_and(Nx.right_shift(indices, ta_bit_pos), 1)
-    tb_bits = Nx.bitwise_and(Nx.right_shift(indices, tb_bit_pos), 1)
-
-    # A swap only moves amplitude where the two targets DIFFER (|01⟩<->|10⟩);
-    # when they're equal (|00⟩, |11⟩) it's a no-op fixed point. So act only
-    # where control=1 AND ta != tb.
-    control_set = Nx.equal(control_bits, 1)
-    targets_differ = Nx.not_equal(ta_bits, tb_bits)
-    should_swap = Nx.logical_and(control_set, targets_differ)
-
-    # Flipping BOTH target bits at once maps 01<->10 — the partner to swap in.
-    swap_mask =
-      Nx.bitwise_or(
-        Nx.left_shift(Nx.tensor(1, type: :s64), ta_bit_pos),
-        Nx.left_shift(Nx.tensor(1, type: :s64), tb_bit_pos)
-      )
-
-    swapped_indices = Nx.bitwise_xor(indices, swap_mask)
-    swapped_amps = Nx.take(state, swapped_indices)
-
-    Nx.select(should_swap, swapped_amps, state)
+  def apply_cnot(state, control_qubit, target_qubit, num_qubits) do
+    validate_qubits!([control_qubit, target_qubit], num_qubits)
+    flip_kernel(state, controls: [control_qubit], target: target_qubit, num_qubits: num_qubits)
   end
 
   @doc """
@@ -226,6 +133,8 @@ defmodule Qx.CalcFast do
     * `control2` - Index of second control qubit
     * `target` - Index of target qubit
     * `num_qubits` - Total number of qubits in the system
+
+  Raises `ArgumentError` for out-of-range or repeated qubits.
   """
   @spec apply_toffoli(
           Nx.Tensor.t(),
@@ -234,46 +143,193 @@ defmodule Qx.CalcFast do
           non_neg_integer(),
           pos_integer()
         ) :: Nx.Tensor.t()
-  defn apply_toffoli(state, control1, control2, target, num_qubits) do
-    state_size = Nx.axis_size(state, 0)
+  def apply_toffoli(state, control1, control2, target, num_qubits) do
+    validate_qubits!([control1, control2, target], num_qubits)
+    flip_kernel(state, controls: [control1, control2], target: target, num_qubits: num_qubits)
+  end
 
-    # Create index tensor
-    indices = Nx.iota({state_size}, type: :s64)
+  @doc """
+  Applies a SWAP gate directly to a statevector (exchanges `qubit_a` and
+  `qubit_b`).
 
-    # Calculate bit positions (MSB convention)
-    control1_bit_pos = num_qubits - 1 - control1
-    control2_bit_pos = num_qubits - 1 - control2
-    target_bit_pos = num_qubits - 1 - target
+  Raises `ArgumentError` for out-of-range or equal qubits.
+  """
+  @spec apply_swap(Nx.Tensor.t(), non_neg_integer(), non_neg_integer(), pos_integer()) ::
+          Nx.Tensor.t()
+  def apply_swap(state, qubit_a, qubit_b, num_qubits) do
+    validate_qubits!([qubit_a, qubit_b], num_qubits)
+    swap_kernel(state, controls: [], pair: [qubit_a, qubit_b], num_qubits: num_qubits)
+  end
 
-    # Extract control bit values
-    control1_bits =
-      Nx.bitwise_and(
-        Nx.right_shift(indices, control1_bit_pos),
-        1
-      )
+  @doc """
+  Applies a CSWAP (Fredkin) gate directly to a statevector.
 
-    control2_bits =
-      Nx.bitwise_and(
-        Nx.right_shift(indices, control2_bit_pos),
-        1
-      )
+  CSWAP swaps the two target qubits if and only if the control qubit is |1⟩.
 
-    # Toffoli = CNOT gated on two controls: flip the target only where BOTH
-    # control bits are 1.
-    both_controls_set =
-      Nx.logical_and(
-        Nx.equal(control1_bits, 1),
-        Nx.equal(control2_bits, 1)
-      )
+  ## Parameters
+    * `state` - State vector (2^n dimensional complex tensor)
+    * `control` - Index of the control qubit
+    * `target_a` - Index of the first target qubit
+    * `target_b` - Index of the second target qubit
+    * `num_qubits` - Total number of qubits in the system
 
-    # Partner index with the target flipped (XOR-partner trick).
-    target_mask = Nx.left_shift(1, target_bit_pos)
-    swapped_indices = Nx.bitwise_xor(indices, target_mask)
+  Raises `ArgumentError` for out-of-range or repeated qubits.
+  """
+  @spec apply_cswap(
+          Nx.Tensor.t(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          pos_integer()
+        ) :: Nx.Tensor.t()
+  def apply_cswap(state, control, target_a, target_b, num_qubits) do
+    validate_qubits!([control, target_a, target_b], num_qubits)
+    swap_kernel(state, controls: [control], pair: [target_a, target_b], num_qubits: num_qubits)
+  end
 
-    # Get amplitudes from potentially swapped positions
-    swapped_amps = Nx.take(state, swapped_indices)
+  @doc """
+  Applies an iSWAP gate directly to a statevector:
+  `|01⟩ → i|10⟩`, `|10⟩ → i|01⟩`, `|00⟩` and `|11⟩` unchanged (symmetric in
+  the two qubits).
 
-    # Apply Toffoli: if both controls=1, use swapped amplitude; else original
-    Nx.select(both_controls_set, swapped_amps, state)
+  Raises `ArgumentError` for out-of-range or equal qubits.
+  """
+  @spec apply_iswap(Nx.Tensor.t(), non_neg_integer(), non_neg_integer(), pos_integer()) ::
+          Nx.Tensor.t()
+  def apply_iswap(state, qubit_a, qubit_b, num_qubits) do
+    validate_qubits!([qubit_a, qubit_b], num_qubits)
+    iswap_kernel(state, pair: [qubit_a, qubit_b], num_qubits: num_qubits)
+  end
+
+  # ===========================================================================
+  # Compiled kernels (static qubits / num_qubits via opts)
+  # ===========================================================================
+
+  defnp unitary_kernel(state, gate, opts \\ []) do
+    opts = keyword!(opts, [:controls, :target, :num_qubits])
+    unitary_expr(state, gate, opts[:controls], opts[:target], opts[:num_qubits])
+  end
+
+  defnp flip_kernel(state, opts \\ []) do
+    opts = keyword!(opts, [:controls, :target, :num_qubits])
+    flip_expr(state, opts[:controls], opts[:target], opts[:num_qubits])
+  end
+
+  defnp swap_kernel(state, opts \\ []) do
+    opts = keyword!(opts, [:controls, :pair, :num_qubits])
+    swap_expr(state, opts[:controls], opts[:pair], opts[:num_qubits])
+  end
+
+  defnp iswap_kernel(state, opts \\ []) do
+    opts = keyword!(opts, [:pair, :num_qubits])
+    iswap_expr(state, opts[:pair], opts[:num_qubits])
+  end
+
+  # Trace-time builders: plain Elixir over static ints, emitting Nx ops on the
+  # traced tensors.
+
+  deftransformp unitary_expr(state, gate, controls, target, num_qubits) do
+    in_axes(state, num_qubits, controls, &mix_axis(&1, gate, target))
+  end
+
+  deftransformp flip_expr(state, controls, target, num_qubits) do
+    in_axes(state, num_qubits, controls, &Nx.reverse(&1, axes: [target]))
+  end
+
+  deftransformp swap_expr(state, controls, [a, b], num_qubits) do
+    in_axes(state, num_qubits, controls, &Nx.transpose(&1, axes: swap_axes(num_qubits, a, b)))
+  end
+
+  deftransformp iswap_expr(state, [a, b], num_qubits) do
+    in_axes(state, num_qubits, [], &iswap_axes(&1, a, b))
+  end
+
+  # ===========================================================================
+  # Slicing primitives (called at trace time from the deftransforms above)
+  # ===========================================================================
+
+  # Reshape {2^n} -> {2, …, 2}, apply `op` to the all-controls-|1⟩ slice,
+  # reshape back.
+  defp in_axes(state, num_qubits, controls, op) do
+    state
+    |> Nx.reshape(Tuple.duplicate(2, num_qubits))
+    |> on_controls(controls, op)
+    |> Nx.reshape({Integer.pow(2, num_qubits)})
+  end
+
+  defp on_controls(tensor, [], op), do: op.(tensor)
+
+  defp on_controls(tensor, [control | rest], op) do
+    {off, on} = halves(tensor, control)
+    Nx.concatenate([off, on_controls(on, rest, op)], axis: control)
+  end
+
+  # The qubit = |0⟩ and qubit = |1⟩ slices along `axis` (size-1 axis kept).
+  defp halves(tensor, axis) do
+    {Nx.slice_along_axis(tensor, 0, 1, axis: axis), Nx.slice_along_axis(tensor, 1, 1, axis: axis)}
+  end
+
+  # [new_0, new_1] = gate · [amp_0, amp_1] for every pair along `axis`.
+  defp mix_axis(tensor, gate, axis) do
+    {amp0, amp1} = halves(tensor, axis)
+    new0 = Nx.add(Nx.multiply(gate[0][0], amp0), Nx.multiply(gate[0][1], amp1))
+    new1 = Nx.add(Nx.multiply(gate[1][0], amp0), Nx.multiply(gate[1][1], amp1))
+    Nx.concatenate([new0, new1], axis: axis)
+  end
+
+  defp swap_axes(rank, a, b) do
+    Enum.map(0..(rank - 1), fn
+      ^a -> b
+      ^b -> a
+      axis -> axis
+    end)
+  end
+
+  # Blocks indexed (qubit_a, qubit_b): |01⟩ ← i·|10⟩, |10⟩ ← i·|01⟩.
+  defp iswap_axes(tensor, a, b) do
+    {a0, a1} = halves(tensor, a)
+    {a0b0, a0b1} = halves(a0, b)
+    {a1b0, a1b1} = halves(a1, b)
+    i = Complex.new(0.0, 1.0)
+
+    Nx.concatenate(
+      [
+        Nx.concatenate([a0b0, Nx.multiply(i, a1b0)], axis: b),
+        Nx.concatenate([Nx.multiply(i, a0b1), a1b1], axis: b)
+      ],
+      axis: a
+    )
+  end
+
+  # ===========================================================================
+  # Host-side validation of the static arguments
+  # ===========================================================================
+
+  defp validate_qubits!(qubits, num_qubits) when is_integer(num_qubits) and num_qubits >= 1 do
+    case Enum.find(qubits, &(not (is_integer(&1) and &1 >= 0 and &1 < num_qubits))) do
+      nil ->
+        :ok
+
+      bad ->
+        raise ArgumentError,
+              "qubit index #{inspect(bad)} is out of range for a #{num_qubits}-qubit state"
+    end
+
+    if Enum.uniq(qubits) != qubits do
+      raise ArgumentError, "qubit indices must be distinct, got: #{inspect(qubits)}"
+    end
+
+    :ok
+  end
+
+  defp validate_qubits!(_qubits, num_qubits) do
+    raise ArgumentError, "num_qubits must be a positive integer, got: #{inspect(num_qubits)}"
+  end
+
+  defp validate_2x2!(gate) do
+    case Nx.shape(gate) do
+      {2, 2} -> :ok
+      shape -> raise ArgumentError, "expected a 2x2 gate matrix, got shape #{inspect(shape)}"
+    end
   end
 end

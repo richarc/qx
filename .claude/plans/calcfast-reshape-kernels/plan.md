@@ -11,22 +11,26 @@ SWAP / iSWAP / CP / CY / CRx / CRy / CRz" for the **`Qx.Simulation`** path
 ## Goal
 
 Replace the `Nx.take` gather + `Nx.select` mask kernels in
-`lib/qx/calc_fast.ex` with a single **general k-qubit contraction kernel**:
-reshape the `{2^n}` state to rank-n `{2,…,2}`, contract a `2^k×2^k` gate
-(reshaped to `{2,…,2}` of rank 2k) along the k target axes with `Nx.dot/4`,
-transpose back, reshape to `{2^n}`. Route the single-qubit, CNOT, CSWAP,
-Toffoli kernels **and** CP / CY / CRx / CRy / CRz / CZ / SWAP / iSWAP in
-`Qx.Simulation` through it, eliminating every `Nx.dot(<2^n×2^n matrix>, state)`
+`lib/qx/calc_fast.ex` with **rank-n axis-slicing kernels** (D1, amended
+2026-11-06 after the P1 spike): reshape the `{2^n}` state to rank-n
+`{2,…,2}` (axis q ↔ qubit q, MSB), take static `Nx.slice_along_axis`
+halves on control/target axes, apply the sub-op to the control=1 slice
+(2×2 elementwise combine / `Nx.reverse` / `Nx.transpose`), `Nx.concatenate`
+back, reshape to `{2^n}`. Route the single-qubit, CNOT, CSWAP, Toffoli
+kernels **and** CP / CY / CRx / CRy / CRz / CZ / SWAP / iSWAP in
+`Qx.Simulation` through them, eliminating every `Nx.dot(<2^n×2^n matrix>, state)`
 from the simulation hot path.
 
 ## Scope
 
 **In:**
-- `lib/qx/calc_fast.ex` — new `apply_gate/4`-style contraction kernel (static
-  qubits/n via `opts`), the four existing public entry points re-expressed
-  on top of it (same names + arities, same results).
-- Controlled-U as a 4×4 block matrix `|0⟩⟨0|⊗I + |1⟩⟨1|⊗U` contracted on
-  `[c, t]`; SWAP / iSWAP / CZ as fixed 4×4; CCX / CSWAP as fixed 8×8.
+- `lib/qx/calc_fast.ex` — one slicing primitive (`on_controls` + per-op
+  slice ops; static qubits/n via `opts`), the four existing public entry
+  points re-expressed on top of it (same names + arities, same results).
+- Controlled-U = 2×2 combine on the target axis of the control=1 slice;
+  CX/CCX = `Nx.reverse` of the target axis on the control slice(s);
+  SWAP/CSWAP = axis transpose (on the control slice for CSWAP); iSWAP =
+  swap of the a≠b blocks with an `i` phase; CZ/CP via controlled-U.
 - `lib/qx/calc.ex` — thin delegators for the new two-qubit entry points
   (keeps the Calc→CalcFast layering; qx-rut merge is a separate item).
 - `lib/qx/simulation.ex` `apply_two_qubit_op/5` + `apply_controlled_target_op/6`
@@ -44,8 +48,12 @@ from the simulation hot path.
 
 ## Decisions (see scratchpad for rationale)
 
-- **D1 — one general kernel, not per-gate kernels.** Single code path ⇒ the MSB
-  convention lives in one place; controlled-U is just a 4×4 matrix.
+- **D1 (amended 2026-11-06, user decision after P1 spike) — rank-n axis slicing,
+  not dense 2^k×2^k contraction.** Dense contraction regressed CX 4–7× and CCX ~8×
+  vs the old gather kernels on BinaryBackend; slicing beats old AND dense on every
+  gate (scratchpad P1 table). One shared primitive (reshape ↔ axes + control-slice
+  recursion) keeps the MSB axis mapping in one place. No `Nx.take`/`Nx.select`
+  (Iron Law #3 intent: no gather/mask); static slices/concats fuse under EXLA.
 - **D2 — static qubits/n via `opts` keyword + `deftransformp`** for shape &
   permutation math (Nx: positional ints become tensors; `Enum`/`Kernel` not
   allowed in defn). Gate matrix stays a tensor ⇒ parameter changes never
@@ -53,7 +61,7 @@ from the simulation hot path.
 - **D3 — preserve every existing test unmodified** (TDD rule #2). The
   invalid-input characterization tests in `test/qx/calc_fast_test.exs:231–293`
   are honoured by: an explicit host-side `ArgumentError` for out-of-range /
-  negative static qubit indices (in the deftransform), `Nx.reshape`'s own
+  negative / duplicate static qubit indices (in the `def` wrapper), `Nx.reshape`'s own
   `ArgumentError` for state-length ≠ 2^n, and `Nx.slice(gate, [0,0], [2,2])`
   in the single-qubit wrapper to keep the "top-left 2×2 of an oversized gate"
   behaviour. If any of these can't be preserved, STOP and ask before touching the test.
@@ -62,7 +70,8 @@ from the simulation hot path.
 
 ## Risks
 
-- **R1 — BinaryBackend may not win.** Qx ships without EXLA; BinaryBackend
+- **R1 — BinaryBackend may not win.** *(Realised for dense contraction on CX/CCX →
+  D1 amended to slicing; see scratchpad P1 table.)* Qx ships without EXLA; BinaryBackend
   runs dot/transpose as Elixir loops over binaries (dot ≈ 1 ms n=10, 21 ms n=14
   per researcher). Old kernel ≈ 16 elementwise passes; new ≈ 1 dot + 1 transpose.
   Expected win, but **Phase 1 spike measures before committing**. If the new
@@ -94,56 +103,59 @@ from the simulation hot path.
 
 ## Phase 1 — Spike: contraction kernel feasibility (throwaway, outside lib/)
 
-- [ ] [P1-T1] Scratch `.exs` (run with `mix run`) implementing the general k-qubit
+- [x] [P1-T1] Scratch `.exs` (run with `mix run`) implementing the general k-qubit
       contraction defn; verify against old kernels on random states for k=1,2,3,
-      all qubit orderings, n=3..6
-- [ ] [P1-T2] Time new vs old single-qubit + CX + CP at n = 8, 12, 14, 16 on BinaryBackend;
-      record in scratchpad. **Gate:** R1 decision before Phase 2
+      all qubit orderings, n=3..6 — dense correct for k=1..3 all orderings; slice
+      variants (1q, CX, CCX, CU, CP-mask, SWAP) correct at n=5 (session scratchpad, throwaway)
+- [x] [P1-T2] Time new vs old single-qubit + CX + CP at n = 8, 12, 14, 16 on BinaryBackend;
+      record in scratchpad. **Gate:** R1 decision before Phase 2 — dense regresses
+      CX/CCX 4–8×; user chose slice kernels (D1 amended); n=16 H 190→50–63, CX 33→2.4–9 ms
 
 ## Phase 2 — Tests first (must fail before Phase 3)
 
-- [ ] [P2-T1] Grep test suite for tolerances < 1.0e-6 touching gate results (R4); report, don't edit
-- [ ] [P2-T2] New `test/qx/calc_fast_contraction_test.exs`: general kernel vs
-      `Qx.Gates` full-matrix oracle for k=1,2,3, every qubit permutation at n=3 and
-      a non-adjacent sample at n=5, random normalised states, 1e-6
-- [ ] [P2-T3] Controlled-U entry point: CP/CY/CRx/CRy/CRz/CZ with control>target and
-      control<target, non-adjacent, vs `Gates.controlled_gate` oracle
-- [ ] [P2-T4] SWAP / iSWAP entry points vs `Gates.swap` / `Gates.iswap` oracle, both orderings
-- [ ] [P2-T5] Invalid-input characterization for the new entry points (ArgumentError class only, D3)
-- [ ] [P2-T6] Simulation-level: QFT n=4 and a CRY/CSWAP mixed circuit — `Qx.get_state`
-      matches pre-change values (computed in test via `Gates` matrices); run_steps too (Iron Law #9 execution test)
-- [ ] [P2-T7] Static source check test: `lib/qx/calc_fast.ex` contains no `Nx.take` / `Nx.select`
-      and `lib/qx/simulation.ex` no `Gates.swap|iswap|controlled_gate` (Iron Law #3 guard)
-- [ ] [P2-T8] Run — confirm new tests fail for the right reason
+- [x] [P2-T1] Grep test suite for tolerances < 1.0e-6 touching gate results (R4); report, don't edit
+      — none touch gate results (all host f64 param/expr checks); see scratchpad
+- [x] [P2-T2] New `test/qx/calc_fast_slicing_test.exs`: every entry point (1q, CX,
+      CCX, CSWAP) vs a test-local full-matrix embedding oracle (k=1,2,3), every qubit
+      permutation at n=3 and a non-adjacent sample at n=5, random normalised states, 1e-6 — `embed/3` index-arithmetic oracle + `Qx.Gates` cross-check; random states via Nx.Random
+- [x] [P2-T3] Controlled-U entry point: CP/CY/CRx/CRy/CRz/CZ with control>target and
+      control<target, non-adjacent, vs `Gates.controlled_gate` oracle — 6 target gates × (all n=3 pairs + 6 n=5 samples) + n=2 case
+- [x] [P2-T4] SWAP / iSWAP entry points vs `Gates.swap` / `Gates.iswap` oracle, both orderings
+- [x] [P2-T5] Invalid-input characterization for the new entry points (ArgumentError class only, D3) — also: repeated qubits now ArgumentError on cnot/toffoli/cswap; non-integer index
+- [x] [P2-T6] Simulation-level: QFT n=4 and a CRY/CSWAP mixed circuit — `Qx.get_state`
+      matches pre-change values (computed in test via `Gates` matrices); run_steps too (Iron Law #9 execution test) — `test/qx/simulation_slicing_kernels_test.exs`: QFT n=4, QFT n=5 on non-trivial input, 17-gate mixed circuit; every `steps/2` prefix
+- [x] [P2-T7] Static source check test: `lib/qx/calc_fast.ex` contains no `Nx.take` / `Nx.select`
+      and `lib/qx/simulation.ex` no `Gates.swap|iswap|controlled_gate` (Iron Law #3 guard) — comment lines stripped before matching
+- [x] [P2-T8] Run — confirm new tests fail for the right reason — 12 red (undefined fns, static guards, repeated-qubit raise); oracle tests for existing kernels + Simulation already green (oracle validated vs old code)
 
 ## Phase 3 — Implement kernel
 
-- [ ] [P3-T1] `deftransformp` helpers: validate static qubits (raise ArgumentError, D3),
-      compute rank-n shape and inverse transpose perm
-- [ ] [P3-T2] `defn apply_gate(state, gate, opts)` — reshape / `Nx.dot/4` / transpose / reshape;
-      comment block documenting axis ↔ qubit mapping (MSB) replacing the XOR-trick comment
-- [ ] [P3-T3] Re-express `apply_single_qubit_gate/4` (keep 1-qubit head, slice gate D3),
-      `apply_cnot/4`, `apply_toffoli/5`, `apply_cswap/5` on `apply_gate`; delete gather code
-- [ ] [P3-T4] Add `apply_controlled_gate/5` (builds 4×4 block from 2×2 U in-defn),
-      `apply_swap/4`, `apply_iswap/4`; Calc delegators
-- [ ] [P3-T5] `mix test test/qx/calc_fast_test.exs test/qx/calc_test.exs test/qx/calc_fast_contraction_test.exs` green
-      (existing tests UNMODIFIED); verify gate (compile/format/credo)
+- [x] [P3-T1] Host `validate_qubits!/2` (ArgumentError, D3) + `deftransformp` helpers:
+      rank-n shape, flatten, control-slice recursion, swap permutation — `validate_qubits!/2` (range, integer, distinct, num_qubits ≥ 1) + `validate_2x2!/1` in `def` wrappers; `deftransformp` `*_expr` builders call plain `defp` slicing primitives (`in_axes/4`, `on_controls/3`, `halves/2`)
+- [x] [P3-T2] `defnp` kernels (mix / flip / swap / iswap) over the shared primitive;
+      comment block documenting axis ↔ qubit mapping (MSB) replacing the XOR-trick comment — `unitary_kernel` / `flip_kernel` / `swap_kernel` / `iswap_kernel` defnp's; axis↔qubit comment block replaces XOR-trick comment
+- [x] [P3-T3] Re-express `apply_single_qubit_gate/4` (keep 1-qubit head, slice gate D3),
+      `apply_cnot/4`, `apply_toffoli/5`, `apply_cswap/5` on the kernels; delete gather code — public fns now `def` (were `defn`); all gather/select code deleted; 3×3-gate characterization holds (kernel reads only gate[0..1][0..1])
+- [x] [P3-T4] Add `apply_controlled_gate/5` (2×2 U on the control=1 slice),
+      `apply_swap/4`, `apply_iswap/4`; Calc delegators — CU = `mix_axis` on control slice; SWAP/CSWAP = transpose; iSWAP = block exchange × i
+- [x] [P3-T5] `mix test test/qx/calc_fast_test.exs test/qx/calc_test.exs test/qx/calc_fast_slicing_test.exs` green
+      (existing tests UNMODIFIED); verify gate (compile/format/credo) — 61 passed, existing tests untouched
 
 ## Phase 4 — Route Simulation through the kernel
 
-- [ ] [P4-T1] `apply_two_qubit_op/5`: `:swap`, `:iswap` → kernel; `:cz` → controlled-Z
-      (single contraction, replaces H·CX·H)
-- [ ] [P4-T2] `apply_controlled_target_op/6` → `Calc.apply_controlled_gate/5`
-- [ ] [P4-T3] Full `mix test` green; verify gate; `mix docs` warning count ≤ baseline
+- [x] [P4-T1] `apply_two_qubit_op/5`: `:swap`, `:iswap` → kernel; `:cz` → controlled-Z
+      (single controlled-U kernel, replaces H·CX·H)
+- [x] [P4-T2] `apply_controlled_target_op/6` → `Calc.apply_controlled_gate/5`
+- [x] [P4-T3] Full `mix test` green; verify gate; `mix docs` warning count ≤ baseline — 1426 passed (328 doctests); credo clean (flattened 2 nested test helpers); docs warnings 29 → 29, identical list
 
 ## Phase 5 — Measure & document
 
-- [ ] [P5-T1] Re-run all four bench suites → `research/after/*.txt`; write
-      `research/bench-comparison.md` (per-n speed-up table, BinaryBackend)
-- [ ] [P5-T2] CHANGELOG `[Unreleased]` — Performance entry (internal, non-breaking)
-- [ ] [P5-T3] Update the two ROADMAP v0.12 lines: tick the CalcFast item; amend the
+- [x] [P5-T1] Re-run all four bench suites → `research/after/*.txt`; write
+      `research/bench-comparison.md` (per-n speed-up table, BinaryBackend) — QFT n=10 82.4 s→24.6 ms; GHZ n=20 18.3→5.2 s; no regressions in any suite
+- [x] [P5-T2] CHANGELOG `[Unreleased]` — Performance entry (internal, non-breaking)
+- [x] [P5-T3] Update the two ROADMAP v0.12 lines: tick the CalcFast item; amend the
       matrix-materialisation item to note the Simulation path is done and only the
-      Register/`Qx.Gates` builders remain (or tick if user agrees they're out of scope pending 1.0)
+      Register/`Qx.Gates` builders remain (or tick if user agrees they're out of scope pending 1.0) — CalcFast item ticked; matrix-materialisation item amended (Simulation done; Register/Gates builders remain), left unticked pending user
 - [ ] [P5-T4] `/phx:verify` → `/phx:review` (merge gate — stop for human authorization)
 
 ## Verification

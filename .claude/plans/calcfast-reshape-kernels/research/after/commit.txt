@@ -1,0 +1,2 @@
+ae2aa69
++ uncommitted calcfast slicing kernels (lib/qx/calc_fast.ex, calc.ex, simulation.ex)

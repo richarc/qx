@@ -57,6 +57,36 @@ probability (simulation_result_seam_test:42), or a nonzero threshold
 (u_gate_convention_test:104). Permutation gates via contraction multiply by
 exact 0/1, so exact-zero assertions (`probability("01") == 0.0`) stay exact.
 
+## P1 spike — R1 gate data (BinaryBackend, c64, ms/op, 2026-11-06)
+
+Correctness: dense k-qubit contraction matches old kernels / `Qx.Gates` oracles
+for k=1,2,3, every ordering, n=3..6 (atol 1e-6). Slice variants match at n=5.
+
+"dense" = plan D1 (reshape → `Nx.dot` 2^k×2^k gate on k axes → transpose).
+"slice" = reshape rank-n → `Nx.slice_along_axis` on control/target axes →
+op on the slice (reverse / 2×2 elementwise combine / transpose) →
+`Nx.concatenate`. Neither uses `Nx.take`/`Nx.select`.
+
+| op | n | old | dense | slice |
+|---|---|---|---|---|
+| H (q0/mid/last) | 8 | 0.51–0.53 | 0.25–0.28 | 0.18–0.22 |
+| H | 12 | 8.1–8.2 | 4.4 | 2.1–2.7 |
+| H | 14 | 46 | 21–22 | 11–14.5 |
+| H | 16 | 188–191 | 134–135 | 50–63 |
+| CX (0,last) | 8 / 12 / 14 / 16 | 0.10 / 1.5 / 7.7 / 33 | 0.43 / 7.3 / 37 / **223** | 0.015 / 0.12 / 0.42 / 2.4 (c=last,t=0: 9.2) |
+| CCX | 8 / 12 / 14 / 16 | 0.15 / 2.0 / 10 / 44 | 0.74 / 12 / 62 / **364** | 0.03 / 0.21 / 0.76 / 3.6 |
+| CP / CU(RY) | 16 | 2^n×2^n matrix (55 ms @ n=8) | 223 | CU 47; diagonal-mask CP 36 |
+| SWAP | 16 | matrix (44 ms @ n=8) | — | transpose 5.8 |
+
+**R1 verdict:** dense contraction wins for 1q (1.4–2×) but REGRESSES CX 4–7×
+and CCX ~8× vs today's gather kernels. D1 as written is infeasible for
+"same or better" on BinaryBackend. Slice approach beats old AND dense
+everywhere. → Surfaced to user for D1 amendment (memory: spec-infeasibility).
+
 ## Dead-ends
+
+- **Dense 2^k×2^k contraction for permutation / controlled gates** (D1 as
+  planned): multiplies by mostly-zero blocks; 4×4 CX is 5–7× slower and 8×8
+  CCX ~8× slower than the old gather kernels on BinaryBackend (table above).
 
 (none yet)

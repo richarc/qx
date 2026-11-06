@@ -1,0 +1,60 @@
+warning: setting :preferred_cli_env in your mix.exs "def project" is deprecated, set it inside "def cli" instead:
+
+    def cli do
+      [preferred_envs: [coveralls: :test, "coveralls.detail": :test, "coveralls.post": :test, "coveralls.html": :test, "coveralls.json": :test, "coveralls.github": :test, "coveralls.cobertura": :test]]
+    end
+
+  (mix 1.20.2) lib/mix/cli.ex:187: Mix.CLI.preferred_cli_env/3
+  (mix 1.20.2) lib/mix/cli.ex:170: Mix.CLI.maybe_change_env_and_target/2
+  (mix 1.20.2) lib/mix/cli.ex:59: Mix.CLI.proceed/2
+  /Users/richarc/.local/share/mise/installs/elixir/1.20.2-otp-29/bin/mix:7: (file)
+  (elixir 1.20.2) src/elixir_compiler.erl:102: :elixir_compiler.dispatch/4
+  (elixir 1.20.2) src/elixir_compiler.erl:76: :elixir_compiler.compile/4
+
+Operating System: macOS
+CPU Information: Apple M3
+Number of Available Cores: 8
+Available memory: 16 GB
+Elixir 1.20.2
+Erlang 29.0.3
+JIT enabled: true
+
+Benchmark suite executing with the following configuration:
+warmup: 2 s
+time: 5 s
+memory time: 0 ns
+reduction time: 0 ns
+parallel: 1
+inputs: none specified
+Estimated total run time: 35 s
+Excluding outliers: false
+
+Benchmarking long(100) renormalize: 10 ...
+Benchmarking long(100) renormalize: false ...
+Benchmarking short baseline (no opt) ...
+Benchmarking short renormalize: false ...
+Benchmarking short renormalize: true ...
+Calculating statistics...
+Formatting results...
+
+Name                                   ips        average  deviation         median         99th %
+short renormalize: false            7.57 K      132.08 μs     ±6.71%      129.75 μs      165.25 μs
+short baseline (no opt)             7.57 K      132.15 μs     ±6.84%      129.92 μs      165.17 μs
+short renormalize: true             7.12 K      140.47 μs     ±6.90%      136.67 μs      179.63 μs
+long(100) renormalize: false        0.31 K     3267.14 μs     ±2.68%     3283.21 μs     3402.36 μs
+long(100) renormalize: 10           0.26 K     3841.75 μs    ±11.33%     3505.98 μs     4433.14 μs
+
+Comparison: 
+short renormalize: false            7.57 K
+short baseline (no opt)             7.57 K - 1.00x slower +0.0689 μs
+short renormalize: true             7.12 K - 1.06x slower +8.39 μs
+long(100) renormalize: false        0.31 K - 24.74x slower +3135.07 μs
+long(100) renormalize: 10           0.26 K - 29.09x slower +3709.67 μs
+Generated bench/output/renormalization.html
+Generated bench/output/renormalization_comparison.html
+Generated bench/output/renormalization_short_renormalize__false.html
+Generated bench/output/renormalization_short_baseline__no_opt_.html
+Generated bench/output/renormalization_short_renormalize__true.html
+Generated bench/output/renormalization_long_100__renormalize__false.html
+Generated bench/output/renormalization_long_100__renormalize__10.html
+Opened report using open
