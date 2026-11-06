@@ -113,6 +113,49 @@ defmodule Qx.Calc do
     Qx.CalcFast.apply_cswap(state, control, target_a, target_b, num_qubits)
   end
 
+  @doc """
+  Applies a controlled single-qubit gate (`|0⟩⟨0|⊗I + |1⟩⟨1|⊗U`) to a state
+  vector without building a 2^n × 2^n matrix. Used for CP / CY / CZ / CRx /
+  CRy / CRz.
+
+  ## Parameters
+    * `state` - The quantum state vector
+    * `gate_matrix` - 2x2 matrix `U` applied to `target` when `control` is |1⟩
+    * `control` - Index of the control qubit
+    * `target` - Index of the target qubit
+    * `num_qubits` - Total number of qubits in the system
+  """
+  @spec apply_controlled_gate(
+          Nx.Tensor.t(),
+          Nx.Tensor.t(),
+          non_neg_integer(),
+          non_neg_integer(),
+          pos_integer()
+        ) :: Nx.Tensor.t()
+  def apply_controlled_gate(state, gate_matrix, control, target, num_qubits) do
+    Qx.CalcFast.apply_controlled_gate(state, gate_matrix, control, target, num_qubits)
+  end
+
+  @doc """
+  Applies a SWAP gate (exchanges `qubit_a` and `qubit_b`) to a state vector
+  without building a 2^n × 2^n matrix.
+  """
+  @spec apply_swap(Nx.Tensor.t(), non_neg_integer(), non_neg_integer(), pos_integer()) ::
+          Nx.Tensor.t()
+  def apply_swap(state, qubit_a, qubit_b, num_qubits) do
+    Qx.CalcFast.apply_swap(state, qubit_a, qubit_b, num_qubits)
+  end
+
+  @doc """
+  Applies an iSWAP gate (`|01⟩ → i|10⟩`, `|10⟩ → i|01⟩`) to a state vector
+  without building a 2^n × 2^n matrix.
+  """
+  @spec apply_iswap(Nx.Tensor.t(), non_neg_integer(), non_neg_integer(), pos_integer()) ::
+          Nx.Tensor.t()
+  def apply_iswap(state, qubit_a, qubit_b, num_qubits) do
+    Qx.CalcFast.apply_iswap(state, qubit_a, qubit_b, num_qubits)
+  end
+
   # ============================================================================
   # Private Helper Functions
   # ============================================================================

@@ -1,0 +1,76 @@
+warning: setting :preferred_cli_env in your mix.exs "def project" is deprecated, set it inside "def cli" instead:
+
+    def cli do
+      [preferred_envs: [coveralls: :test, "coveralls.detail": :test, "coveralls.post": :test, "coveralls.html": :test, "coveralls.json": :test, "coveralls.github": :test, "coveralls.cobertura": :test]]
+    end
+
+  (mix 1.20.2) lib/mix/cli.ex:187: Mix.CLI.preferred_cli_env/3
+  (mix 1.20.2) lib/mix/cli.ex:170: Mix.CLI.maybe_change_env_and_target/2
+  (mix 1.20.2) lib/mix/cli.ex:59: Mix.CLI.proceed/2
+  /Users/richarc/.local/share/mise/installs/elixir/1.20.2-otp-29/bin/mix:7: (file)
+  (elixir 1.20.2) src/elixir_compiler.erl:102: :elixir_compiler.dispatch/4
+  (elixir 1.20.2) src/elixir_compiler.erl:76: :elixir_compiler.compile/4
+
+Operating System: macOS
+CPU Information: Apple M3
+Number of Available Cores: 8
+Available memory: 16 GB
+Elixir 1.20.2
+Erlang 29.0.3
+JIT enabled: true
+
+Benchmark suite executing with the following configuration:
+warmup: 2 s
+time: 5 s
+memory time: 0 ns
+reduction time: 0 ns
+parallel: 1
+inputs: none specified
+Estimated total run time: 1 min 3 s
+Excluding outliers: false
+
+Benchmarking QFT n=10 ...
+Benchmarking QFT n=2 ...
+Benchmarking QFT n=3 ...
+Benchmarking QFT n=4 ...
+Benchmarking QFT n=5 ...
+Benchmarking QFT n=6 ...
+Benchmarking QFT n=7 ...
+Benchmarking QFT n=8 ...
+Benchmarking QFT n=9 ...
+Calculating statistics...
+Formatting results...
+
+Name               ips        average  deviation         median         99th %
+QFT n=2        5335.20       0.187 ms     ±7.91%       0.182 ms        0.24 ms
+QFT n=3        2297.72        0.44 ms     ±6.41%        0.43 ms        0.51 ms
+QFT n=4         670.56        1.49 ms     ±2.83%        1.49 ms        1.58 ms
+QFT n=5         172.44        5.80 ms     ±6.72%        5.78 ms        5.96 ms
+QFT n=6          35.42       28.24 ms     ±0.95%       28.20 ms       29.29 ms
+QFT n=7           7.05      141.93 ms     ±0.60%      141.86 ms      144.24 ms
+QFT n=8           0.58     1732.73 ms     ±1.86%     1736.38 ms     1763.06 ms
+QFT n=9          0.103     9704.48 ms     ±0.00%     9704.48 ms     9704.48 ms
+QFT n=10        0.0121    82359.48 ms     ±0.00%    82359.48 ms    82359.48 ms
+
+Comparison: 
+QFT n=2        5335.20
+QFT n=3        2297.72 - 2.32x slower +0.25 ms
+QFT n=4         670.56 - 7.96x slower +1.30 ms
+QFT n=5         172.44 - 30.94x slower +5.61 ms
+QFT n=6          35.42 - 150.64x slower +28.05 ms
+QFT n=7           7.05 - 757.21x slower +141.74 ms
+QFT n=8           0.58 - 9244.46x slower +1732.54 ms
+QFT n=9          0.103 - 51775.33x slower +9704.29 ms
+QFT n=10        0.0121 - 439404.25x slower +82359.29 ms
+Generated bench/output/qft.html
+Generated bench/output/qft_comparison.html
+Generated bench/output/qft_qft_n_2.html
+Generated bench/output/qft_qft_n_3.html
+Generated bench/output/qft_qft_n_4.html
+Generated bench/output/qft_qft_n_5.html
+Generated bench/output/qft_qft_n_6.html
+Generated bench/output/qft_qft_n_7.html
+Generated bench/output/qft_qft_n_8.html
+Generated bench/output/qft_qft_n_9.html
+Generated bench/output/qft_qft_n_10.html
+Opened report using open

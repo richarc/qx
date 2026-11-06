@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Performance
+
+- Rewrote the statevector gate kernels in `Qx.CalcFast` (internal) as
+  rank-n **axis slicing**. The `{2^n}` state is reshaped to `{2, …, 2}`;
+  static slices of the control and target axes are combined with the 2×2
+  gate, reversed (X), or transposed (SWAP), then concatenated back. This
+  replaces the `Nx.take` gather and `Nx.select` mask kernels. Every
+  two-qubit gate in `Qx.Simulation` now uses these kernels: CP, CY, CZ,
+  CRx, CRy, CRz, SWAP and iSWAP. They previously multiplied by a
+  materialised `2^n × 2^n` matrix, which ran out of memory above n≈12.
+  Measured on BinaryBackend: QFT n=10 went from 82.4 s to 24.6 ms; GHZ
+  n=20 from 18.3 s to 5.2 s; single-qubit gates are 3–4× faster at
+  n=16; CX, CCX and CSWAP are 11–17× faster at n=16. CP, CRY, SWAP and
+  iSWAP now run at n=16 in 7–37 ms. Results are unchanged (checked
+  against the old matrix path to 1e-6). Internal, non-breaking.
+- `mix bench` now runs every suite. Previously only the first ran,
+  because Mix skips a task it has already run. A new per-gate suite,
+  `bench/kernels_bench.exs`, was added.
+
 ## [0.11.0] - 2026-07-13
 
 **Release theme — API Review Follow-Through.** The API consistency

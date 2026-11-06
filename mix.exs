@@ -147,12 +147,18 @@ defmodule Qx.MixProject do
 
   defp aliases do
     [
-      bench: [
-        "run --no-halt bench/ghz_bench.exs",
-        "run --no-halt bench/qft_bench.exs",
-        "run --no-halt bench/renormalization_bench.exs"
-      ]
+      bench: &run_benches/1
     ]
+  end
+
+  # `mix run` would only execute once per alias invocation (Mix skips a task
+  # already run), so each suite is explicitly re-run.
+  @bench_suites ~w(ghz qft renormalization kernels)
+
+  defp run_benches(_args) do
+    Enum.each(@bench_suites, fn suite ->
+      Mix.Task.rerun("run", ["bench/#{suite}_bench.exs"])
+    end)
   end
 
   defp package do

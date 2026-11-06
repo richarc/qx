@@ -555,16 +555,13 @@ defmodule Qx.Simulation do
         Calc.apply_cnot(state, c, t, num_qubits)
 
       :cz ->
-        state
-        |> Calc.apply_single_qubit_gate(Gates.hadamard(), t, num_qubits)
-        |> Calc.apply_cnot(c, t, num_qubits)
-        |> Calc.apply_single_qubit_gate(Gates.hadamard(), t, num_qubits)
+        Calc.apply_controlled_gate(state, Gates.pauli_z(), c, t, num_qubits)
 
       :swap ->
-        Nx.dot(Gates.swap(c, t, num_qubits), state)
+        Calc.apply_swap(state, c, t, num_qubits)
 
       :iswap ->
-        Nx.dot(Gates.iswap(c, t, num_qubits), state)
+        Calc.apply_iswap(state, c, t, num_qubits)
 
       :measure ->
         state
@@ -574,9 +571,10 @@ defmodule Qx.Simulation do
     end
   end
 
-  # Lifts a single-qubit gate matrix (parameterised by `gate_name` and
-  # `params`) into the controlled two-qubit gate `|0⟩⟨0|⊗I + |1⟩⟨1|⊗U`,
-  # then applies it to `state`. Covers `cp`, `cy`, `crx`, `cry`, `crz`.
+  # Applies the controlled two-qubit gate `|0⟩⟨0|⊗I + |1⟩⟨1|⊗U` for the
+  # single-qubit `U` named by `gate_name` / `params`, via the CalcFast
+  # control-slice kernel (no 2^n × 2^n matrix). Covers `cp`, `cy`, `crx`,
+  # `cry`, `crz`.
   @spec apply_controlled_target_op(
           gate_name(),
           qubit(),
@@ -596,7 +594,7 @@ defmodule Qx.Simulation do
         _ -> raise Qx.GateError, {:unsupported_gate, gate_name}
       end
 
-    Nx.dot(Gates.controlled_gate(target_gate, c, t, num_qubits), state)
+    Calc.apply_controlled_gate(state, target_gate, c, t, num_qubits)
   end
 
   @spec apply_three_qubit_op(gate_name(), [qubit()], [number()], state(), non_neg_integer()) ::
