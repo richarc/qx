@@ -1,0 +1,180 @@
+warning: setting :preferred_cli_env in your mix.exs "def project" is deprecated, set it inside "def cli" instead:
+
+    def cli do
+      [preferred_envs: [coveralls: :test, "coveralls.detail": :test, "coveralls.post": :test, "coveralls.html": :test, "coveralls.json": :test, "coveralls.github": :test, "coveralls.cobertura": :test]]
+    end
+
+  (mix 1.20.2) lib/mix/cli.ex:187: Mix.CLI.preferred_cli_env/3
+  (mix 1.20.2) lib/mix/cli.ex:170: Mix.CLI.maybe_change_env_and_target/2
+  (mix 1.20.2) lib/mix/cli.ex:59: Mix.CLI.proceed/2
+  /Users/richarc/.local/share/mise/installs/elixir/1.20.2-otp-29/bin/mix:7: (file)
+  (elixir 1.20.2) src/elixir_compiler.erl:102: :elixir_compiler.dispatch/4
+  (elixir 1.20.2) src/elixir_compiler.erl:76: :elixir_compiler.compile/4
+
+Operating System: macOS
+CPU Information: Apple M3
+Number of Available Cores: 8
+Available memory: 16 GB
+Elixir 1.20.2
+Erlang 29.0.3
+JIT enabled: true
+
+Benchmark suite executing with the following configuration:
+warmup: 1 s
+time: 2 s
+memory time: 0 ns
+reduction time: 0 ns
+parallel: 1
+inputs: none specified
+Estimated total run time: 2 min 9 s
+Excluding outliers: false
+
+Benchmarking H q_mid n=4 ...
+Benchmarking CX n=16 ...
+Benchmarking H q_last n=14 ...
+Benchmarking iSWAP n=4 ...
+Benchmarking CSWAP n=14 ...
+Benchmarking CX n=4 ...
+Benchmarking CRY n=4 ...
+Benchmarking CCX n=12 ...
+Benchmarking CCX n=4 ...
+Benchmarking CX n=12 ...
+Benchmarking CP n=8 ...
+Benchmarking CCX n=8 ...
+Benchmarking H q_last n=16 ...
+Benchmarking empty n=4 ...
+Warning: The function you are trying to benchmark is super fast, making measurements more unreliable!
+This holds especially true for memory measurements or when running with hooks.
+
+See: https://github.com/bencheeorg/benchee/wiki/Benchee-Warnings#fast-execution-warning
+
+You may disable this warning by passing print: [fast_warning: false] as configuration options.
+
+Benchmarking CCX n=14 ...
+Benchmarking H q0 n=12 ...
+Benchmarking H q_mid n=8 ...
+Benchmarking H q0 n=16 ...
+Benchmarking iSWAP n=8 ...
+Benchmarking CX n=14 ...
+Benchmarking SWAP n=4 ...
+Benchmarking H q0 n=14 ...
+Benchmarking CSWAP n=16 ...
+Benchmarking H q_mid n=16 ...
+Benchmarking H q_last n=8 ...
+Benchmarking CCX n=16 ...
+Benchmarking CX n=8 ...
+Benchmarking H q0 n=8 ...
+Benchmarking H q0 n=4 ...
+Benchmarking empty n=12 ...
+Benchmarking H q_last n=4 ...
+Benchmarking CSWAP n=12 ...
+Benchmarking H q_mid n=14 ...
+Benchmarking empty n=16 ...
+Warning: The function you are trying to benchmark is super fast, making measurements more unreliable!
+This holds especially true for memory measurements or when running with hooks.
+
+See: https://github.com/bencheeorg/benchee/wiki/Benchee-Warnings#fast-execution-warning
+
+You may disable this warning by passing print: [fast_warning: false] as configuration options.
+
+Benchmarking CSWAP n=4 ...
+Benchmarking SWAP n=8 ...
+Benchmarking CP n=4 ...
+Benchmarking empty n=8 ...
+Benchmarking H q_last n=12 ...
+Benchmarking empty n=14 ...
+Benchmarking CRY n=8 ...
+Benchmarking CSWAP n=8 ...
+Benchmarking H q_mid n=12 ...
+Calculating statistics...
+Formatting results...
+
+Name                    ips        average  deviation         median         99th %
+empty n=4       17755758.14     0.00006 ms  ±2110.46%     0.00005 ms     0.00007 ms
+empty n=8       13335861.81     0.00007 ms  ±4323.01%     0.00008 ms     0.00008 ms
+empty n=14      13251427.50     0.00008 ms  ±4590.65%     0.00008 ms     0.00008 ms
+empty n=12      13059732.29     0.00008 ms  ±4508.14%     0.00008 ms     0.00008 ms
+empty n=16       8859403.68     0.00011 ms  ±4145.27%     0.00005 ms     0.00013 ms
+CX n=4             30806.10      0.0325 ms    ±20.68%      0.0352 ms      0.0453 ms
+CCX n=4            19959.88      0.0501 ms    ±12.35%      0.0520 ms      0.0622 ms
+CSWAP n=4          19580.89      0.0511 ms     ±6.96%      0.0507 ms      0.0631 ms
+H q0 n=4           10328.69      0.0968 ms     ±8.29%      0.0945 ms       0.130 ms
+H q_last n=4       10145.31      0.0986 ms     ±7.95%      0.0965 ms       0.132 ms
+CX n=8              9824.29       0.102 ms     ±9.09%      0.0995 ms       0.136 ms
+SWAP n=4            9620.50       0.104 ms    ±11.63%       0.100 ms       0.150 ms
+H q_mid n=4         9265.44       0.108 ms    ±11.64%       0.107 ms       0.146 ms
+CP n=4              7784.19       0.128 ms    ±10.83%       0.124 ms       0.197 ms
+iSWAP n=4           7331.84       0.136 ms    ±11.10%       0.135 ms       0.200 ms
+CRY n=4             5656.48       0.177 ms     ±9.16%       0.176 ms        0.26 ms
+CSWAP n=8           5517.76       0.181 ms     ±6.46%       0.179 ms        0.24 ms
+CCX n=8             5259.17       0.190 ms     ±8.01%       0.188 ms        0.25 ms
+H q0 n=8            1936.01        0.52 ms     ±4.06%        0.52 ms        0.57 ms
+H q_last n=8        1918.10        0.52 ms     ±4.97%        0.52 ms        0.58 ms
+H q_mid n=8         1897.79        0.53 ms   ±100.56%        0.51 ms        0.57 ms
+CX n=12              556.81        1.80 ms     ±3.61%        1.78 ms        1.92 ms
+CSWAP n=12           414.85        2.41 ms     ±2.30%        2.43 ms        2.50 ms
+CCX n=12             407.01        2.46 ms     ±1.83%        2.47 ms        2.54 ms
+CX n=14              162.27        6.16 ms     ±5.80%        5.97 ms        6.94 ms
+H q0 n=12            144.83        6.90 ms     ±1.08%        6.88 ms        7.13 ms
+H q_mid n=12         144.80        6.91 ms     ±0.96%        6.89 ms        7.17 ms
+H q_last n=12        144.36        6.93 ms     ±0.86%        6.91 ms        7.10 ms
+CCX n=14             116.47        8.59 ms     ±3.14%        8.45 ms        9.22 ms
+CSWAP n=14            79.21       12.62 ms     ±2.35%       12.51 ms       13.60 ms
+CX n=16               24.20       41.32 ms     ±3.93%       41.18 ms       46.13 ms
+iSWAP n=8             22.80       43.87 ms     ±7.93%       46.18 ms       47.18 ms
+SWAP n=8              22.58       44.28 ms     ±7.47%       46.44 ms       48.09 ms
+CCX n=16              22.56       44.32 ms     ±1.86%       44.09 ms       47.78 ms
+H q_mid n=14          21.38       46.76 ms     ±0.50%       46.71 ms       48.02 ms
+H q0 n=14             21.34       46.86 ms     ±1.64%       46.75 ms       51.69 ms
+CRY n=8               20.51       48.76 ms     ±7.28%       51.02 ms       52.19 ms
+CSWAP n=16            18.97       52.71 ms     ±5.54%       51.62 ms       64.43 ms
+H q_last n=14         18.16       55.06 ms     ±0.87%       55.17 ms       56.02 ms
+CP n=8                18.03       55.46 ms     ±7.78%       57.21 ms       66.25 ms
+H q0 n=16              5.26      189.94 ms     ±0.72%      190.41 ms      192.17 ms
+H q_mid n=16           5.25      190.45 ms     ±0.77%      191.25 ms      192.21 ms
+H q_last n=16          4.50      222.16 ms     ±1.96%      221.86 ms      232.60 ms
+
+Comparison: 
+empty n=4       17755758.14
+empty n=8       13335861.81 - 1.33x slower +0.00002 ms
+empty n=14      13251427.50 - 1.34x slower +0.00002 ms
+empty n=12      13059732.29 - 1.36x slower +0.00002 ms
+empty n=16       8859403.68 - 2.00x slower +0.00006 ms
+CX n=4             30806.10 - 576.37x slower +0.0324 ms
+CCX n=4            19959.88 - 889.57x slower +0.0500 ms
+CSWAP n=4          19580.89 - 906.79x slower +0.0510 ms
+H q0 n=4           10328.69 - 1719.07x slower +0.0968 ms
+H q_last n=4       10145.31 - 1750.14x slower +0.0985 ms
+CX n=8              9824.29 - 1807.33x slower +0.102 ms
+SWAP n=4            9620.50 - 1845.62x slower +0.104 ms
+H q_mid n=4         9265.44 - 1916.34x slower +0.108 ms
+CP n=4              7784.19 - 2281.00x slower +0.128 ms
+iSWAP n=4           7331.84 - 2421.73x slower +0.136 ms
+CRY n=4             5656.48 - 3139.01x slower +0.177 ms
+CSWAP n=8           5517.76 - 3217.93x slower +0.181 ms
+CCX n=8             5259.17 - 3376.15x slower +0.190 ms
+H q0 n=8            1936.01 - 9171.31x slower +0.52 ms
+H q_last n=8        1918.10 - 9256.93x slower +0.52 ms
+H q_mid n=8         1897.79 - 9356.00x slower +0.53 ms
+CX n=12              556.81 - 31888.50x slower +1.80 ms
+CSWAP n=12           414.85 - 42800.86x slower +2.41 ms
+CCX n=12             407.01 - 43624.93x slower +2.46 ms
+CX n=14              162.27 - 109418.58x slower +6.16 ms
+H q0 n=12            144.83 - 122596.26x slower +6.90 ms
+H q_mid n=12         144.80 - 122624.08x slower +6.91 ms
+H q_last n=12        144.36 - 122992.31x slower +6.93 ms
+CCX n=14             116.47 - 152443.39x slower +8.59 ms
+CSWAP n=14            79.21 - 224147.45x slower +12.62 ms
+CX n=16               24.20 - 733684.82x slower +41.32 ms
+iSWAP n=8             22.80 - 778885.65x slower +43.87 ms
+SWAP n=8              22.58 - 786197.55x slower +44.28 ms
+CCX n=16              22.56 - 786905.13x slower +44.32 ms
+H q_mid n=14          21.38 - 830298.45x slower +46.76 ms
+H q0 n=14             21.34 - 832002.48x slower +46.86 ms
+CRY n=8               20.51 - 865797.30x slower +48.76 ms
+CSWAP n=16            18.97 - 935925.21x slower +52.71 ms
+H q_last n=14         18.16 - 977601.89x slower +55.06 ms
+CP n=8                18.03 - 984652.39x slower +55.46 ms
+H q0 n=16              5.26 - 3372595.09x slower +189.94 ms
+H q_mid n=16           5.25 - 3381672.38x slower +190.45 ms
+H q_last n=16          4.50 - 3944601.03x slower +222.16 ms
