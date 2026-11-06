@@ -156,7 +156,7 @@ from the simulation hot path.
 - [x] [P5-T3] Update the two ROADMAP v0.12 lines: tick the CalcFast item; amend the
       matrix-materialisation item to note the Simulation path is done and only the
       Register/`Qx.Gates` builders remain (or tick if user agrees they're out of scope pending 1.0) — CalcFast item ticked; matrix-materialisation item amended (Simulation done; Register/Gates builders remain), left unticked pending user
-- [ ] [P5-T4] `/phx:verify` → `/phx:review` (merge gate — stop for human authorization)
+- [x] [P5-T4] `/phx:verify` → `/phx:review` (merge gate — stop for human authorization) — PASS WITH WARNINGS; user chose fix W1 (bench header/cap) + n=1 doc caveat, then merge
 
 ## Verification
 

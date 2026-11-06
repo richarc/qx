@@ -5,18 +5,19 @@
 # fixed overhead (initial-state construction + result plumbing) — subtract it
 # to read the gate's own cost.
 #
-# Gates that pre-v0.12 were applied via a materialised 2^n × 2^n matrix
-# (CP / CRY / SWAP / iSWAP) are capped at `QX_BENCH_MAX_MATRIX_N` (default 10)
-# because a 2^16 × 2^16 c64 matrix is ~34 GB. Set it to 16 once those gates
-# are routed through the contraction kernel:
+# CP / CRY / SWAP / iSWAP were applied via a materialised 2^n × 2^n matrix
+# before v0.12 (a 2^16 × 2^16 c64 matrix is ~34 GB), so they can be capped
+# with `QX_BENCH_MAX_MATRIX_N` when benchmarking an older commit, e.g.
 #
-#     QX_BENCH_MAX_MATRIX_N=16 mix run bench/kernels_bench.exs
+#     QX_BENCH_MAX_MATRIX_N=10 mix run bench/kernels_bench.exs
+#
+# Uncapped by default: since v0.12 they use the CalcFast slicing kernels.
 
 qubit_sizes = [4, 8, 12, 14, 16]
 
 max_matrix_n =
   "QX_BENCH_MAX_MATRIX_N"
-  |> System.get_env("10")
+  |> System.get_env("16")
   |> String.to_integer()
 
 mid = fn n -> div(n, 2) end

@@ -83,6 +83,15 @@ and CCX ~8× vs today's gather kernels. D1 as written is infeasible for
 "same or better" on BinaryBackend. Slice approach beats old AND dense
 everywhere. → Surfaced to user for D1 amendment (memory: spec-infeasibility).
 
+## Review follow-ups (deferred, from reviews/calcfast-reshape-kernels-review.md)
+
+- S1: match ArgumentError messages in new invalid-input tests.
+- S2: static guard regex only catches `Gates.name(` call form (tripwire only).
+- S3: per-kind get_state tests for cy/cz/crx/crz; n=2 cases for CX/SWAP/iSWAP.
+- S4: Nx.Defn.jit(…, compiler: Nx.Defn.Evaluator) smoke test of the kernels.
+- P2: n>1 single-qubit path silently truncates oversized gates (pinned by
+  calc_fast_test.exs:258; changing it needs approval to edit that test).
+
 ## Dead-ends
 
 - **Dense 2^k×2^k contraction for permutation / controlled gates** (D1 as

@@ -55,7 +55,8 @@ defmodule Qx.CalcFast do
     * `num_qubits` - Total number of qubits in the system
 
   Raises `ArgumentError` for an out-of-range target or a state whose length
-  is not `2^num_qubits`.
+  is not `2^num_qubits` — except when `num_qubits == 1`, where the target is
+  ignored and the gate is applied by a plain `Nx.dot` (no validation).
   """
   @spec apply_single_qubit_gate(Nx.Tensor.t(), Nx.Tensor.t(), non_neg_integer(), pos_integer()) ::
           Nx.Tensor.t()
