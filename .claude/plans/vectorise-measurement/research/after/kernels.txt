@@ -1,0 +1,208 @@
+commit: 564b3a0 + working tree (vectorise-measurement)
+Sun  8 Nov 2026 20:01:32 GMT
+
+
+
+Operating System: macOS
+CPU Information: Apple M3
+Number of Available Cores: 8
+Available memory: 16 GB
+Elixir 1.20.2
+Erlang 29.0.3
+JIT enabled: true
+
+Benchmark suite executing with the following configuration:
+warmup: 1 s
+time: 2 s
+memory time: 0 ns
+reduction time: 0 ns
+parallel: 1
+inputs: none specified
+Estimated total run time: 2 min 45 s
+Excluding outliers: false
+
+Benchmarking H q_mid n=4 ...
+Benchmarking CX n=16 ...
+Benchmarking H q_last n=14 ...
+Benchmarking iSWAP n=4 ...
+Benchmarking CSWAP n=14 ...
+Benchmarking CX n=4 ...
+Benchmarking CRY n=4 ...
+Benchmarking CCX n=12 ...
+Benchmarking SWAP n=12 ...
+Benchmarking CCX n=4 ...
+Benchmarking CX n=12 ...
+Benchmarking CP n=8 ...
+Benchmarking CCX n=8 ...
+Benchmarking H q_last n=16 ...
+Benchmarking empty n=4 ...
+Warning: The function you are trying to benchmark is super fast, making measurements more unreliable!
+This holds especially true for memory measurements or when running with hooks.
+
+See: https://github.com/bencheeorg/benchee/wiki/Benchee-Warnings#fast-execution-warning
+
+You may disable this warning by passing print: [fast_warning: false] as configuration options.
+
+Benchmarking CCX n=14 ...
+Benchmarking CP n=14 ...
+Benchmarking SWAP n=16 ...
+Benchmarking H q0 n=12 ...
+Benchmarking H q_mid n=8 ...
+Benchmarking H q0 n=16 ...
+Benchmarking iSWAP n=8 ...
+Benchmarking CX n=14 ...
+Benchmarking SWAP n=4 ...
+Benchmarking CP n=12 ...
+Benchmarking CRY n=12 ...
+Benchmarking H q0 n=14 ...
+Benchmarking CSWAP n=16 ...
+Benchmarking H q_mid n=16 ...
+Benchmarking H q_last n=8 ...
+Benchmarking CCX n=16 ...
+Benchmarking CX n=8 ...
+Benchmarking H q0 n=8 ...
+Benchmarking SWAP n=14 ...
+Benchmarking iSWAP n=14 ...
+Benchmarking CRY n=14 ...
+Benchmarking H q0 n=4 ...
+Benchmarking empty n=12 ...
+Benchmarking H q_last n=4 ...
+Benchmarking CSWAP n=12 ...
+Benchmarking H q_mid n=14 ...
+Benchmarking empty n=16 ...
+Warning: The function you are trying to benchmark is super fast, making measurements more unreliable!
+This holds especially true for memory measurements or when running with hooks.
+
+See: https://github.com/bencheeorg/benchee/wiki/Benchee-Warnings#fast-execution-warning
+
+You may disable this warning by passing print: [fast_warning: false] as configuration options.
+
+Benchmarking iSWAP n=12 ...
+Benchmarking CRY n=16 ...
+Benchmarking CSWAP n=4 ...
+Benchmarking iSWAP n=16 ...
+Benchmarking SWAP n=8 ...
+Benchmarking CP n=16 ...
+Benchmarking CP n=4 ...
+Benchmarking empty n=8 ...
+Benchmarking H q_last n=12 ...
+Benchmarking empty n=14 ...
+Benchmarking CRY n=8 ...
+Benchmarking CSWAP n=8 ...
+Benchmarking H q_mid n=12 ...
+Calculating statistics...
+Formatting results...
+
+Name                    ips        average  deviation         median         99th %
+empty n=4        17727.65 K      0.0564 μs  ±2236.72%      0.0500 μs      0.0667 μs
+empty n=12       13194.43 K      0.0758 μs  ±4363.14%      0.0830 μs      0.0840 μs
+empty n=8        13049.21 K      0.0766 μs  ±4388.98%      0.0830 μs      0.0840 μs
+empty n=14       13008.43 K      0.0769 μs  ±4602.12%      0.0830 μs      0.0840 μs
+empty n=16        8900.87 K       0.112 μs  ±4158.45%      0.0500 μs       0.133 μs
+SWAP n=4           281.54 K        3.55 μs   ±101.70%        3.42 μs        4.83 μs
+CX n=4             151.87 K        6.58 μs    ±45.94%        6.42 μs        8.38 μs
+CSWAP n=4          144.99 K        6.90 μs    ±42.84%        6.71 μs        8.92 μs
+CCX n=4             84.82 K       11.79 μs    ±15.08%       11.50 μs       14.46 μs
+CX n=8              84.76 K       11.80 μs    ±21.73%       11.33 μs       14.33 μs
+CSWAP n=8           74.17 K       13.48 μs     ±8.49%       13.04 μs       16.13 μs
+SWAP n=8            69.59 K       14.37 μs    ±12.95%       13.79 μs       17.83 μs
+iSWAP n=4           45.49 K       21.98 μs     ±7.86%       21.17 μs       27.04 μs
+CCX n=8             43.05 K       23.23 μs     ±7.28%       23.13 μs       28.50 μs
+H q0 n=4            24.50 K       40.82 μs     ±6.33%       40.63 μs       50.08 μs
+H q_mid n=4         23.08 K       43.34 μs     ±7.43%       42.67 μs       53.88 μs
+CP n=4              22.07 K       45.30 μs     ±6.45%       44.67 μs       56.21 μs
+CRY n=4             21.35 K       46.84 μs     ±6.73%       46.21 μs       58.12 μs
+H q_last n=4        17.88 K       55.94 μs    ±10.22%       55.33 μs       72.75 μs
+iSWAP n=8           13.71 K       72.96 μs    ±21.10%       69.79 μs      126.03 μs
+CX n=12              9.00 K      111.07 μs    ±16.55%      106.79 μs      178.64 μs
+CP n=8               8.29 K      120.56 μs    ±10.55%      118.08 μs      178.49 μs
+CRY n=8              7.43 K      134.51 μs     ±8.50%      131.33 μs      189.78 μs
+CSWAP n=12           7.13 K      140.31 μs    ±13.81%      137.33 μs      210.69 μs
+H q0 n=8             6.23 K      160.46 μs     ±7.05%      156.83 μs      213.54 μs
+H q_mid n=8          5.63 K      177.70 μs     ±7.26%      173.38 μs      236.32 μs
+H q_last n=8         5.28 K      189.49 μs     ±6.98%      184.92 μs      248.60 μs
+CCX n=12             4.98 K      200.68 μs    ±11.22%      197.77 μs      259.62 μs
+SWAP n=12            3.72 K      268.62 μs    ±10.14%      261.75 μs      348.34 μs
+CX n=14              2.03 K      491.87 μs    ±13.28%         478 μs      637.78 μs
+CSWAP n=14           1.72 K      581.35 μs    ±10.59%      552.71 μs      738.74 μs
+iSWAP n=12           1.21 K      827.41 μs     ±4.00%      826.38 μs      904.29 μs
+CCX n=14             1.19 K      841.45 μs     ±5.45%      842.38 μs      942.26 μs
+SWAP n=14            0.85 K     1181.23 μs     ±1.58%     1183.67 μs     1207.42 μs
+CP n=12              0.78 K     1288.34 μs     ±2.67%     1282.63 μs     1370.57 μs
+CRY n=12             0.64 K     1552.66 μs     ±2.12%     1555.92 μs     1630.48 μs
+H q0 n=12            0.49 K     2025.68 μs     ±1.65%     2033.71 μs     2099.11 μs
+H q_mid n=12         0.43 K     2319.86 μs     ±1.57%     2315.37 μs     2411.84 μs
+H q_last n=12        0.40 K     2496.42 μs     ±1.92%     2519.62 μs     2627.96 μs
+CX n=16              0.38 K     2612.47 μs    ±19.46%     2588.46 μs     3836.02 μs
+CSWAP n=16           0.31 K     3177.42 μs     ±4.33%     3135.48 μs     3689.68 μs
+iSWAP n=14           0.30 K     3305.97 μs     ±1.42%     3296.83 μs     3452.92 μs
+CCX n=16             0.26 K     3821.27 μs     ±0.48%     3819.41 μs     3872.43 μs
+CP n=14             0.195 K     5136.23 μs     ±2.49%     5112.50 μs     5839.39 μs
+CRY n=14            0.157 K     6386.93 μs     ±1.51%     6404.27 μs     6554.04 μs
+SWAP n=16           0.137 K     7288.32 μs    ±12.64%     7085.08 μs     8925.14 μs
+H q0 n=14           0.125 K     7987.09 μs     ±0.48%     7976.17 μs     8120.25 μs
+H q_mid n=14       0.0884 K    11308.71 μs     ±1.12%    11324.53 μs    11741.31 μs
+H q_last n=14      0.0752 K    13304.89 μs     ±3.26%    13243.13 μs    14330.24 μs
+iSWAP n=16         0.0602 K    16602.81 μs     ±1.17%    16569.08 μs    17630.63 μs
+CP n=16            0.0304 K    32902.79 μs     ±8.85%    31304.69 μs    39307.19 μs
+CRY n=16           0.0252 K    39657.17 μs     ±9.27%    36867.65 μs    44867.35 μs
+H q0 n=16          0.0214 K    46680.20 μs     ±6.00%    47964.08 μs    50942.71 μs
+H q_mid n=16       0.0175 K    57014.17 μs     ±2.49%    56740.38 μs    65133.83 μs
+H q_last n=16      0.0159 K    62953.98 μs     ±0.42%    62908.33 μs    63978.17 μs
+
+Comparison: 
+empty n=4        17727.65 K
+empty n=12       13194.43 K - 1.34x slower +0.0194 μs
+empty n=8        13049.21 K - 1.36x slower +0.0202 μs
+empty n=14       13008.43 K - 1.36x slower +0.0205 μs
+empty n=16        8900.87 K - 1.99x slower +0.0559 μs
+SWAP n=4           281.54 K - 62.97x slower +3.50 μs
+CX n=4             151.87 K - 116.73x slower +6.53 μs
+CSWAP n=4          144.99 K - 122.27x slower +6.84 μs
+CCX n=4             84.82 K - 208.99x slower +11.73 μs
+CX n=8              84.76 K - 209.14x slower +11.74 μs
+CSWAP n=8           74.17 K - 239.02x slower +13.43 μs
+SWAP n=8            69.59 K - 254.73x slower +14.31 μs
+iSWAP n=4           45.49 K - 389.71x slower +21.93 μs
+CCX n=8             43.05 K - 411.78x slower +23.17 μs
+H q0 n=4            24.50 K - 723.71x slower +40.77 μs
+H q_mid n=4         23.08 K - 768.26x slower +43.28 μs
+CP n=4              22.07 K - 803.11x slower +45.25 μs
+CRY n=4             21.35 K - 830.32x slower +46.78 μs
+H q_last n=4        17.88 K - 991.66x slower +55.88 μs
+iSWAP n=8           13.71 K - 1293.48x slower +72.91 μs
+CX n=12              9.00 K - 1969.06x slower +111.02 μs
+CP n=8               8.29 K - 2137.32x slower +120.51 μs
+CRY n=8              7.43 K - 2384.61x slower +134.46 μs
+CSWAP n=12           7.13 K - 2487.40x slower +140.26 μs
+H q0 n=8             6.23 K - 2844.51x slower +160.40 μs
+H q_mid n=8          5.63 K - 3150.18x slower +177.64 μs
+H q_last n=8         5.28 K - 3359.16x slower +189.43 μs
+CCX n=12             4.98 K - 3557.61x slower +200.63 μs
+SWAP n=12            3.72 K - 4761.96x slower +268.56 μs
+CX n=14              2.03 K - 8719.63x slower +491.81 μs
+CSWAP n=14           1.72 K - 10306.03x slower +581.30 μs
+iSWAP n=12           1.21 K - 14668.03x slower +827.35 μs
+CCX n=14             1.19 K - 14916.97x slower +841.40 μs
+SWAP n=14            0.85 K - 20940.35x slower +1181.17 μs
+CP n=12              0.78 K - 22839.16x slower +1288.28 μs
+CRY n=12             0.64 K - 27524.93x slower +1552.60 μs
+H q0 n=12            0.49 K - 35910.58x slower +2025.62 μs
+H q_mid n=12         0.43 K - 41125.63x slower +2319.80 μs
+H q_last n=12        0.40 K - 44255.71x slower +2496.37 μs
+CX n=16              0.38 K - 46312.92x slower +2612.41 μs
+CSWAP n=16           0.31 K - 56328.27x slower +3177.37 μs
+iSWAP n=14           0.30 K - 58607.01x slower +3305.91 μs
+CCX n=16             0.26 K - 67742.13x slower +3821.21 μs
+CP n=14             0.195 K - 91053.23x slower +5136.17 μs
+CRY n=14            0.157 K - 113225.35x slower +6386.88 μs
+SWAP n=16           0.137 K - 129204.78x slower +7288.26 μs
+H q0 n=14           0.125 K - 141592.29x slower +7987.03 μs
+H q_mid n=14       0.0884 K - 200476.82x slower +11308.65 μs
+H q_last n=14      0.0752 K - 235864.39x slower +13304.83 μs
+iSWAP n=16         0.0602 K - 294328.90x slower +16602.76 μs
+CP n=16            0.0304 K - 583289.28x slower +32902.74 μs
+CRY n=16           0.0252 K - 703028.62x slower +39657.12 μs
+H q0 n=16          0.0214 K - 827530.44x slower +46680.15 μs
+H q_mid n=16       0.0175 K - 1010727.37x slower +57014.11 μs
+H q_last n=16      0.0159 K - 1116026.27x slower +62953.92 μs

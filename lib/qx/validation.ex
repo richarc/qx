@@ -197,6 +197,16 @@ defmodule Qx.Validation do
 
   # Validates the `:renormalize` option for `Qx.Simulation.run/2`. Accepts
   # `false`, `true`, or a positive integer; returns the value unchanged.
+  # Validates the `:shots` option of `Qx.Simulation.run/2`: a positive
+  # integer. Raises Qx.OptionError on anything else.
+  @doc false
+  @spec validate_shots!(term()) :: pos_integer()
+  def validate_shots!(shots) when is_integer(shots) and shots > 0, do: shots
+
+  def validate_shots!(value) do
+    raise Qx.OptionError, {:shots, value, "Expected a positive integer."}
+  end
+
   # Raises Qx.OptionError on anything else.
   @doc false
   @spec validate_renormalize!(term()) :: false | true | pos_integer()

@@ -25,6 +25,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `mix bench` now runs every suite. Previously only the first ran,
   because Mix skips a task it has already run. A new per-gate suite,
   `bench/kernels_bench.exs`, was added.
+- Shot sampling in `Qx.run/2` (circuits without `c_if`) is now
+  O(2^n + shots·n) instead of O(shots × 2^n). The cumulative distribution
+  is computed once in Nx (f64) and each shot is a binary search, replacing
+  a linear scan per shot. For a given `:rand` draw the outcome is the same
+  as before. n=16 with 100k shots went from 14.1 s to 1.2 s; n=12 with 100k
+  shots from 0.94 s to 0.14 s (BinaryBackend).
+- Mid-circuit measurement (`Qx.steps/2` and `c_if` circuits in `Qx.run/2`)
+  now computes the qubit's `{p0, p1}` with one Nx reduction and one host
+  sync, and collapses the state with static slices. Previously it made about
+  3·2^n per-amplitude `Nx.to_number/1` syncs and rebuilt the state from a
+  host list. A single measurement is 2.2–2.4× faster at n=12–14 on
+  BinaryBackend; with a device backend it is one transfer instead of 3·2^n.
+  Seeded `Qx.steps/2` trajectories are unchanged. Internal, non-breaking.
+- New bench suite `bench/measurement_bench.exs` (in `mix bench`).
+
+### Fixed
+
+- `Qx.run/2` shot sampling: when the float32 outcome probabilities summed
+  to slightly less than 1, a random draw above the total fell back to
+  outcome 0, which could be an outcome with probability 0. It now maps to
+  the last outcome with non-zero probability.
+- `Qx.run/2`: `:shots` is now validated and must be a positive integer;
+  anything else raises `Qx.OptionError`. Previously `shots: 0` or a
+  negative value silently returned wrong counts (for example 2 samples
+  for `shots: 0`), because the shot loop iterated a descending range.
 
 ## [0.11.0] - 2026-07-13
 

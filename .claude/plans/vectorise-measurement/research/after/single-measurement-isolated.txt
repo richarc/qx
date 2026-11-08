@@ -1,0 +1,4 @@
+n=4 one measurement: old=20us new=31us
+n=8 one measurement: old=278us new=162us
+n=12 one measurement: old=4404us new=1978us
+n=14 one measurement: old=21174us new=8697us

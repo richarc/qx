@@ -1,0 +1,62 @@
+commit: 564b3a0 + working tree (vectorise-measurement)
+Sun  8 Nov 2026 19:59:11 GMT
+
+
+
+Operating System: macOS
+CPU Information: Apple M3
+Number of Available Cores: 8
+Available memory: 16 GB
+Elixir 1.20.2
+Erlang 29.0.3
+JIT enabled: true
+
+Benchmark suite executing with the following configuration:
+warmup: 1 s
+time: 2 s
+memory time: 0 ns
+reduction time: 0 ns
+parallel: 1
+inputs: none specified
+Estimated total run time: 33 s
+Excluding outliers: false
+
+Benchmarking c_if n=12 shots=256 ...
+Benchmarking c_if n=4 shots=256 ...
+Benchmarking c_if n=8 shots=256 ...
+Benchmarking sample n=12 shots=100000 ...
+Benchmarking sample n=12 shots=1024 ...
+Benchmarking sample n=16 shots=100000 ...
+Benchmarking sample n=16 shots=1024 ...
+Benchmarking sample n=8 shots=100000 ...
+Benchmarking sample n=8 shots=1024 ...
+Benchmarking steps n=12 (2 measurements) ...
+Benchmarking steps n=14 (2 measurements) ...
+Calculating statistics...
+Formatting results...
+
+Name                                  ips        average  deviation         median         99th %
+sample n=8 shots=1024              404.75        2.47 ms    ±22.75%        2.40 ms        2.99 ms
+steps n=12 (2 measurements)         37.40       26.73 ms     ±7.00%       26.38 ms       42.21 ms
+sample n=12 shots=1024              31.29       31.96 ms     ±1.46%       31.95 ms       33.59 ms
+sample n=8 shots=100000             16.53       60.48 ms     ±9.08%       58.47 ms       85.49 ms
+c_if n=4 shots=256                  13.97       71.58 ms     ±3.28%       70.55 ms       76.92 ms
+steps n=14 (2 measurements)          8.45      118.33 ms     ±3.60%      117.33 ms      134.78 ms
+sample n=12 shots=100000             7.08      141.18 ms     ±1.90%      139.81 ms      146.73 ms
+c_if n=8 shots=256                   1.55      645.24 ms     ±0.81%      645.90 ms      650.78 ms
+sample n=16 shots=1024               1.00     1004.95 ms     ±0.50%     1004.95 ms     1008.54 ms
+sample n=16 shots=100000             0.83     1206.74 ms     ±0.21%     1206.74 ms     1208.53 ms
+c_if n=12 shots=256                0.0631    15852.11 ms     ±0.00%    15852.11 ms    15852.11 ms
+
+Comparison: 
+sample n=8 shots=1024              404.75
+steps n=12 (2 measurements)         37.40 - 10.82x slower +24.26 ms
+sample n=12 shots=1024              31.29 - 12.93x slower +29.49 ms
+sample n=8 shots=100000             16.53 - 24.48x slower +58.01 ms
+c_if n=4 shots=256                  13.97 - 28.97x slower +69.11 ms
+steps n=14 (2 measurements)          8.45 - 47.89x slower +115.86 ms
+sample n=12 shots=100000             7.08 - 57.14x slower +138.71 ms
+c_if n=8 shots=256                   1.55 - 261.16x slower +642.77 ms
+sample n=16 shots=1024               1.00 - 406.76x slower +1002.48 ms
+sample n=16 shots=100000             0.83 - 488.43x slower +1204.27 ms
+c_if n=12 shots=256                0.0631 - 6416.17x slower +15849.64 ms

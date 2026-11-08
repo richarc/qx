@@ -1224,7 +1224,8 @@ defmodule Qx do
       removed in Qx 1.0.
 
   ## Options
-    * `:shots` - Number of measurement shots (default: 1024)
+    * `:shots` - Number of measurement shots, a positive integer (default:
+      1024). Any other value raises `Qx.OptionError`.
     * `:backend` - Nx backend to use, e.g. `Nx.BinaryBackend` (default) or
       `{EXLA.Backend, client: :host}` if EXLA is added to your deps (see README)
     * `:renormalize` - Counter unitary float drift (default: `false`).

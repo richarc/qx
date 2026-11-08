@@ -153,7 +153,7 @@ defmodule Qx.MixProject do
 
   # `mix run` would only execute once per alias invocation (Mix skips a task
   # already run), so each suite is explicitly re-run.
-  @bench_suites ~w(ghz qft renormalization kernels)
+  @bench_suites ~w(ghz qft renormalization kernels measurement)
 
   defp run_benches(_args) do
     Enum.each(@bench_suites, fn suite ->

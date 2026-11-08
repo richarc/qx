@@ -202,9 +202,65 @@ defmodule Qx.CalcFast do
     iswap_kernel(state, pair: [qubit_a, qubit_b], num_qubits: num_qubits)
   end
 
+  @doc """
+  Returns `{p0, p1}`: the probabilities of measuring `qubit` as |0⟩ / |1⟩.
+
+  |amplitude|² is accumulated in f64 (matching a host-side float sum of the
+  `:c64` amplitudes), and the two sums reach the host in a single sync.
+
+  Raises `ArgumentError` for an out-of-range qubit or a state whose length is
+  not `2^num_qubits`.
+  """
+  @spec qubit_probabilities(Nx.Tensor.t(), non_neg_integer(), pos_integer()) ::
+          {float(), float()}
+  def qubit_probabilities(state, qubit, num_qubits) do
+    validate_qubits!([qubit], num_qubits)
+
+    [p0, p1] =
+      state
+      |> qubit_probabilities_kernel(qubit: qubit, num_qubits: num_qubits)
+      |> Nx.to_flat_list()
+
+    {p0, p1}
+  end
+
+  @doc """
+  Collapses `state` onto `qubit = value`: amplitudes with the qubit in the
+  other basis state become exactly 0, and the kept ones are multiplied by
+  `norm_factor` (normally `1 / sqrt(p_value)`). The result stays `:c64`.
+
+  Raises `ArgumentError` for an out-of-range qubit, a `value` other than 0 or
+  1, or a state whose length is not `2^num_qubits`.
+  """
+  @spec collapse(Nx.Tensor.t(), non_neg_integer(), 0 | 1, float(), pos_integer()) ::
+          Nx.Tensor.t()
+  def collapse(state, qubit, value, norm_factor, num_qubits) when value in [0, 1] do
+    validate_qubits!([qubit], num_qubits)
+
+    collapse_kernel(state, Nx.tensor(norm_factor, type: :f64),
+      qubit: qubit,
+      value: value,
+      num_qubits: num_qubits
+    )
+  end
+
+  def collapse(_state, _qubit, value, _norm_factor, _num_qubits) do
+    raise ArgumentError, "measured value must be 0 or 1, got: #{inspect(value)}"
+  end
+
   # ===========================================================================
   # Compiled kernels (static qubits / num_qubits via opts)
   # ===========================================================================
+
+  defnp qubit_probabilities_kernel(state, opts \\ []) do
+    opts = keyword!(opts, [:qubit, :num_qubits])
+    probabilities_expr(state, opts[:qubit], opts[:num_qubits])
+  end
+
+  defnp collapse_kernel(state, norm_factor, opts \\ []) do
+    opts = keyword!(opts, [:qubit, :value, :num_qubits])
+    collapse_expr(state, norm_factor, opts[:qubit], opts[:value], opts[:num_qubits])
+  end
 
   defnp unitary_kernel(state, gate, opts \\ []) do
     opts = keyword!(opts, [:controls, :target, :num_qubits])
@@ -243,6 +299,35 @@ defmodule Qx.CalcFast do
 
   deftransformp iswap_expr(state, [a, b], num_qubits) do
     in_axes(state, num_qubits, [], &iswap_axes(&1, a, b))
+  end
+
+  # {pre, 2, post}: the middle axis is `qubit`, so summing the outer two
+  # leaves [p0, p1].
+  deftransformp probabilities_expr(state, qubit, num_qubits) do
+    magnitude = state |> Nx.abs() |> Nx.as_type(:f64)
+
+    magnitude
+    |> Nx.multiply(magnitude)
+    |> Nx.reshape({Integer.pow(2, qubit), 2, Integer.pow(2, num_qubits - qubit - 1)})
+    |> Nx.sum(axes: [0, 2])
+  end
+
+  # Kept half rescaled in c128 (one rounding back to c64, as a host-side f64
+  # multiply would give); the other half replaced by exact zeros.
+  deftransformp collapse_expr(state, norm_factor, qubit, value, num_qubits) do
+    in_axes(state, num_qubits, [], fn tensor ->
+      {amp0, amp1} = halves(tensor, qubit)
+      kept = if value == 0, do: amp0, else: amp1
+
+      scaled =
+        kept
+        |> Nx.as_type({:c, 128})
+        |> Nx.multiply(norm_factor)
+        |> Nx.as_type(Nx.type(state))
+
+      zeros = Nx.broadcast(Nx.tensor(0, type: Nx.type(state)), Nx.shape(kept))
+      Nx.concatenate(if(value == 0, do: [scaled, zeros], else: [zeros, scaled]), axis: qubit)
+    end)
   end
 
   # ===========================================================================

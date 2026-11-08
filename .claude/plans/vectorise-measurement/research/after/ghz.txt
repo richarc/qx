@@ -1,0 +1,72 @@
+commit: 564b3a0 + working tree (vectorise-measurement)
+Sun  8 Nov 2026 20:00:16 GMT
+
+
+
+Operating System: macOS
+CPU Information: Apple M3
+Number of Available Cores: 8
+Available memory: 16 GB
+Elixir 1.20.2
+Erlang 29.0.3
+JIT enabled: true
+
+Benchmark suite executing with the following configuration:
+warmup: 2 s
+time: 5 s
+memory time: 0 ns
+reduction time: 0 ns
+parallel: 1
+inputs: none specified
+Estimated total run time: 1 min 10 s
+Excluding outliers: false
+
+Benchmarking GHZ n=10 ...
+Benchmarking GHZ n=12 ...
+Benchmarking GHZ n=14 ...
+Benchmarking GHZ n=16 ...
+Benchmarking GHZ n=18 ...
+Benchmarking GHZ n=2 ...
+Benchmarking GHZ n=20 ...
+Benchmarking GHZ n=4 ...
+Benchmarking GHZ n=6 ...
+Benchmarking GHZ n=8 ...
+Calculating statistics...
+Formatting results...
+
+Name               ips        average  deviation         median         99th %
+GHZ n=2       23120.43      0.0433 ms     ±7.85%      0.0429 ms      0.0527 ms
+GHZ n=4       14499.39      0.0690 ms     ±5.47%      0.0682 ms      0.0829 ms
+GHZ n=6        7489.23       0.134 ms     ±6.32%       0.131 ms       0.168 ms
+GHZ n=8        2751.39        0.36 ms     ±6.71%        0.36 ms        0.44 ms
+GHZ n=10        697.10        1.43 ms     ±3.98%        1.44 ms        1.57 ms
+GHZ n=12        167.07        5.99 ms     ±1.65%        5.97 ms        6.26 ms
+GHZ n=14         35.60       28.09 ms     ±2.82%       27.87 ms       33.29 ms
+GHZ n=16          6.27      159.43 ms     ±1.08%      159.20 ms      164.25 ms
+GHZ n=18          1.23      816.03 ms     ±1.00%      811.27 ms      829.37 ms
+GHZ n=20         0.186     5364.65 ms     ±0.00%     5364.65 ms     5364.65 ms
+
+Comparison: 
+GHZ n=2       23120.43
+GHZ n=4       14499.39 - 1.59x slower +0.0257 ms
+GHZ n=6        7489.23 - 3.09x slower +0.0903 ms
+GHZ n=8        2751.39 - 8.40x slower +0.32 ms
+GHZ n=10        697.10 - 33.17x slower +1.39 ms
+GHZ n=12        167.07 - 138.39x slower +5.94 ms
+GHZ n=14         35.60 - 649.48x slower +28.05 ms
+GHZ n=16          6.27 - 3686.04x slower +159.38 ms
+GHZ n=18          1.23 - 18866.91x slower +815.98 ms
+GHZ n=20         0.186 - 124033.05x slower +5364.61 ms
+Generated bench/output/ghz.html
+Generated bench/output/ghz_comparison.html
+Generated bench/output/ghz_ghz_n_2.html
+Generated bench/output/ghz_ghz_n_4.html
+Generated bench/output/ghz_ghz_n_6.html
+Generated bench/output/ghz_ghz_n_8.html
+Generated bench/output/ghz_ghz_n_10.html
+Generated bench/output/ghz_ghz_n_12.html
+Generated bench/output/ghz_ghz_n_14.html
+Generated bench/output/ghz_ghz_n_16.html
+Generated bench/output/ghz_ghz_n_18.html
+Generated bench/output/ghz_ghz_n_20.html
+Opened report using open

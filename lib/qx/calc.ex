@@ -156,6 +156,25 @@ defmodule Qx.Calc do
     Qx.CalcFast.apply_iswap(state, qubit_a, qubit_b, num_qubits)
   end
 
+  @doc """
+  Returns `{p0, p1}` for measuring `qubit` (f64 accumulation, one host sync).
+  """
+  @spec qubit_probabilities(Nx.Tensor.t(), non_neg_integer(), pos_integer()) ::
+          {float(), float()}
+  def qubit_probabilities(state, qubit, num_qubits) do
+    Qx.CalcFast.qubit_probabilities(state, qubit, num_qubits)
+  end
+
+  @doc """
+  Collapses `state` onto `qubit = value`, zeroing the other branch and
+  scaling the kept amplitudes by `norm_factor`.
+  """
+  @spec collapse(Nx.Tensor.t(), non_neg_integer(), 0 | 1, float(), pos_integer()) ::
+          Nx.Tensor.t()
+  def collapse(state, qubit, value, norm_factor, num_qubits) do
+    Qx.CalcFast.collapse(state, qubit, value, norm_factor, num_qubits)
+  end
+
   # ============================================================================
   # Private Helper Functions
   # ============================================================================

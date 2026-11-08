@@ -1,0 +1,71 @@
+commit: 2bf4b78 (lib unmodified)
+Sun  8 Nov 2026 19:54:20 GMT
+
+    def cli do
+      [preferred_envs: [coveralls: :test, "coveralls.detail": :test, "coveralls.post": :test, "coveralls.html": :test, "coveralls.json": :test, "coveralls.github": :test, "coveralls.cobertura": :test]]
+    end
+
+  (mix 1.20.2) lib/mix/cli.ex:170: Mix.CLI.maybe_change_env_and_target/2
+  (mix 1.20.2) lib/mix/cli.ex:59: Mix.CLI.proceed/2
+  /Users/richarc/.local/share/mise/installs/elixir/1.20.2-otp-29/bin/mix:7: (file)
+  (elixir 1.20.2) src/elixir_compiler.erl:102: :elixir_compiler.dispatch/4
+  (elixir 1.20.2) src/elixir_compiler.erl:76: :elixir_compiler.compile/4
+
+Operating System: macOS
+CPU Information: Apple M3
+Number of Available Cores: 8
+Available memory: 16 GB
+Elixir 1.20.2
+Erlang 29.0.3
+JIT enabled: true
+
+Benchmark suite executing with the following configuration:
+warmup: 1 s
+time: 2 s
+memory time: 0 ns
+reduction time: 0 ns
+parallel: 1
+inputs: none specified
+Estimated total run time: 33 s
+Excluding outliers: false
+
+Benchmarking c_if n=12 shots=256 ...
+Benchmarking c_if n=4 shots=256 ...
+Benchmarking c_if n=8 shots=256 ...
+Benchmarking sample n=12 shots=100000 ...
+Benchmarking sample n=12 shots=1024 ...
+Benchmarking sample n=16 shots=100000 ...
+Benchmarking sample n=16 shots=1024 ...
+Benchmarking sample n=8 shots=100000 ...
+Benchmarking sample n=8 shots=1024 ...
+Benchmarking steps n=12 (2 measurements) ...
+Benchmarking steps n=14 (2 measurements) ...
+Calculating statistics...
+Formatting results...
+
+Name                                  ips        average  deviation         median         99th %
+sample n=8 shots=1024              387.29        2.58 ms     ±2.43%        2.59 ms        2.77 ms
+steps n=12 (2 measurements)         28.63       34.93 ms     ±1.27%       34.78 ms       36.00 ms
+sample n=12 shots=1024              25.75       38.84 ms     ±0.58%       38.84 ms       39.23 ms
+c_if n=4 shots=256                  14.40       69.43 ms     ±3.94%       70.24 ms       72.13 ms
+sample n=8 shots=100000              9.23      108.31 ms     ±6.40%      106.51 ms      132.45 ms
+steps n=14 (2 measurements)          6.51      153.54 ms     ±0.43%      153.48 ms      155.00 ms
+c_if n=8 shots=256                   1.38      724.20 ms     ±1.04%      720.28 ms      732.92 ms
+sample n=12 shots=100000             1.07      936.88 ms     ±2.36%      928.33 ms      961.99 ms
+sample n=16 shots=1024               0.87     1151.68 ms     ±0.08%     1151.68 ms     1152.30 ms
+sample n=16 shots=100000           0.0710    14087.38 ms     ±0.00%    14087.38 ms    14087.38 ms
+c_if n=12 shots=256                0.0533    18754.88 ms     ±0.00%    18754.88 ms    18754.88 ms
+
+Comparison: 
+sample n=8 shots=1024              387.29
+steps n=12 (2 measurements)         28.63 - 13.53x slower +32.35 ms
+sample n=12 shots=1024              25.75 - 15.04x slower +36.26 ms
+c_if n=4 shots=256                  14.40 - 26.89x slower +66.84 ms
+sample n=8 shots=100000              9.23 - 41.95x slower +105.72 ms
+steps n=14 (2 measurements)          6.51 - 59.47x slower +150.96 ms
+c_if n=8 shots=256                   1.38 - 280.48x slower +721.62 ms
+sample n=12 shots=100000             1.07 - 362.85x slower +934.30 ms
+sample n=16 shots=1024               0.87 - 446.04x slower +1149.10 ms
+sample n=16 shots=100000           0.0710 - 5455.92x slower +14084.80 ms
+c_if n=12 shots=256                0.0533 - 7263.60x slower +18752.30 ms
+mix run bench/measurement_bench.exs 2>&1  93.45s user 2.66s system 100% cpu 1:35.73 total

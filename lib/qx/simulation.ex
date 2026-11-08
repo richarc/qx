@@ -11,6 +11,7 @@ defmodule Qx.Simulation do
   """
 
   alias Qx.{Calc, Gates, Math, QuantumCircuit, SimulationResult, Step, Validation}
+  alias Qx.Simulation.Sampler
 
   @type simulation_result :: SimulationResult.t()
 
@@ -53,7 +54,8 @@ defmodule Qx.Simulation do
     * `options` - Optional keyword list (default: [])
 
   ## Options
-    * `:shots` - Number of measurement shots (default: 1024)
+    * `:shots` - Number of measurement shots, a positive integer (default:
+      1024). Any other value raises `Qx.OptionError`.
     * `:backend` - Nx backend to use for computation (default: current Nx default)
     * `:renormalize` - Counter unitary float drift by renormalizing the
       statevector (default: `false`). Accepts:
@@ -104,7 +106,7 @@ defmodule Qx.Simulation do
   """
   @spec run(QuantumCircuit.t(), keyword()) :: simulation_result()
   def run(%QuantumCircuit{} = circuit, options \\ []) do
-    shots = Keyword.get(options, :shots, 1024)
+    shots = options |> Keyword.get(:shots, 1024) |> Validation.validate_shots!()
     backend = Keyword.get(options, :backend)
     renorm = resolve_renormalize(options)
 
@@ -156,7 +158,7 @@ defmodule Qx.Simulation do
     probabilities = Math.probabilities(final_state)
 
     # Perform measurements if any
-    {classical_bits, counts} = perform_measurements(circuit, final_state, shots)
+    {classical_bits, counts} = perform_measurements(circuit, probabilities, shots)
 
     %SimulationResult{
       probabilities: probabilities,
@@ -611,18 +613,17 @@ defmodule Qx.Simulation do
     raise Qx.GateError, {:unsupported_gate, gate_name}
   end
 
-  @spec perform_measurements(QuantumCircuit.t(), state(), pos_integer()) :: {[[bit()]], counts()}
-  defp perform_measurements(%QuantumCircuit{} = circuit, final_state, shots) do
+  @spec perform_measurements(QuantumCircuit.t(), Nx.Tensor.t(), pos_integer()) ::
+          {[[bit()]], counts()}
+  defp perform_measurements(%QuantumCircuit{} = circuit, probabilities, shots) do
     measurements = QuantumCircuit.get_measurements(circuit)
 
     if measurements == [] do
       {[], %{}}
     else
-      # Get probabilities for all computational basis states
-      probabilities = Math.probabilities(final_state) |> Nx.to_flat_list()
-
-      # Generate measurement samples
-      samples = generate_samples(probabilities, shots)
+      # Sample basis-state indices: one cumulative distribution (Nx, one
+      # host sync), then a binary search per shot.
+      samples = probabilities |> Sampler.cumulative() |> Sampler.sample(shots)
 
       # Extract classical bit values from samples based on measurements
       classical_bits = extract_classical_bits(samples, measurements, circuit.num_qubits)
@@ -632,18 +633,6 @@ defmodule Qx.Simulation do
       counts = Enum.frequencies_by(classical_bits, &Enum.join/1)
 
       {classical_bits, counts}
-    end
-  end
-
-  @spec generate_samples([float()], pos_integer()) :: [non_neg_integer()]
-  defp generate_samples(probabilities, shots) do
-    # Create cumulative distribution
-    cumulative = Enum.scan(probabilities, &(&1 + &2))
-
-    # Generate random samples
-    for _ <- 1..shots do
-      rand = :rand.uniform()
-      Enum.find_index(cumulative, fn cum_prob -> rand <= cum_prob end) || 0
     end
   end
 
@@ -722,73 +711,22 @@ defmodule Qx.Simulation do
 
   # Perform a single measurement and collapse the state. Takes and
   # returns explicit :rand state (:rand.uniform_s/1) so measurement
-  # sampling never reads or writes the process dict.
+  # sampling never reads or writes the process dict. {p0, p1} come from
+  # one Nx reduction (one host sync); the collapse is a static slice.
   @spec perform_single_measurement(state(), qubit(), non_neg_integer(), rand_state()) ::
           {state(), bit(), rand_state()}
   defp perform_single_measurement(state, qubit, num_qubits, rand) do
-    # Calculate probability of measuring |0⟩
-    prob_0 = calculate_measurement_probability(state, qubit, 0, num_qubits)
+    {prob_0, prob_1} = Calc.qubit_probabilities(state, qubit, num_qubits)
 
     # Random measurement outcome
     {uniform, new_rand} = :rand.uniform_s(rand)
-    measured_value = if uniform < prob_0, do: 0, else: 1
+    {measured_value, prob} = if uniform < prob_0, do: {0, prob_0}, else: {1, prob_1}
 
-    # Collapse state to measured outcome
-    collapsed_state = collapse_to_measurement(state, qubit, measured_value, num_qubits)
+    # Collapse onto the measured outcome and renormalise
+    norm_factor = if prob > 0, do: 1.0 / :math.sqrt(prob), else: 1.0
+    collapsed_state = Calc.collapse(state, qubit, measured_value, norm_factor, num_qubits)
 
     {collapsed_state, measured_value, new_rand}
-  end
-
-  # Calculate probability of measuring a specific value for a qubit
-  @spec calculate_measurement_probability(state(), qubit(), bit(), non_neg_integer()) :: float()
-  defp calculate_measurement_probability(state, qubit, value, num_qubits) do
-    state_size = trunc(:math.pow(2, num_qubits))
-
-    # Sum probabilities for all basis states where qubit has the specified value
-    total_prob =
-      for i <- 0..(state_size - 1), reduce: 0.0 do
-        acc ->
-          # Standard convention: qubit 0 is leftmost (MSB), so qubit q is at bit position (num_qubits - 1 - q)
-          qubit_value = Bitwise.band(Bitwise.bsr(i, num_qubits - 1 - qubit), 1)
-
-          if qubit_value == value do
-            amplitude = Nx.to_number(state[i])
-            prob = Complex.abs(amplitude) |> :math.pow(2)
-            acc + prob
-          else
-            acc
-          end
-      end
-
-    total_prob
-  end
-
-  # Collapse state to a measurement outcome
-  @spec collapse_to_measurement(state(), qubit(), bit(), non_neg_integer()) :: state()
-  defp collapse_to_measurement(state, qubit, measured_value, num_qubits) do
-    state_size = trunc(:math.pow(2, num_qubits))
-
-    # Calculate normalization factor
-    prob = calculate_measurement_probability(state, qubit, measured_value, num_qubits)
-    norm_factor = if prob > 0, do: 1.0 / :math.sqrt(prob), else: 1.0
-
-    # Create new state with collapsed amplitudes
-    collapsed_data =
-      for i <- 0..(state_size - 1) do
-        # Standard convention: qubit 0 is leftmost (MSB), so qubit q is at bit position (num_qubits - 1 - q)
-        qubit_value = Bitwise.band(Bitwise.bsr(i, num_qubits - 1 - qubit), 1)
-
-        if qubit_value == measured_value do
-          # Keep amplitude and renormalize
-          amplitude = Nx.to_number(state[i])
-          Complex.multiply(amplitude, Complex.new(norm_factor, 0.0))
-        else
-          # Zero out inconsistent amplitudes
-          Complex.new(0.0, 0.0)
-        end
-      end
-
-    Nx.tensor(collapsed_data, type: :c64)
   end
 
   # Process one timeline item and return the steps it emits alongside
