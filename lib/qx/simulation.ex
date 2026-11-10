@@ -172,23 +172,24 @@ defmodule Qx.Simulation do
   # New implementation for circuits with conditionals
   @spec run_with_conditionals(QuantumCircuit.t(), pos_integer(), renorm()) :: simulation_result()
   defp run_with_conditionals(%QuantumCircuit{} = circuit, shots, renorm) do
-    # Execute each shot independently
-    results =
-      for _shot <- 1..shots do
-        execute_single_shot(circuit, renorm)
-      end
+    # Execute each shot independently. Keep every shot's classical bits
+    # but only the most recent statevector: holding all of them is
+    # shots × 2^n amplitudes resident for the whole run.
+    {reversed_bits, last_state} =
+      Enum.reduce(1..shots//1, {[], nil}, fn _shot, {bits, _previous_state} ->
+        {state, cbits} = execute_single_shot(circuit, renorm)
+        {[cbits | bits], state}
+      end)
 
-    # Extract classical bits from all shots
-    classical_bits = Enum.map(results, fn {_state, cbits} -> cbits end)
+    classical_bits = Enum.reverse(reversed_bits)
 
     # Count occurrences, keyed by outcome string (classical bits in
     # measurement order, same labels Draw renders)
     counts = Enum.frequencies_by(classical_bits, &Enum.join/1)
 
-    # Calculate average probabilities (from final states)
-    # Note: For conditional circuits, we can't provide a single final state
-    # We'll use the last shot's state as representative
-    {last_state, _} = List.last(results)
+    # A conditional circuit has no single final state (each shot can
+    # take a different branch), so the last shot's state stands in as
+    # the representative for `state` and `probabilities`.
     final_state = maybe_measurement_renorm(last_state, renorm)
     probabilities = Math.probabilities(final_state)
 

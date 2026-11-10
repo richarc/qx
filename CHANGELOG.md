@@ -50,6 +50,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   anything else raises `Qx.OptionError`. Previously `shots: 0` or a
   negative value silently returned wrong counts (for example 2 samples
   for `shots: 0`), because the shot loop iterated a descending range.
+- `Qx.run/2` on circuits with `c_if` no longer keeps every shot's
+  statevector until the run ends; it keeps each shot's classical bits and
+  only the latest state. Peak memory was `shots × 2^n × 8` bytes (about
+  5 GB at n=16 with 10k shots); statevector memory no longer grows with
+  `shots` (the per-shot classical bits still do). Measured at n=12 with
+  200 shots on BinaryBackend: 6.6 MB before, under 0.8 MB after. Results
+  are unchanged. Internal, non-breaking.
 
 ## [0.11.0] - 2026-07-13
 

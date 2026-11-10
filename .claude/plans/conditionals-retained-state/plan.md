@@ -1,0 +1,112 @@
+# Plan: Cap retained state in `run_with_conditionals`
+
+**Branch:** `fix/conditionals-retained-state`
+**ROADMAP:** v0.12 — "Cap retained state in `run_with_conditionals`" (audit: perf HIGH)
+**Depth:** quick
+**Complexity:** 0 (single file, internal, follows existing reduce pattern; no `defn`,
+no public API change) → plan kept because the regression test needs a measured design
+
+## Goal
+
+`Qx.run/2` on a circuit with `c_if` holds one 2^n state at a time instead of one
+per shot. Today `run_with_conditionals/3` (`lib/qx/simulation.ex:174-202`) builds
+a list of `{state, cbits}` for every shot and then uses only the cbits and the
+last shot's state, so `shots × 2^n × 8` bytes stay referenced until the run ends.
+
+Results are unchanged: `classical_bits` (shot order), `counts`, `state` (last
+shot's, after `maybe_measurement_renorm`), `probabilities`, `shots`.
+
+## Scope
+
+**In:**
+- `lib/qx/simulation.ex`: `run_with_conditionals/3` only.
+- One new test file for the memory regression and result characterisation.
+- `CHANGELOG.md` Unreleased entry.
+
+**Out (see scratchpad):**
+- Re-running the whole circuit per shot.
+- Hoisting the per-shot `create_instruction_timeline/1` and
+  `real_state_to_complex/1` out of the shot loop.
+- Per-shot `seed_rand(nil)` / a `seed:` option on `run/2` (user decision 2026-11-08).
+- `1..shots` descending-range hazard: already closed by `validate_shots!` in `run/2`.
+
+## Decisions
+
+- **D1 — reduce carrying `{reversed_cbits, last_state}`.** Prepend each shot's
+  cbits, replace the carried state, `Enum.reverse/1` once at the end. Use
+  `1..shots//1`. `shots >= 1` is guaranteed by `validate_shots!`, so the carried
+  state is never the initial `nil` at the end.
+- **D2 — memory metric is `Process.info(pid, :binary)`** (sum of refc binary
+  sizes), sampled by a poller, peak recorded. Measured (research report): it
+  tracks `shots × 2^n × 8` within 1–7 %; process heap does not see it at all;
+  `:erlang.memory(:binary)` works but is VM-global.
+- **D3 — test size n = 10, shots = 200, threshold `shots × 2^n × 8 / 2` ≈ 0.78 MiB.**
+  Measured: current code 1.59 MiB (2× above threshold); post-fix proxy 0.28 MiB,
+  flat in shots (2.8× below), run-to-run variation < 0.15 MiB. About 2 s.
+  The post-fix figure is from a proxy (repeated `Qx.run(c, shots: 1)`), so task
+  2.2 re-measures on the real fix before the threshold is trusted. If the real
+  number leaves less than ~1.5× margin, stop and amend with the data rather than
+  loosening the threshold silently.
+- **D4 — no new dependency.** Stdlib only.
+
+- **D3 amendment (user, 2026-11-10) — test size is n = 12, shots = 200, threshold
+  `shots × 2^n × 8 / 2` ≈ 3.28 MB.** The real fix leaves 0.30–0.75 MB of GC slack
+  that does not depend on n or shots (the proxy's 0.28 MiB missed the cold-VM
+  0.72–0.75 MB case). At n = 10/200 that is only 1.14× under the 0.82 MB threshold.
+  At n = 12/200: fix ≤ 0.75 MB (4.4× under), old code 6.64 MB (2× over). ~1.5 s.
+
+## Phase 1 — Tests first (red)
+
+New file `test/qx/simulation_conditionals_retention_test.exs`, `async: false`.
+New test file only; no existing test is modified.
+
+- [x] 1.1 **[DONE: 4 tests in test/qx/simulation_conditionals_retention_test.exs (deterministic, single shot, probabilistic, last-shot state); all pass on old code]** Characterisation tests on a deterministic `c_if` circuit (e.g. X on q0,
+  measure q0→c0, `c_if(c0 == 1)` X on q1, measure q1→c1), shots = 5: exact
+  `classical_bits` (length, order, values), `counts`, `shots`, `state` and
+  `probabilities` (within 1.0e-6). Add a probabilistic variant (H instead of X)
+  asserting `length(classical_bits) == shots`, counts sum to shots, and that
+  `counts` equals `Enum.frequencies_by(classical_bits, &Enum.join/1)`.
+  These must PASS on current code.
+- [x] 1.2 **[DONE: test process polls the spawned runner itself (no separate poller); size amended to n=12, see D3 amendment]** Memory test (D2, D3): run `Qx.run(circuit, shots: 200)` at n = 10 in a
+  `Task`; a poller samples `Process.info(task_pid, :binary)` every 1 ms and keeps
+  the peak; assert `peak < 200 * 1024 * 8 / 2`. Put the poller in a small private
+  helper in the test file.
+- [x] 1.3 **[DONE: red on old code: 1,650,808 B at n=10/200; 6,636,528 B at n=12/200]** Run `mix test test/qx/simulation_conditionals_retention_test.exs`:
+  confirm 1.1 passes and 1.2 FAILS with a peak near 1.6 MiB. Record the number
+  in the scratchpad.
+
+## Phase 2 — Implementation (green)
+
+- [x] 2.1 **[DONE: Enum.reduce over 1..shots//1 carrying {reversed_bits, last_state}]** Rewrite the shot loop in `run_with_conditionals/3` per D1. Keep the
+  `counts`, `maybe_measurement_renorm` and struct construction as they are.
+  Update the function's comments to say only the latest state is retained.
+- [x] 2.2 **[DONE: real post-fix peak 0.30-0.75 MB flat in n and shots; n=10/200 margin only 1.14x cold, so amended to n=12/200 (user, 2026-11-10); 5/5 passes]** Re-run the new test file; record the real post-fix peak in the
+  scratchpad and check the D3 margin (≥ ~1.5× below threshold). Run it 5 times
+  to check for flakiness.
+- [x] 2.3 **[DONE: 1490 passed (328 doctests, 1162 tests); compile/format/credo clean]** `mix test` (full suite), then
+  `mix compile --warnings-as-errors && mix format --check-formatted && mix credo --strict`.
+
+## Phase 3 — Wrap-up
+
+- [x] 3.1 **[DONE]** `CHANGELOG.md` Unreleased → Fixed: conditional (`c_if`) runs no longer
+  retain every shot's statevector; peak memory is now independent of `shots`.
+- [x] 3.2 **[DONE: /phx:review PASS WITH WARNINGS; all 7 findings fixed; merge authorized by user 2026-11-10]** Stop for `/phx:review` (merge gate). The ROADMAP tick happens in the
+  squash-merge commit after the human authorizes it.
+
+## Risks
+
+- **Poller misses the peak.** Can only cause a false pass on old code, never a
+  false failure on the fix (research finding). Retention grows monotonically to
+  the end of the run, so a 1 ms poll over a ~2 s run sees it.
+- **GC slack after the fix.** Dropped states are garbage until the next GC; the
+  proxy showed ~5 states of slack, well under the threshold. Verified in 2.2.
+- **Test-file guard hook.** It may block `Write` on `*_test.exs`. The file is
+  new; if blocked, stop and ask rather than route around it.
+
+## Verification
+
+```
+mix compile --warnings-as-errors && mix format --check-formatted && mix credo --strict && mix test
+```
+
+No `mix bench` needed: no kernel, gate or per-shot execution change.
