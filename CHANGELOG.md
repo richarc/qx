@@ -92,9 +92,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   0.6 ms; 50,000 from 4.8 s to 3.6 ms; 100,000 from 19.2 s to 7.6 ms.
   `Qx.measure/3` also appends to the circuit's separate `measurements`
   list, which is unchanged: 5,000 measurements take 32 ms (was 310 ms).
+- Creating a circuit no longer builds an Elixir list with one element per
+  basis state. `Qx.StateInit.basis_state/3`, which every
+  `Qx.create_circuit/1,2` call uses for the initial state, now writes the
+  single non-zero amplitude onto a zero tensor. At 20 qubits (2^20
+  amplitudes) it went from 227 ms to 4.7 ms on BinaryBackend, and the
+  calling process's heap need fell from over 41 million words to under
+  1,600. Results are unchanged.
+- Hardware results are built the same way: the probability tensor of a
+  result returned by `Qx.Hardware` is no longer assembled from a
+  2^n-element list that was copied once per distinct outcome. For 20
+  classical bits and 1,000 distinct outcomes, building the result went
+  from 111 ms to 11 ms. Results are unchanged.
+- Internal: `trunc(:math.pow(2, n))` is now `Integer.pow(2, n)` at 13
+  sites and `Bitwise.bsl(1, n)` at one. For a non-negative integer `n`,
+  which is what every caller passes, the values are identical; this is a
+  readability change.
 
 ### Fixed
 
+- `Qx.StateInit.basis_state/3` now accepts a real or integer tensor type
+  (for example `:f32` or `:s32`) and returns a one-hot tensor of that
+  type. It previously crashed with a `CaseClauseError` or an
+  `ArgumentError` from Nx for any non-complex type.
 - `Qx.run/2` shot sampling: when the float32 outcome probabilities summed
   to slightly less than 1, a random draw above the total fell back to
   outcome 0, which could be an outcome with probability 0. It now maps to

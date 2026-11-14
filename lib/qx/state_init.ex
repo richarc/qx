@@ -72,12 +72,14 @@ defmodule Qx.StateInit do
 
   def basis_state(index, dimension, type)
       when is_integer(index) and is_integer(dimension) and index >= 0 and index < dimension do
-    state_data =
-      for i <- 0..(dimension - 1) do
-        if i == index, do: C.new(1.0, 0.0), else: C.new(0.0, 0.0)
-      end
+    # One scatter onto a zero tensor: no host-side list of `dimension` elements
+    # (Iron Law #5). A nil type means c64, as it did when the type was inferred
+    # from a list of complex numbers.
+    type = type || :c64
 
-    Nx.tensor(state_data, type: type)
+    Nx.tensor(0, type: type)
+    |> Nx.broadcast({dimension})
+    |> Nx.indexed_put(Nx.tensor([[index]]), Nx.tensor([1], type: type))
   end
 
   # Fallback (sweep #3): route invalid basis_state args onto Qx.BasisError
@@ -129,7 +131,7 @@ defmodule Qx.StateInit do
   """
   @deprecated "Use `basis_state(0, Integer.pow(2, num_qubits))` — circuits already start in |0…0⟩. Will be removed in Qx 1.0"
   def zero_state(num_qubits, type \\ :c64) when is_integer(num_qubits) and num_qubits > 0 do
-    dimension = trunc(:math.pow(2, num_qubits))
+    dimension = Integer.pow(2, num_qubits)
     basis_state(0, dimension, type)
   end
 
@@ -215,7 +217,7 @@ defmodule Qx.StateInit do
   @deprecated "Use `Qx.Patterns.superposition_circuit/1` (circuit mode). Will be removed in Qx 1.0"
   def superposition_state(num_qubits, type \\ :c64)
       when is_integer(num_qubits) and num_qubits > 0 do
-    dimension = trunc(:math.pow(2, num_qubits))
+    dimension = Integer.pow(2, num_qubits)
     amplitude = 1.0 / :math.sqrt(dimension)
 
     state_data = List.duplicate(C.new(amplitude, 0.0), dimension)
@@ -248,7 +250,7 @@ defmodule Qx.StateInit do
   """
   @deprecated "No direct replacement — build random amplitudes and normalize: `(for _ <- 1..dimension, do: Complex.new(:rand.uniform() * 2 - 1, :rand.uniform() * 2 - 1)) |> Nx.tensor(type: :c64) |> Qx.Math.normalize()`. Will be removed in Qx 1.0"
   def random_state(num_qubits, type \\ :c64) when is_integer(num_qubits) and num_qubits > 0 do
-    dimension = trunc(:math.pow(2, num_qubits))
+    dimension = Integer.pow(2, num_qubits)
 
     # Generate random complex amplitudes
     state_data =
@@ -387,7 +389,7 @@ defmodule Qx.StateInit do
   @spec ghz_state_vector(pos_integer(), Nx.Type.t() | Nx.Type.short_t()) :: Nx.Tensor.t()
   def ghz_state_vector(num_qubits, type \\ :c64)
       when is_integer(num_qubits) and num_qubits >= 2 do
-    dimension = trunc(:math.pow(2, num_qubits))
+    dimension = Integer.pow(2, num_qubits)
     inv_sqrt2 = 1.0 / :math.sqrt(2)
 
     state_data =
@@ -423,7 +425,7 @@ defmodule Qx.StateInit do
   """
   @deprecated "No replacement — build the state with `basis_state/2` sums or gates in circuit mode. Will be removed in Qx 1.0"
   def w_state(num_qubits, type \\ :c64) when is_integer(num_qubits) and num_qubits >= 2 do
-    dimension = trunc(:math.pow(2, num_qubits))
+    dimension = Integer.pow(2, num_qubits)
     amplitude = 1.0 / :math.sqrt(num_qubits)
 
     state_data =

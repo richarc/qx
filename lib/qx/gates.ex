@@ -329,7 +329,7 @@ defmodule Qx.Gates do
       iex> cx_gate = Qx.Gates.controlled_gate(Qx.Gates.pauli_x(), 0, 1, 2)
   """
   def controlled_gate(gate, control_qubit, target_qubit, num_qubits) do
-    state_size = trunc(:math.pow(2, num_qubits))
+    state_size = Integer.pow(2, num_qubits)
 
     # Create zero matrix of appropriate size (c64)
     zero_matrix = Nx.broadcast(Nx.tensor(0, type: :c64), {state_size, state_size})
@@ -404,7 +404,7 @@ defmodule Qx.Gates do
     * `FunctionClauseError` - If qubit indices are out of range or equal
   """
   def swap(qubit_a, qubit_b, num_qubits) do
-    state_size = trunc(:math.pow(2, num_qubits))
+    state_size = Integer.pow(2, num_qubits)
     bit_a = num_qubits - 1 - qubit_a
     bit_b = num_qubits - 1 - qubit_b
 
@@ -451,7 +451,7 @@ defmodule Qx.Gates do
     * `FunctionClauseError` - If qubit indices are out of range or equal
   """
   def iswap(qubit_a, qubit_b, num_qubits) do
-    state_size = trunc(:math.pow(2, num_qubits))
+    state_size = Integer.pow(2, num_qubits)
     bit_a = num_qubits - 1 - qubit_a
     bit_b = num_qubits - 1 - qubit_b
 
@@ -497,7 +497,7 @@ defmodule Qx.Gates do
 
   """
   def cswap(control, target_a, target_b, num_qubits) do
-    state_size = trunc(:math.pow(2, num_qubits))
+    state_size = Integer.pow(2, num_qubits)
 
     control_bit_pos = num_qubits - 1 - control
     ta_bit_pos = num_qubits - 1 - target_a
@@ -538,7 +538,7 @@ defmodule Qx.Gates do
       iex> toffoli = Qx.Gates.toffoli(0, 1, 2, 3)
   """
   def toffoli(control1, control2, target, num_qubits) do
-    state_size = trunc(:math.pow(2, num_qubits))
+    state_size = Integer.pow(2, num_qubits)
 
     # Create identity matrix
     identity_matrix = Nx.broadcast(0.0, {state_size, state_size, 2})

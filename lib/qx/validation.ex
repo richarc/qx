@@ -63,7 +63,10 @@ defmodule Qx.Validation do
   # reintroduces the false "no local return" this widening fixed.
   @spec valid_register?(map(), float()) :: boolean()
   def valid_register?(%{state: state, num_qubits: num_qubits}, tolerance \\ 1.0e-6) do
-    expected_size = trunc(:math.pow(2, num_qubits))
+    # A predicate must not raise on a bad count. `bsl`, not `Integer.pow/2`: a
+    # negative `num_qubits` gives 0, and a non-integer one is given 0 too; no
+    # tensor has axis size 0, so both return false.
+    expected_size = if is_integer(num_qubits), do: Bitwise.bsl(1, num_qubits), else: 0
     actual_size = Nx.axis_size(state, 0)
 
     if actual_size != expected_size do

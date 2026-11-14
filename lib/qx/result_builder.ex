@@ -41,15 +41,34 @@ defmodule Qx.ResultBuilder do
     }
   end
 
+  # Scatters the probabilities onto an f32 zero tensor, with no host-side list
+  # of 2^num_bits elements (Iron Law #5). Pairs whose index is outside the
+  # tensor are dropped. When two pairs share an index the later one wins; they
+  # are collapsed here with `Map.new/1` because `Nx.indexed_put/3` does not
+  # define an order for repeated indices.
   defp build_probability_tensor(index_prob_pairs, num_bits) do
     size = Integer.pow(2, num_bits)
-    probs = List.duplicate(0.0, size)
+    zeros = Nx.broadcast(Nx.tensor(0.0, type: :f32), {size})
 
-    probs =
-      Enum.reduce(index_prob_pairs, probs, fn {index, prob}, acc ->
-        if index < size, do: List.replace_at(acc, index, prob), else: acc
-      end)
+    in_range =
+      index_prob_pairs
+      |> Enum.filter(fn {index, _prob} -> index >= 0 and index < size end)
+      |> Map.new()
+      |> Map.to_list()
 
-    Nx.tensor(probs)
+    case in_range do
+      # `Nx.indexed_put/3` cannot take an empty update.
+      [] ->
+        zeros
+
+      pairs ->
+        {indices, probs} = Enum.unzip(pairs)
+
+        Nx.indexed_put(
+          zeros,
+          Nx.tensor(Enum.map(indices, &[&1])),
+          Nx.tensor(probs, type: :f32)
+        )
+    end
   end
 end

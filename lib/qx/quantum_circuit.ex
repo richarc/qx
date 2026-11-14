@@ -76,7 +76,7 @@ defmodule Qx.QuantumCircuit do
 
     # Initialize all qubits in |0⟩ state with complex representation
     # For n qubits, we need a 2^n dimensional state vector with complex components
-    state_size = trunc(:math.pow(2, num_qubits))
+    state_size = Integer.pow(2, num_qubits)
     initial_state = complex_basis_state(0, state_size)
 
     %__MODULE__{
@@ -317,7 +317,7 @@ defmodule Qx.QuantumCircuit do
   """
   @spec set_state(t(), Nx.Tensor.t()) :: t()
   def set_state(%__MODULE__{} = circuit, state) do
-    expected_size = trunc(:math.pow(2, circuit.num_qubits))
+    expected_size = Integer.pow(2, circuit.num_qubits)
 
     case Nx.shape(state) do
       {^expected_size} ->
@@ -440,7 +440,7 @@ defmodule Qx.QuantumCircuit do
   """
   @spec reset(t()) :: t()
   def reset(%__MODULE__{} = circuit) do
-    state_size = trunc(:math.pow(2, circuit.num_qubits))
+    state_size = Integer.pow(2, circuit.num_qubits)
     initial_state = complex_basis_state(0, state_size)
 
     %{
