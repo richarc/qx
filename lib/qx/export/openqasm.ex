@@ -216,13 +216,10 @@ defmodule Qx.Export.OpenQASM do
     raise Qx.OptionError, {:version, version, "Must be 2 or 3."}
   end
 
-  defp validate_circuit_for_version!(%QuantumCircuit{instructions: instructions}, 2) do
+  defp validate_circuit_for_version!(%QuantumCircuit{} = circuit, 2) do
     # Check for conditional operations which are not supported in OpenQASM 2.0
     has_conditionals? =
-      Enum.any?(instructions, fn
-        {:c_if, _qubits, _params} -> true
-        _ -> false
-      end)
+      QuantumCircuit.any_instruction?(circuit, &match?({:c_if, _qubits, _params}, &1))
 
     if has_conditionals? do
       raise Qx.ConditionalError,
@@ -272,8 +269,10 @@ defmodule Qx.Export.OpenQASM do
     end
   end
 
-  defp generate_instructions(%QuantumCircuit{instructions: instructions}, options) do
-    Enum.map_join(instructions, "\n", &instruction_to_qasm(&1, options))
+  defp generate_instructions(%QuantumCircuit{} = circuit, options) do
+    circuit
+    |> QuantumCircuit.get_instructions()
+    |> Enum.map_join("\n", &instruction_to_qasm(&1, options))
   end
 
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity

@@ -839,13 +839,13 @@ defmodule Qx.Operations do
              classical_bit < circuit.num_classical_bits and
              value in [0, 1] and is_function(gate_fn, 1) do
     # Create temporary circuit to capture instructions
-    temp_circuit = %{circuit | instructions: []}
+    temp_circuit = QuantumCircuit.put_instructions(circuit, [])
 
     # Apply the gate function to capture what it does
     modified_circuit = gate_fn.(temp_circuit)
 
-    # Extract the instructions that were added
-    conditional_instructions = modified_circuit.instructions
+    # Extract the instructions that were added, in circuit order
+    conditional_instructions = QuantumCircuit.get_instructions(modified_circuit)
 
     # Validate the conditional block
     validate_conditional_block(conditional_instructions)
@@ -906,7 +906,7 @@ defmodule Qx.Operations do
 
       iex> circuit = Qx.QuantumCircuit.new(2, 0)
       ...> |> Qx.Operations.h(0)
-      ...> |> Qx.Operations.tap_circuit(&IO.inspect(&1.instructions, label: "After H"))
+      ...> |> Qx.Operations.tap_circuit(&IO.inspect(Qx.QuantumCircuit.get_instructions(&1), label: "After H"))
       ...> |> Qx.Operations.cx(0, 1)
       After H: [{:h, [0], []}]
       %Qx.QuantumCircuit{...}
@@ -1055,7 +1055,7 @@ defmodule Qx.Operations do
   @spec final_step(QuantumCircuit.t(), String.t()) :: Qx.Step.t() | nil
   defp final_step(%QuantumCircuit{} = circuit, error_message) do
     measured? = circuit.measurements != []
-    conditional? = Enum.any?(circuit.instructions, &match?({:c_if, _, _}, &1))
+    conditional? = QuantumCircuit.any_instruction?(circuit, &match?({:c_if, _, _}, &1))
 
     if measured? or conditional? do
       raise Qx.MeasurementError, error_message

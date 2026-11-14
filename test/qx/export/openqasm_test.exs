@@ -397,7 +397,7 @@ defmodule Qx.Export.OpenQASMTest do
     test "raises on unsupported gate" do
       # Create a circuit with a manually added unsupported instruction
       circuit = Qx.create_circuit(1)
-      circuit = %{circuit | instructions: [{:unsupported_gate, [0], []}]}
+      circuit = Qx.QuantumCircuit.put_instructions(circuit, [{:unsupported_gate, [0], []}])
 
       assert_raise Qx.GateError, ~r/Unsupported gate/, fn ->
         OpenQASM.to_qasm(circuit)

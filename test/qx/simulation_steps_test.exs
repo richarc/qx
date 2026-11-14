@@ -85,7 +85,12 @@ defmodule Qx.SimulationStepsTest do
       # A bogus trailing instruction raises Qx.GateError if executed;
       # Enum.take(_, 1) must succeed because it never reaches it.
       qc = Qx.create_circuit(1) |> Qx.h(0)
-      poisoned = %{qc | instructions: qc.instructions ++ [{:bogus_gate, [0], []}]}
+
+      poisoned =
+        Qx.QuantumCircuit.put_instructions(
+          qc,
+          Qx.QuantumCircuit.get_instructions(qc) ++ [{:bogus_gate, [0], []}]
+        )
 
       assert [%Step{operation: {:h, [0], []}}] = Enum.take(Simulation.steps(poisoned), 1)
       assert_raise Qx.GateError, fn -> Enum.to_list(Simulation.steps(poisoned)) end

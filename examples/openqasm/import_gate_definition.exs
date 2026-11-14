@@ -44,7 +44,7 @@ circuit =
   |> module.myrxz(:math.pi() / 3, :math.pi() / 4, 0, 1)
 
 IO.puts("\nCircuit after applying user-defined gate:")
-IO.inspect(circuit.instructions)
+IO.inspect(Qx.QuantumCircuit.get_instructions(circuit))
 
 # Out-of-scope features raise typed errors. v1 rejects gate modifiers
 # (`inv @`, `pow @`, `ctrl @`, `negctrl @`) and nested user-defined gate

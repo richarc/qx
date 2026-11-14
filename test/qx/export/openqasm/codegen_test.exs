@@ -96,7 +96,7 @@ defmodule Qx.Export.OpenQASM.CodegenTest do
       circuit = Qx.create_circuit(2)
       # credo:disable-for-next-line Credo.Check.Refactor.Apply
       result = apply(module, :bell, [circuit, 0, 1])
-      assert result.instructions == [{:h, [0], []}, {:cx, [0, 1], []}]
+      assert Qx.QuantumCircuit.get_instructions(result) == [{:h, [0], []}, {:cx, [0, 1], []}]
     end
 
     test "rejects modifiers in body (`ctrl @ h a;`)" do

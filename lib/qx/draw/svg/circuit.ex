@@ -70,25 +70,28 @@ defmodule Qx.Draw.SVG.Circuit do
       File.write!("bell_circuit.svg", svg)
   """
   def render(%Qx.QuantumCircuit{} = circuit, title \\ nil) do
+    # One read for the whole render: get_instructions/1 is O(n) per call.
+    instructions = Qx.QuantumCircuit.get_instructions(circuit)
+
     # Validate circuit
-    validate_circuit!(circuit)
+    validate_circuit!(circuit, instructions)
 
     # Analyze circuit and create layout
-    diagram = analyze_circuit(circuit, title)
+    diagram = analyze_circuit(circuit, instructions, title)
 
     # Generate SVG
     generate_svg(diagram)
   end
 
   # Validates circuit before drawing
-  defp validate_circuit!(%Qx.QuantumCircuit{} = circuit) do
+  defp validate_circuit!(%Qx.QuantumCircuit{} = circuit, instructions) do
     # Check qubit limit
     if circuit.num_qubits > 20 do
       raise Qx.QubitCountError, {circuit.num_qubits, 1, 20}
     end
 
     # Validate all instructions
-    Enum.each(circuit.instructions, fn {gate_name, qubits, params} ->
+    Enum.each(instructions, fn {gate_name, qubits, params} ->
       validate_gate!(gate_name, qubits, params, circuit.num_qubits)
     end)
 
@@ -154,11 +157,9 @@ defmodule Qx.Draw.SVG.Circuit do
   end
 
   # Analyzes circuit and creates layout
-  defp analyze_circuit(%Qx.QuantumCircuit{} = circuit, title) do
-    all_operations = circuit.instructions
-
+  defp analyze_circuit(%Qx.QuantumCircuit{} = circuit, instructions, title) do
     # Layout gates with collision avoidance
-    {gate_layout, num_columns} = layout_gates(all_operations, circuit.num_qubits)
+    {gate_layout, num_columns} = layout_gates(instructions, circuit.num_qubits)
 
     # Calculate dimensions
     label_width = 60
@@ -178,7 +179,7 @@ defmodule Qx.Draw.SVG.Circuit do
       width: width,
       height: height,
       title: title,
-      instructions: circuit.instructions,
+      instructions: instructions,
       measurements: circuit.measurements,
       gate_layout: gate_layout,
       num_columns: num_columns

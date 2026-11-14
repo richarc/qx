@@ -27,6 +27,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     large state with few non-zero amplitudes, pass both:
     `Qx.draw_state(state, hide_zeros: true, max_qubits: 16)`.
   - `Qx.draw_bloch/2` and `Qx.draw_circuit/2` are not affected.
+- **Breaking:** `Qx.QuantumCircuit` no longer has an `instructions` field.
+  Read a circuit's instructions with
+  `Qx.QuantumCircuit.get_instructions/1`, which returns them in circuit
+  order, as before. Circuits built with the `Qx.*` gate functions, and
+  `Qx.run/2`, `Qx.steps/2`, drawing, and OpenQASM export and import, behave
+  as before.
+  - Replace `circuit.instructions` with
+    `Qx.QuantumCircuit.get_instructions(circuit)`. The old read now raises
+    `KeyError`. `get_instructions/1` walks the whole list on each call, so
+    keep the result if you need it more than once.
+  - `%Qx.QuantumCircuit{instructions: list}` no longer compiles, and
+    `%{circuit | instructions: list}` raises `KeyError`. There is no
+    supported way to set the instruction list directly: build the circuit
+    with the gate functions.
+  - The instructions are now stored newest first in a
+    `reversed_instructions` field, which `inspect/1` shows in that order.
+    The field is internal: do not read it or set it.
 
 ### Added
 
@@ -67,6 +84,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   BinaryBackend; with a device backend it is one transfer instead of 3·2^n.
   Seeded `Qx.steps/2` trajectories are unchanged. Internal, non-breaking.
 - New bench suite `bench/measurement_bench.exs` (in `mix bench`).
+- Adding a gate to a circuit now costs the same whatever the size of the
+  circuit. Every gate function used to copy the whole instruction list
+  (`list ++ [instruction]`), so building a circuit of n instructions was
+  O(n²); it is now O(n). Build time for `Qx.h/2` in a loop on a 4-qubit
+  circuit: 1,000 gates went from 1.2 ms to 0.06 ms; 10,000 from 142 ms to
+  0.6 ms; 50,000 from 4.8 s to 3.6 ms; 100,000 from 19.2 s to 7.6 ms.
+  `Qx.measure/3` also appends to the circuit's separate `measurements`
+  list, which is unchanged: 5,000 measurements take 32 ms (was 310 ms).
 
 ### Fixed
 

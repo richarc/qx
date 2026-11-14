@@ -9,6 +9,21 @@ defmodule Qx.QuantumCircuit do
   This module provides the core structure for quantum circuits, maintaining
   circuit state and instruction lists that can be passed to the simulator
   for execution.
+
+  ## Reading the instructions
+
+  Read a circuit's instructions with `get_instructions/1`. It returns them in
+  circuit order, the order the gates were added:
+
+      iex> qc = Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1)
+      iex> Qx.QuantumCircuit.get_instructions(qc)
+      [{:h, [0], []}, {:cx, [0, 1], []}]
+
+  The struct has no `instructions` field. Instructions are stored newest
+  first in `reversed_instructions`, so that adding one costs the same
+  whatever the size of the circuit. That field is internal: do not read it,
+  match on it, or set it. `get_instructions/1` walks the whole list on every
+  call, so call it once and keep the result instead of calling it in a loop.
   """
 
   @type instruction :: {atom(), list(), list()}
@@ -18,7 +33,7 @@ defmodule Qx.QuantumCircuit do
           num_qubits: integer(),
           num_classical_bits: integer(),
           state: Nx.Tensor.t(),
-          instructions: list(instruction()),
+          reversed_instructions: list(instruction()),
           measurements: list(measurement()),
           measured_qubits: MapSet.t()
         }
@@ -27,7 +42,7 @@ defmodule Qx.QuantumCircuit do
     :num_qubits,
     :num_classical_bits,
     :state,
-    instructions: [],
+    reversed_instructions: [],
     measurements: [],
     measured_qubits: MapSet.new()
   ]
@@ -68,7 +83,7 @@ defmodule Qx.QuantumCircuit do
       num_qubits: num_qubits,
       num_classical_bits: num_classical_bits,
       state: initial_state,
-      instructions: [],
+      reversed_instructions: [],
       measurements: [],
       measured_qubits: MapSet.new()
     }
@@ -99,13 +114,19 @@ defmodule Qx.QuantumCircuit do
   #
   # `add_gate/4`, `add_two_qubit_gate/5`, `add_three_qubit_gate/5`,
   # `add_measurement/3`, `add_barrier/2`, and `add_conditional/4` are the SINGLE
-  # place every instruction tuple is built and appended. All are `@doc false`
+  # place every instruction tuple is built and added. All are `@doc false`
   # with no external callers (only `Qx.Operations`/`Qx.Patterns` reach them), so
   # every instruction SHAPE a producer can emit is greppable here — the
   # Iron Law #9 (dispatch completeness) audit point. `gate_name`/kind atoms are
   # always hardcoded by `Operations` (never user input), so no per-name allowlist
   # is validated here; Iron Law #9 coverage is the execution-test-per-shape rule,
   # and qubit/bit indices are validated by the callers or the helpers below.
+  #
+  # Each producer PREPENDS to `reversed_instructions` (newest first), which is
+  # O(1); `list ++ [instruction]` copied the whole list on every gate. Circuit
+  # order is restored on read by `get_instructions/1`. `put_instructions/2` and
+  # `any_instruction?/2` are the only other functions that touch the field, and
+  # no other module names it.
 
   # Adds a single-qubit gate instruction to the circuit. Internal helper used
   # by `Qx.Operations` and `Qx.Patterns`; users should call `Qx.h(qc, 0)` etc.
@@ -119,7 +140,7 @@ defmodule Qx.QuantumCircuit do
     Qx.Validation.validate_qubit_index!(qubit, circuit.num_qubits)
     instruction = {gate_name, [qubit], params}
 
-    %{circuit | instructions: circuit.instructions ++ [instruction]}
+    %{circuit | reversed_instructions: [instruction | circuit.reversed_instructions]}
   end
 
   # Adds a two-qubit gate instruction to the circuit. Internal helper used
@@ -145,7 +166,7 @@ defmodule Qx.QuantumCircuit do
 
     instruction = {gate_name, [control_qubit, target_qubit], params}
 
-    %{circuit | instructions: circuit.instructions ++ [instruction]}
+    %{circuit | reversed_instructions: [instruction | circuit.reversed_instructions]}
   end
 
   # Adds a three-qubit gate instruction. Internal helper used by `Qx.Operations`;
@@ -165,7 +186,7 @@ defmodule Qx.QuantumCircuit do
 
     instruction = {gate_name, [control1, control2, target], params}
 
-    %{circuit | instructions: circuit.instructions ++ [instruction]}
+    %{circuit | reversed_instructions: [instruction | circuit.reversed_instructions]}
   end
 
   defp validate_three_qubit_args!(circuit, c1, c2, t) do
@@ -207,31 +228,32 @@ defmodule Qx.QuantumCircuit do
       circuit
       | measurements: circuit.measurements ++ [measurement],
         measured_qubits: measured_qubits,
-        instructions: circuit.instructions ++ [measurement_instruction]
+        reversed_instructions: [measurement_instruction | circuit.reversed_instructions]
     }
   end
 
   # Adds a barrier instruction spanning `qubits`. Internal producer used by
   # `Qx.Operations.barrier/2` (which owns qubit-index validation); users call
-  # `Qx.barrier(qc, [0, 1])`. Builds+appends the `{:barrier, qubits, []}` tuple
+  # `Qx.barrier(qc, [0, 1])`. Builds+adds the `{:barrier, qubits, []}` tuple
   # so barrier production lives on this single `add_*` surface, not inline in
   # Operations.
   @doc false
   def add_barrier(%__MODULE__{} = circuit, qubits) when is_list(qubits) do
-    %{circuit | instructions: circuit.instructions ++ [{:barrier, qubits, []}]}
+    %{circuit | reversed_instructions: [{:barrier, qubits, []} | circuit.reversed_instructions]}
   end
 
   # Adds a conditional (`c_if`) instruction. Internal producer used by
   # `Qx.Operations.c_if/4` (which owns running the gate function, block
   # validation, and the value/bit guards); users call `Qx.c_if/4`. Builds +
-  # appends the `{:c_if, [classical_bit, value], conditional_instructions}`
-  # tuple — the already-collected `conditional_instructions` come from
-  # Operations running the caller's `gate_fn` on a temp circuit.
+  # adds the `{:c_if, [classical_bit, value], conditional_instructions}`
+  # tuple — the already-collected `conditional_instructions` (in circuit
+  # order) come from Operations running the caller's `gate_fn` on a temp
+  # circuit.
   @doc false
   def add_conditional(%__MODULE__{} = circuit, classical_bit, value, conditional_instructions)
       when is_list(conditional_instructions) do
     instruction = {:c_if, [classical_bit, value], conditional_instructions}
-    %{circuit | instructions: circuit.instructions ++ [instruction]}
+    %{circuit | reversed_instructions: [instruction | circuit.reversed_instructions]}
   end
 
   @doc """
@@ -311,7 +333,12 @@ defmodule Qx.QuantumCircuit do
   end
 
   @doc """
-  Gets the list of instructions in the circuit.
+  Gets the list of instructions in the circuit, in circuit order (the order
+  the gates were added).
+
+  This is the way to read a circuit's instructions. Each call walks the whole
+  list (O(n) in the number of instructions), so bind the result once instead
+  of calling this inside a loop over the instructions.
 
   ## Examples
 
@@ -319,10 +346,34 @@ defmodule Qx.QuantumCircuit do
       iex> [{gate_name, qubits, _params}] = Qx.QuantumCircuit.get_instructions(qc)
       iex> {gate_name, qubits}
       {:h, [0]}
+
+      iex> qc = Qx.create_circuit(2) |> Qx.x(0) |> Qx.cx(0, 1) |> Qx.h(1)
+      iex> Qx.QuantumCircuit.get_instructions(qc)
+      [{:x, [0], []}, {:cx, [0, 1], []}, {:h, [1], []}]
   """
   @spec get_instructions(t()) :: [instruction()]
   def get_instructions(%__MODULE__{} = circuit) do
-    circuit.instructions
+    Enum.reverse(circuit.reversed_instructions)
+  end
+
+  # Replaces the circuit's instructions with `instructions`, given in circuit
+  # order. The bulk write path for the field: `Qx.Operations.c_if/4` (to
+  # capture a block), the OpenQASM importer, and tests that hand-build a
+  # circuit. Does not validate the tuples and does not touch `measurements`.
+  @doc false
+  @spec put_instructions(t(), [instruction()]) :: t()
+  def put_instructions(%__MODULE__{} = circuit, instructions) when is_list(instructions) do
+    %{circuit | reversed_instructions: Enum.reverse(instructions)}
+  end
+
+  # True if `fun` returns a truthy value for any top-level instruction. For
+  # order-independent scans ("does this circuit contain a `c_if`?"): it reads
+  # the stored list directly, so it does not pay for a reverse. Instructions
+  # inside a `c_if` body are not visited.
+  @doc false
+  @spec any_instruction?(t(), (instruction() -> as_boolean(term()))) :: boolean()
+  def any_instruction?(%__MODULE__{} = circuit, fun) when is_function(fun, 1) do
+    Enum.any?(circuit.reversed_instructions, fun)
   end
 
   @doc """
@@ -367,7 +418,7 @@ defmodule Qx.QuantumCircuit do
   """
   @spec depth(t()) :: non_neg_integer()
   def depth(%__MODULE__{} = circuit) do
-    length(circuit.instructions)
+    length(circuit.reversed_instructions)
   end
 
   @doc """
@@ -382,8 +433,8 @@ defmodule Qx.QuantumCircuit do
 
       iex> qc = Qx.create_circuit(2, 2) |> Qx.h(0) |> Qx.measure(0, 0)
       iex> qc_reset = Qx.QuantumCircuit.reset(qc)
-      iex> length(qc_reset.instructions)
-      0
+      iex> Qx.QuantumCircuit.get_instructions(qc_reset)
+      []
       iex> length(qc_reset.measurements)
       0
   """
@@ -395,7 +446,7 @@ defmodule Qx.QuantumCircuit do
     %{
       circuit
       | state: initial_state,
-        instructions: [],
+        reversed_instructions: [],
         measurements: [],
         measured_qubits: MapSet.new()
     }

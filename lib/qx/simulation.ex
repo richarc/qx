@@ -175,9 +175,13 @@ defmodule Qx.Simulation do
     # Execute each shot independently. Keep every shot's classical bits
     # but only the most recent statevector: holding all of them is
     # shots × 2^n amplitudes resident for the whole run.
+    # The timeline is the same for every shot: build it (and read the
+    # instruction list) once, not once per shot.
+    timeline = create_instruction_timeline(circuit)
+
     {reversed_bits, last_state} =
       Enum.reduce(1..shots//1, {[], nil}, fn _shot, {bits, _previous_state} ->
-        {state, cbits} = execute_single_shot(circuit, renorm)
+        {state, cbits} = execute_single_shot(circuit, timeline, renorm)
         {[cbits | bits], state}
       end)
 
@@ -652,20 +656,16 @@ defmodule Qx.Simulation do
   # Check if circuit has conditional instructions
   @spec has_conditionals?(QuantumCircuit.t()) :: boolean()
   defp has_conditionals?(%QuantumCircuit{} = circuit) do
-    Enum.any?(circuit.instructions, fn
-      {:c_if, _, _} -> true
-      _ -> false
-    end)
+    # Order-independent, so it scans the stored list without reversing it.
+    QuantumCircuit.any_instruction?(circuit, &match?({:c_if, _, _}, &1))
   end
 
   # Execute a single shot of a circuit with conditionals
-  @spec execute_single_shot(QuantumCircuit.t(), renorm()) :: {state(), cbits()}
-  defp execute_single_shot(%QuantumCircuit{} = circuit, renorm) do
+  @spec execute_single_shot(QuantumCircuit.t(), [timeline_item()], renorm()) ::
+          {state(), cbits()}
+  defp execute_single_shot(%QuantumCircuit{} = circuit, timeline, renorm) do
     initial_state = real_state_to_complex(circuit.state)
     classical_bits = List.duplicate(0, circuit.num_classical_bits)
-
-    # Create instruction timeline (merges instructions and measurements)
-    timeline = create_instruction_timeline(circuit)
 
     # Execute timeline sequentially, threading a 1-based gate counter
     # (NOT a timeline index) so the {:every, n} cadence counts actual
@@ -692,7 +692,8 @@ defmodule Qx.Simulation do
   # Create unified timeline of operations (instructions and measurements)
   @spec create_instruction_timeline(QuantumCircuit.t()) :: [timeline_item()]
   defp create_instruction_timeline(%QuantumCircuit{} = circuit) do
-    instructions = circuit.instructions
+    # One read: get_instructions/1 is O(n) per call.
+    instructions = QuantumCircuit.get_instructions(circuit)
 
     # Convert instructions to timeline format
     # Measurements are now in the instruction list for proper ordering

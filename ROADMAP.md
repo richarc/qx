@@ -19,8 +19,10 @@ findings and triage buckets are in
 
 The 2026-06-14 audit's simulation-engine refactor and performance
 work: clarify the Calc / CalcFast split, kill the host-side loops.
-Additive and internal, with one breaking change: the draw size
-limit (`Qx.DrawSizeError`, plan: draw-state-size-cap).
+Additive and internal, with two breaking changes: the draw size
+limit (`Qx.DrawSizeError`, plan: draw-state-size-cap) and the removal
+of the `Qx.QuantumCircuit` `instructions` field (plan:
+circuit-instruction-append).
 
 - [ ] Replace case dispatch with gate registry in apply_instruction (qx-agu)
 - [ ] Convert case gate_name dispatch to multi-clause functions in Simulation (qx-dn2)
@@ -31,7 +33,7 @@ limit (`Qx.DrawSizeError`, plan: draw-state-size-cap).
 - [ ] Replace host-side `2^n` Elixir-list construction in `Qx.StateInit` and in `Qx.ResultBuilder.build_probability_tensor` (`List.replace_at` over 2^n list). Scope to whatever survives the v0.11 StateInit/Math tier decision — don't optimise functions being deprecated (audit: perf HIGH; Iron Law #5)
 - [x] Vectorise sample generation: `Enum.scan` cumulative distribution + per-shot `Enum.find_index` linear scan is O(shots × 2^n); 100M+ host iterations at 100k shots × n=10 (audit: perf HIGH) — Nx f64 cumulative sum + per-shot binary search in `Qx.Simulation.Sampler` (plan: vectorise-measurement)
 - [x] Cap retained state in `run_with_conditionals`: materialises the full list of `{state, cbits}` for every shot before `Enum.frequencies`; at 100k shots × n=20 holds ~1.6 TB resident before reduce (audit: perf HIGH) — shot loop is now a reduce keeping each shot's classical bits and only the latest state; peak statevector memory no longer grows with shots (plan: conditionals-retained-state)
-- [ ] Replace `instructions ++ [new]` quadratic append in `Qx.QuantumCircuit` with prepend + reverse-on-finalise (audit: perf HIGH; also flagged by `usage_rules.elixir`)
+- [x] Replace `instructions ++ [new]` quadratic append in `Qx.QuantumCircuit` with prepend + reverse-on-finalise (audit: perf HIGH; also flagged by `usage_rules.elixir`) — instructions are stored newest first in an internal `reversed_instructions` field and reversed on read by `Qx.QuantumCircuit.get_instructions/1` (there is no finalise step); the public `instructions` field is removed. 100,000 gates build in 7.6 ms, was 19.2 s. **Breaking** (plan: circuit-instruction-append)
 - [x] Cap or auto-truncate state-sized rendering above n≈12 qubits, raising a typed `Qx.*Error` instead: the three VegaLite chart builders (`lib/qx/draw/vega_lite.ex`), the histogram data build in `lib/qx/draw.ex`, and the 2^n-row table build in `Qx.Draw.Tables`. Rescoped 2026-07-05: the unbounded SVG chart renderer named by the audit was deleted in the v0.10 Draw rework, which shrank this item (audit: perf CRIT C4) — the draw functions raise `Qx.DrawSizeError` above `2^max_qubits` bars/rows (default 12), with a per-call `max_qubits:` override; `Qx.draw_counts/2` is capped on distinct outcomes. **Breaking** (plan: draw-state-size-cap)
 - [ ] Replace `:math.pow(2, n) |> trunc/1` with `Integer.pow(2, n)` (or `Bitwise.bsl(1, n)`) across `state_init.ex`, `quantum_circuit.ex`, `simulation.ex`, `gates.ex`, `validation.ex`. Exact integer math (audit: perf LOW)
 - [ ] Break the 4-module cycle `tables → register → qubit → draw → tables`: anchored by the internal calc engine's `Qx.Qubit.draw_bloch/2` defdelegating up to `Qx.Draw` and `Qx.Draw.Tables.render/2` pattern-matching `%Qx.Register{}`. Both anchors survived the v0.10 demotion (the modules are hidden, not gone); the cycle dissolves for free if the 1.0 calc-engine removal lands first — sequence accordingly (audit: arch MED)
