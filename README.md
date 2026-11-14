@@ -2,7 +2,7 @@
 
 [![Hex.pm](https://img.shields.io/hexpm/v/qx_sim.svg)](https://hex.pm/packages/qx_sim)
 [![Documentation](https://img.shields.io/badge/docs-hexpm-blue.svg)](https://hexdocs.pm/qx_sim/)
-[![License](https://img.shields.io/hexpm/l/qx_sim.svg)](LICENSE)
+[![License](https://img.shields.io/hexpm/l/qx_sim.svg)](https://github.com/richarc/qx/blob/main/LICENSE)
 [![CI](https://github.com/richarc/qx/actions/workflows/ci.yml/badge.svg)](https://github.com/richarc/qx/actions/workflows/ci.yml)
 [![Release](https://github.com/richarc/qx/actions/workflows/release.yml/badge.svg)](https://github.com/richarc/qx/actions/workflows/release.yml)
 
@@ -29,7 +29,7 @@ Qx is a quantum computing simulator built for Elixir that provides an intuitive 
 ```elixir
 def deps do
   [
-    {:qx, "~> 0.11", hex: :qx_sim}
+    {:qx, "~> 0.11.0", hex: :qx_sim}
   ]
 end
 ```
@@ -84,7 +84,7 @@ For the complete API, see the [hexdocs](https://hexdocs.pm/qx_sim/Qx.html).
 
 ```elixir
 Mix.install([
-  {:qx, "~> 0.11", hex: :qx_sim},
+  {:qx, "~> 0.11.0", hex: :qx_sim},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
   {:kino_vega_lite, "~> 0.1.11"}
@@ -195,7 +195,7 @@ result = Qx.create_circuit(2)
 
 ### Conditional Operations & Mid-Circuit Measurement
 
-`Qx.c_if/4` applies gates conditionally based on classical bit values, enabling quantum teleportation, error correction, and adaptive algorithms:
+`Qx.c_if/4` applies gates conditionally based on classical bit values, enabling quantum teleportation, error correction, and adaptive algorithms. A `c_if` block holds gates only: a measurement or another `c_if` inside it raises `Qx.ConditionalError`, so measure after the block.
 
 ```elixir
 # Quantum teleportation with conditional corrections
@@ -453,7 +453,7 @@ result = Qx.run(circuit, shots: 1024)
 Errors come back as typed exceptions:
 
 * `Qx.QasmParseError` — grammar/syntax problems (with `:line`, `:column`, `:snippet`)
-* `Qx.QasmUnsupportedError` — valid QASM that uses a feature outside the supported subset (multi-register, gate modifiers, `else`, …)
+* `Qx.QasmUnsupportedError` — valid QASM that uses a feature outside the supported subset (multi-register, gate modifiers, `else`, a measurement inside an `if` block, …)
 
 `from_qasm!/1` is the bang variant.
 
@@ -604,7 +604,7 @@ EXLA provides significant speedup through XLA's LLVM optimizations.
 ```elixir
 def deps do
   [
-    {:qx, "~> 0.11", hex: :qx_sim},
+    {:qx, "~> 0.11.0", hex: :qx_sim},
     {:exla, "~> 0.12"}  # Add this line (match Qx's Nx version)
   ]
 end
@@ -698,7 +698,7 @@ config :nx, :default_backend, {EXLA.Backend, client: :rocm}
 ```elixir
 def deps do
   [
-    {:qx, "~> 0.11", hex: :qx_sim},
+    {:qx, "~> 0.11.0", hex: :qx_sim},
     {:emlx, github: "elixir-nx/emlx", branch: "main"}  # Add this line
   ]
 end
@@ -752,7 +752,7 @@ For LiveBook, add the acceleration backend to your `Mix.install` call:
 **EXLA CPU (all platforms):**
 ```elixir
 Mix.install([
-  {:qx, "~> 0.11", hex: :qx_sim},
+  {:qx, "~> 0.11.0", hex: :qx_sim},
   {:exla, "~> 0.12"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -765,7 +765,7 @@ Application.put_env(:nx, :default_backend, EXLA.Backend)
 **EMLX GPU (Apple Silicon):**
 ```elixir
 Mix.install([
-  {:qx, "~> 0.11", hex: :qx_sim},
+  {:qx, "~> 0.11.0", hex: :qx_sim},
   {:emlx, github: "elixir-nx/emlx", branch: "main"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -778,7 +778,7 @@ Application.put_env(:nx, :default_backend, {EMLX.Backend, device: :gpu})
 **EXLA CUDA (NVIDIA GPU):** Requires `XLA_TARGET` env var set (see [CUDA setup](#exla--nvidia-gpu-cuda)).
 ```elixir
 Mix.install([
-  {:qx, "~> 0.11", hex: :qx_sim},
+  {:qx, "~> 0.11.0", hex: :qx_sim},
   {:exla, "~> 0.12"},
   {:kino, "~> 0.12"},
   {:vega_lite, "~> 0.1.11"},
@@ -801,7 +801,7 @@ rescue
 end
 ```
 
-Exception types include `QubitIndexError`, `StateNormalizationError`, `MeasurementError`, `ConditionalError`, `ClassicalBitError`, `GateError`, `QubitCountError`, and `MissingDependencyError`. See the [hexdocs](https://hexdocs.pm/qx_sim/Qx.html) for details.
+All exceptions are `Qx.*Error` structs. Circuit building and simulation raise `QubitIndexError`, `QubitCountError`, `ClassicalBitError`, `GateError`, `ParameterError`, `BasisError`, `MeasurementError`, `ConditionalError`, `OptionError`, `StateNormalizationError` and `StateShapeError`. Drawing raises `DrawSizeError`; OpenQASM import raises `QasmParseError` and `QasmUnsupportedError`; a missing optional dependency raises `MissingDependencyError`. `Qx.Hardware` has its own error types. See the [hexdocs](https://hexdocs.pm/qx_sim/Qx.html) for details.
 
 ## Requirements & Limitations
 
@@ -812,17 +812,19 @@ Exception types include `QubitIndexError`, `StateNormalizationError`, `Measureme
 
 ## Roadmap
 
-See [ROADMAP.md](ROADMAP.md) for planned features and the strategic direction of Qx.
+See [ROADMAP.md](https://github.com/richarc/qx/blob/main/ROADMAP.md) for planned features and the strategic direction of Qx.
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+2. Create a branch (`git checkout -b feat/<slug>`, or `fix/<slug>` for a bug fix)
 3. Make your changes and ensure tests pass (`mix test`)
 4. Run code quality checks (`mix credo --strict`)
 5. Commit and open a Pull Request
 
-For maintainers preparing a release, see [RELEASE.md](RELEASE.md).
+See [CONTRIBUTING.md](https://github.com/richarc/qx/blob/main/CONTRIBUTING.md) for the full workflow and the rules a change must meet.
+
+For maintainers preparing a release, see [RELEASE.md](https://github.com/richarc/qx/blob/main/RELEASE.md).
 
 ## License
 
@@ -836,6 +838,6 @@ This project is licensed under the Apache License 2.0.
 
 ## Version
 
-Current version: 0.10.1
+Current version: 0.11.0
 
 For detailed API documentation, see the [hexdocs](https://hexdocs.pm/qx_sim/Qx.html).

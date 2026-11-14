@@ -199,11 +199,19 @@ tooling loads). The contributor-facing slice is below.
 
 **Public API surface:**
 
-- **Breaking changes to `Qx`, `Qx.QuantumCircuit`, `Qx.Operations`,
-  `Qx.Simulation`, `Qx.SimulationResult`, or any `Qx.Behaviours.*`
-  require a CHANGELOG entry and a major-version bump.** If your PR
-  changes a public signature or return shape, call this out clearly
-  in the description.
+- **Breaking changes to a tier 1 or tier 2 module require a CHANGELOG
+  entry and a bump of the version component that signals breakage.**
+  That is the minor version while Qx is below 1.0.0, and the major
+  version from 1.0.0 on. A patch release never breaks. (Users are told
+  to depend on Qx as `~> 0.X.0`, which stops at the next minor; the
+  two-segment `~> 0.X` would accept every later 0.x release.) A module's tier
+  is stated in its moduledoc: tier 1 opens with "Tier 1: a core Qx
+  type" (plus the `Qx` facade), tier 2 opens with "Utility module:", and
+  a module with `@moduledoc false` (for example
+  `Qx.Behaviours.QuantumState`) is internal and carries no stability
+  guarantee. If your PR changes a public signature or return shape, or
+  rejects input that used to be accepted, call this out clearly in the
+  description.
 - **Public functions raise typed `Qx.*Error`** on misuse. Route
   through `Qx.Validation`. Don't let raw `Nx`, `Complex`, or
   `ArgumentError` leak across the API boundary.

@@ -22,15 +22,19 @@ defmodule Qx.Calc do
 
   ## Examples
 
-      # Single qubit (num_qubits = 1, target = 0)
-      iex> state = Qx.Qubit.new()
-      iex> gate = Qx.Gates.hadamard()
-      iex> Qx.Calc.apply_single_qubit_gate(state, gate, 0, 1)
+  A single qubit (`num_qubits` 1, target 0); X takes `|0⟩` to `|1⟩`:
 
-      # Multi-qubit register (apply H to qubit 1 in 3-qubit system)
+      iex> state = Qx.Qubit.new()
+      iex> new_state = Qx.Calc.apply_single_qubit_gate(state, Qx.Gates.pauli_x(), 0, 1)
+      iex> Nx.to_flat_list(Nx.real(new_state))
+      [0.0, 1.0]
+
+  A three-qubit register; X on qubit 1 takes `|000⟩` to `|010⟩` (index 2):
+
       iex> reg = Qx.Register.new(3)
-      iex> gate = Qx.Gates.hadamard()
-      iex> Qx.Calc.apply_single_qubit_gate(reg.state, gate, 1, 3)
+      iex> new_state = Qx.Calc.apply_single_qubit_gate(reg.state, Qx.Gates.pauli_x(), 1, 3)
+      iex> Nx.to_flat_list(Nx.real(new_state))
+      [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
   """
   @spec apply_single_qubit_gate(Nx.Tensor.t(), Nx.Tensor.t(), non_neg_integer(), pos_integer()) ::
           Nx.Tensor.t()
@@ -54,8 +58,12 @@ defmodule Qx.Calc do
 
   ## Examples
 
+  With the control in `|0⟩` the state is unchanged:
+
       iex> reg = Qx.Register.new(2)
-      iex> Qx.Calc.apply_cnot(reg.state, 0, 1, 2)
+      iex> new_state = Qx.Calc.apply_cnot(reg.state, 0, 1, 2)
+      iex> Nx.to_flat_list(Nx.real(new_state))
+      [1.0, 0.0, 0.0, 0.0]
   """
   @spec apply_cnot(Nx.Tensor.t(), non_neg_integer(), non_neg_integer(), pos_integer()) ::
           Nx.Tensor.t()

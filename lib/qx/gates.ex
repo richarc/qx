@@ -17,8 +17,9 @@ defmodule Qx.Gates do
 
   ## Examples
 
-      iex> Qx.Gates.hadamard()
-      # Returns complex matrix tensor
+      iex> gate = Qx.Gates.hadamard()
+      iex> {Nx.shape(gate), Nx.type(gate)}
+      {{2, 2}, {:c, 64}}
   """
   def hadamard do
     inv_sqrt2 = 1.0 / :math.sqrt(2)
@@ -37,8 +38,9 @@ defmodule Qx.Gates do
 
   ## Examples
 
-      iex> Qx.Gates.pauli_x()
-      # Returns complex matrix tensor
+      iex> gate = Qx.Gates.pauli_x()
+      iex> {Nx.shape(gate), Nx.type(gate)}
+      {{2, 2}, {:c, 64}}
   """
   def pauli_x do
     Math.complex_matrix([
@@ -55,8 +57,9 @@ defmodule Qx.Gates do
 
   ## Examples
 
-      iex> Qx.Gates.pauli_y()
-      # Returns complex matrix tensor
+      iex> gate = Qx.Gates.pauli_y()
+      iex> {Nx.shape(gate), Nx.type(gate)}
+      {{2, 2}, {:c, 64}}
   """
   def pauli_y do
     Math.complex_matrix([
@@ -73,8 +76,9 @@ defmodule Qx.Gates do
 
   ## Examples
 
-      iex> Qx.Gates.pauli_z()
-      # Returns complex matrix tensor
+      iex> gate = Qx.Gates.pauli_z()
+      iex> {Nx.shape(gate), Nx.type(gate)}
+      {{2, 2}, {:c, 64}}
   """
   def pauli_z do
     Math.complex_matrix([
@@ -91,8 +95,9 @@ defmodule Qx.Gates do
 
   ## Examples
 
-      iex> Qx.Gates.s_gate()
-      # Returns complex matrix tensor
+      iex> gate = Qx.Gates.s_gate()
+      iex> {Nx.shape(gate), Nx.type(gate)}
+      {{2, 2}, {:c, 64}}
   """
   def s_gate do
     Math.complex_matrix([
@@ -109,8 +114,9 @@ defmodule Qx.Gates do
 
   ## Examples
 
-      iex> Qx.Gates.t_gate()
-      # Returns complex matrix tensor
+      iex> gate = Qx.Gates.t_gate()
+      iex> {Nx.shape(gate), Nx.type(gate)}
+      {{2, 2}, {:c, 64}}
   """
   def t_gate do
     phase = C.exp(C.new(0, :math.pi() / 4))
@@ -129,8 +135,9 @@ defmodule Qx.Gates do
 
   ## Examples
 
-      iex> Qx.Gates.s_dagger()
-      # Returns complex matrix tensor
+      iex> gate = Qx.Gates.s_dagger()
+      iex> {Nx.shape(gate), Nx.type(gate)}
+      {{2, 2}, {:c, 64}}
   """
   def s_dagger do
     Math.complex_matrix([
@@ -147,8 +154,9 @@ defmodule Qx.Gates do
 
   ## Examples
 
-      iex> Qx.Gates.t_dagger()
-      # Returns complex matrix tensor
+      iex> gate = Qx.Gates.t_dagger()
+      iex> {Nx.shape(gate), Nx.type(gate)}
+      {{2, 2}, {:c, 64}}
   """
   def t_dagger do
     phase = C.exp(C.new(0, -:math.pi() / 4))
@@ -170,8 +178,9 @@ defmodule Qx.Gates do
 
   ## Examples
 
-      iex> Qx.Gates.rx(math.pi/2)
-      # Returns complex matrix tensor
+      iex> gate = Qx.Gates.rx(:math.pi() / 2)
+      iex> {Nx.shape(gate), Nx.type(gate)}
+      {{2, 2}, {:c, 64}}
   """
   def rx(theta) do
     cos_half = :math.cos(theta / 2)
@@ -194,8 +203,9 @@ defmodule Qx.Gates do
 
   ## Examples
 
-      iex> Qx.Gates.ry(math.pi/2)
-      # Returns complex matrix tensor
+      iex> gate = Qx.Gates.ry(:math.pi() / 2)
+      iex> {Nx.shape(gate), Nx.type(gate)}
+      {{2, 2}, {:c, 64}}
   """
   def ry(theta) do
     cos_half = :math.cos(theta / 2)
@@ -218,8 +228,9 @@ defmodule Qx.Gates do
 
   ## Examples
 
-      iex> Qx.Gates.rz(math.pi/2)
-      # Returns complex matrix tensor
+      iex> gate = Qx.Gates.rz(:math.pi() / 2)
+      iex> {Nx.shape(gate), Nx.type(gate)}
+      {{2, 2}, {:c, 64}}
   """
   def rz(theta) do
     exp_neg = C.exp(C.new(0, -theta / 2))
@@ -242,8 +253,9 @@ defmodule Qx.Gates do
 
   ## Examples
 
-      iex> Qx.Gates.phase(:math.pi/4)
-      # Returns complex matrix tensor
+      iex> gate = Qx.Gates.phase(:math.pi() / 4)
+      iex> {Nx.shape(gate), Nx.type(gate)}
+      {{2, 2}, {:c, 64}}
   """
   def phase(phi) do
     phase_factor = C.exp(C.new(0, phi))
@@ -305,8 +317,9 @@ defmodule Qx.Gates do
 
   ## Examples
 
-      iex> Qx.Gates.identity()
-      # Returns complex matrix tensor
+      iex> gate = Qx.Gates.identity()
+      iex> {Nx.shape(gate), Nx.type(gate)}
+      {{2, 2}, {:c, 64}}
   """
   def identity do
     Math.complex_matrix([
@@ -327,6 +340,8 @@ defmodule Qx.Gates do
   ## Examples
 
       iex> cx_gate = Qx.Gates.controlled_gate(Qx.Gates.pauli_x(), 0, 1, 2)
+      iex> Nx.shape(cx_gate)
+      {4, 4}
   """
   def controlled_gate(gate, control_qubit, target_qubit, num_qubits) do
     state_size = Integer.pow(2, num_qubits)
@@ -379,6 +394,8 @@ defmodule Qx.Gates do
   ## Examples
 
       iex> cnot = Qx.Gates.cnot(0, 1, 2)
+      iex> Nx.shape(cnot)
+      {4, 4}
   """
   def cnot(control_qubit, target_qubit, num_qubits) do
     controlled_gate(pauli_x(), control_qubit, target_qubit, num_qubits)

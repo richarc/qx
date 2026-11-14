@@ -114,6 +114,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Documentation examples in `Qx.Simulation` (`run/2`) that used an
+  undefined variable now run as written. The `iex>` examples in
+  `Qx.Simulation`, `Qx.Step`, `Qx.Draw.StateTable` and `Qx.Draw.Image`
+  (and in the internal `Qx.Gates` and `Qx.Calc`) are now executed by
+  the test suite; before, nothing ran them.
 - **Breaking:** a measurement inside a `Qx.c_if/4` block is now rejected with
   `Qx.ConditionalError` when the circuit is built. This covers
   `Qx.measure/3`, `Qx.measure_x/3` and `Qx.measure_y/3`. Before, the block
@@ -1228,7 +1233,10 @@ decided while v0.10 was still unpublished.
 
 ---
 
-[Unreleased]: https://github.com/richarc/qx/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/richarc/qx/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/richarc/qx/releases/tag/v0.11.0
+[0.10.1]: https://github.com/richarc/qx/releases/tag/v0.10.1
+[0.10.0]: https://github.com/richarc/qx/releases/tag/v0.10.0
 [0.9.0]: https://github.com/richarc/qx/releases/tag/v0.9.0
 [0.8.1]: https://github.com/richarc/qx/releases/tag/v0.8.1
 [0.8.0]: https://github.com/richarc/qx/releases/tag/v0.8.0

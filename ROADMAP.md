@@ -17,12 +17,14 @@ findings and triage buckets are in
 
 ## v0.12: Simulation Refactor & Performance
 
-The 2026-06-14 audit's simulation-engine refactor and performance
-work: clarify the Calc / CalcFast split, kill the host-side loops.
-Additive and internal, with two breaking changes: the draw size
-limit (`Qx.DrawSizeError`, plan: draw-state-size-cap) and the removal
+The 2026-06-14 audit's simulation-engine performance work: kill the
+host-side loops and the `2^n × 2^n` matrices. The audit's dispatch and
+Calc / CalcFast refactor items were moved to the Backlog on 2026-11-14.
+Additive and internal, with four breaking changes in three areas: the draw size
+limit (`Qx.DrawSizeError`, plan: draw-state-size-cap), the removal
 of the `Qx.QuantumCircuit` `instructions` field (plan:
-circuit-instruction-append).
+circuit-instruction-append), and the rejection of a measurement inside
+a `c_if` block, in `Qx.c_if/4` and on OpenQASM import.
 
 - [x] Reshape `Qx.CalcFast` kernels to eliminate `Nx.take` gather + `Nx.select` mask: single-qubit (`lib/qx/calc_fast.ex:67–91`), CNOT (`114–143`), CSWAP (`157–185`), Toffoli (`187–229`). Replace with reshape + 2×2 tensor contraction along the qubit axis. Highest-leverage perf change in the audit; depends on the v0.8.1 tolerance widening (audit: perf CRIT C1/C2; Iron Law #3) — done as rank-n **axis slicing** (reshape to `{2,…,2}`, static control/target slices, concat) after a spike showed dense contraction regresses CX/CCX on BinaryBackend (plan: calcfast-reshape-kernels)
 - [x] Vectorise measurement probability and state collapse: `lib/qx/simulation.ex` host loop `for i <- 0..(2^n - 1), Nx.to_number(state[i])` runs once per shot (~1 M host syncs at 1024 shots × n=10) (audit: perf CRIT C3; Iron Law #5) — `Qx.CalcFast.qubit_probabilities/3` + `collapse/5` (one sync, static slices) (plan: vectorise-measurement)
@@ -81,7 +83,6 @@ These have no commitment and no scheduled version. They may move up, move down, 
 - [ ] Moved from v0.12 on 2026-11-14 (compile-time only; dissolves with the 1.0 calc-engine removal). Break the 4-module cycle `tables → register → qubit → draw → tables`: anchored by the internal calc engine's `Qx.Qubit.draw_bloch/2` defdelegating up to `Qx.Draw` and `Qx.Draw.Tables.render/2` pattern-matching `%Qx.Register{}`. Both anchors survived the v0.10 demotion (the modules are hidden, not gone); the cycle dissolves for free if the 1.0 calc-engine removal lands first — sequence accordingly (audit: arch MED)
 - [ ] Moved from v0.12 on 2026-11-14 (blocked: EXLA/EMLX are not dependencies). Performance benchmarks published and tracked across releases (Benchee baseline `mix bench` exists; results to be published once GPU acceleration via EXLA/EMLX is exercised)
 - [ ] `Qx.QuantumCircuit.add_measurement/3` appends with `circuit.measurements ++ [measurement]` (`lib/qx/quantum_circuit.ex:229`), a quadratic append like the instruction one fixed in v0.12. Surfaced by the v012-closeout review (2026-11-14)
-- [ ] Add a `doctest Qx.Gates` directive: `lib/qx/gates.ex` has `iex>` examples and no test module runs them (TDD rule 4). Surfaced by the host-side-state-lists review (2026-11-14)
 - [ ] Second instruction-producer surface: `lib/qx/export/openqasm/lowering.ex`
   builds `{:measure,…}`/`{:barrier,…}`/`{:c_if,…}`/gate tuples directly on its
   raw lowering-state map (QASM import bulk-builds an instructions list, then

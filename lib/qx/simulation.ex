@@ -94,12 +94,18 @@ defmodule Qx.Simulation do
       iex> is_map(result)
       true
 
-      # With custom shots
+  With custom shots:
+
+      iex> qc = Qx.QuantumCircuit.new(2, 2)
+      iex> qc = qc |> Qx.Operations.h(0) |> Qx.Operations.cx(0, 1)
       iex> result = Qx.Simulation.run(qc, shots: 2048)
       iex> result.shots
       2048
 
-      # Renormalize every 8 gates to counter long-circuit float drift
+  Renormalize every 8 gates to counter long-circuit float drift:
+
+      iex> qc = Qx.QuantumCircuit.new(2, 2)
+      iex> qc = qc |> Qx.Operations.h(0) |> Qx.Operations.cx(0, 1)
       iex> result = Qx.Simulation.run(qc, renormalize: 8)
       iex> is_map(result)
       true

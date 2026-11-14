@@ -23,7 +23,9 @@ defmodule Qx.MixProject do
       name: "Qx - Quantum Computing Simulator",
       source_url: "https://github.com/richarc/qx",
       homepage_url: "https://github.com/richarc/qx",
-      docs: docs(),
+      # A function, so it is called after the project is loaded and can
+      # read the version for `source_ref`.
+      docs: &docs/0,
       package: package(),
       dialyzer: dialyzer(),
       description:
@@ -92,6 +94,8 @@ defmodule Qx.MixProject do
       main: "Qx",
       name: "Qx - Quantum Computing Simulator",
       source_url: "https://github.com/richarc/qx",
+      # "View source" links point at the release tag, not at `main`.
+      source_ref: "v#{Mix.Project.config()[:version]}",
       homepage_url: "https://github.com/richarc/qx",
       extras: [
         "README.md",
