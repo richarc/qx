@@ -26,11 +26,25 @@ defmodule Qx.Draw do
   `:vega_lite` dependency and raise `Qx.MissingDependencyError`
   naming the fix when it's absent. The SVG and table artifacts have
   no dependency at all.
+
+  ## Size limit
+
+  `plot/2`, `histogram/2` and `state_table/2` build one bar or row per
+  basis state (2^n of them for n qubits), and `counts/2` builds one bar
+  per distinct outcome. Each refuses to build more than `2^max_qubits`
+  and raises `Qx.DrawSizeError` instead. `:max_qubits` defaults to 12
+  (4096 bars or rows); pass a larger value to the call to draw a bigger
+  input:
+
+      Qx.Draw.plot(result, max_qubits: 14)
+
+  `bloch/2` and `circuit/2` have no such limit.
   """
 
   alias Qx.Draw.{Image, Tables}
   alias Qx.Draw.SVG.{Bloch, Circuit}
   alias Qx.Draw.VegaLite, as: VL
+  alias Qx.Validation
 
   # Qx.Draw.VegaLite only compiles when the optional :vega_lite dep is
   # present; every call is behind ensure_vega_lite!/0, so downstream
@@ -50,6 +64,8 @@ defmodule Qx.Draw do
     * `:title` - Plot title (default: "Quantum State Probabilities")
     * `:width` - Plot width (default: 400)
     * `:height` - Plot height (default: 300)
+    * `:max_qubits` - Size limit: at most `2^max_qubits` bars are drawn
+      (default: 12, so 4096). A positive integer
 
   ## Returns
   A `VegaLite.t()` chart specification.
@@ -57,6 +73,9 @@ defmodule Qx.Draw do
   ## Raises
     * `Qx.MissingDependencyError` - if the optional `:vega_lite`
       dependency is not available
+    * `Qx.DrawSizeError` - if the result has more than `2^max_qubits`
+      basis states
+    * `Qx.OptionError` - if `:max_qubits` is not a positive integer
 
   ## Examples
 
@@ -67,6 +86,7 @@ defmodule Qx.Draw do
   @spec plot(Qx.SimulationResult.t(), keyword()) :: VegaLite.t()
   def plot(result, options \\ []) do
     ensure_vega_lite!()
+    validate_size!(Nx.size(result.probabilities), options)
     title = Keyword.get(options, :title, "Quantum State Probabilities")
     width = Keyword.get(options, :width, 400)
     height = Keyword.get(options, :height, 300)
@@ -88,6 +108,10 @@ defmodule Qx.Draw do
     * `:title` - Plot title (default: "Measurement Counts")
     * `:width` - Plot width (default: 400)
     * `:height` - Plot height (default: 300)
+    * `:max_qubits` - Size limit: at most `2^max_qubits` bars are drawn
+      (default: 12, so 4096). A positive integer. The limit is on the
+      number of distinct outcomes in the result, not on the number of
+      qubits measured
 
   ## Returns
   A `VegaLite.t()` chart specification.
@@ -95,6 +119,9 @@ defmodule Qx.Draw do
   ## Raises
     * `Qx.MissingDependencyError` - if the optional `:vega_lite`
       dependency is not available
+    * `Qx.DrawSizeError` - if the result has more than `2^max_qubits`
+      distinct outcomes
+    * `Qx.OptionError` - if `:max_qubits` is not a positive integer
 
   ## Examples
 
@@ -107,6 +134,7 @@ defmodule Qx.Draw do
   @spec counts(Qx.SimulationResult.t(), keyword()) :: VegaLite.t()
   def counts(result, options \\ []) do
     ensure_vega_lite!()
+    validate_size!(map_size(result.counts), options)
     title = Keyword.get(options, :title, "Measurement Counts")
     width = Keyword.get(options, :width, 400)
     height = Keyword.get(options, :height, 300)
@@ -125,6 +153,8 @@ defmodule Qx.Draw do
     * `:title` - Plot title (default: "Probability Histogram")
     * `:width` - Plot width (default: 400)
     * `:height` - Plot height (default: 300)
+    * `:max_qubits` - Size limit: at most `2^max_qubits` bars are drawn
+      (default: 12, so 4096). A positive integer
 
   ## Returns
   A `VegaLite.t()` chart specification.
@@ -132,6 +162,9 @@ defmodule Qx.Draw do
   ## Raises
     * `Qx.MissingDependencyError` - if the optional `:vega_lite`
       dependency is not available
+    * `Qx.DrawSizeError` - if the tensor has more than `2^max_qubits`
+      elements
+    * `Qx.OptionError` - if `:max_qubits` is not a positive integer
 
   ## Examples
 
@@ -142,6 +175,7 @@ defmodule Qx.Draw do
   @spec histogram(Nx.Tensor.t(), keyword()) :: VegaLite.t()
   def histogram(probabilities, options \\ []) do
     ensure_vega_lite!()
+    validate_size!(Nx.size(probabilities), options)
     title = Keyword.get(options, :title, "Probability Histogram")
     width = Keyword.get(options, :width, 400)
     height = Keyword.get(options, :height, 300)
@@ -205,11 +239,22 @@ defmodule Qx.Draw do
   ## Options
     * `:precision` - Number of decimal places (default: 3)
     * `:hide_zeros` - Hide states with near-zero probability (default: `false`)
+    * `:max_qubits` - Size limit: a state with more than `2^max_qubits`
+      amplitudes is refused (default: 12, so 4096). A positive integer.
+      `:hide_zeros` does not lift the limit, because the zero rows are
+      dropped only after the whole state has been read. To draw a large
+      state with few non-zero amplitudes, pass both:
+      `hide_zeros: true, max_qubits: 16`
 
   ## Returns
   A `Qx.Draw.StateTable` artifact with `:text`, `:markdown`, and
   `:html` renderings as fields. Livebook renders the markdown;
   `to_string/1` gives the text table.
+
+  ## Raises
+    * `Qx.DrawSizeError` - if the state has more than `2^max_qubits`
+      amplitudes
+    * `Qx.OptionError` - if `:max_qubits` is not a positive integer
 
   ## Examples
 
@@ -259,5 +304,12 @@ defmodule Qx.Draw do
     end
 
     :ok
+  end
+
+  # Size cap of the chart functions: at most 2^max_qubits bars. Call it
+  # before anything that builds a host-side term per bar (Nx.to_flat_list,
+  # Enum.map over the input), so an oversized input costs nothing.
+  defp validate_size!(size, options) do
+    Validation.validate_draw_size!(size, Validation.draw_max_qubits!(options))
   end
 end

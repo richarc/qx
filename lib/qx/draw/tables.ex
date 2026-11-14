@@ -2,6 +2,7 @@ defmodule Qx.Draw.Tables do
   @moduledoc false
 
   alias Qx.Draw.StateTable
+  alias Qx.Validation
 
   @doc """
   Builds a `Qx.Draw.StateTable` artifact for a quantum state: every
@@ -16,10 +17,19 @@ defmodule Qx.Draw.Tables do
   ## Options
     * `:precision` - Number of decimal places for floats (default: 3)
     * `:hide_zeros` - Hide states with near-zero probability (default: `false`)
+    * `:max_qubits` - Size limit: a state with more than `2^max_qubits`
+      amplitudes is refused (default: 12). Checked before any row is
+      built, so `:hide_zeros` does not lift it
 
   ## Returns
   A `%Qx.Draw.StateTable{}` struct. One static type in every
   environment; Livebook renders it via `Kino.Render`.
+
+  ## Raises
+    * `Qx.RegisterError` - if the input is neither a tensor nor a register
+    * `Qx.DrawSizeError` - if the state has more than `2^max_qubits`
+      amplitudes
+    * `Qx.OptionError` - if `:max_qubits` is not a positive integer
 
   ## Examples
 
@@ -48,6 +58,11 @@ defmodule Qx.Draw.Tables do
         _ ->
           raise Qx.RegisterError, {:invalid_input, register_or_state}
       end
+
+    # Size cap: at most 2^max_qubits rows. Must stay ahead of
+    # build_table_data/3, which builds a host-side term per amplitude
+    # before :hide_zeros filters any of them out.
+    Validation.validate_draw_size!(Nx.size(state), Validation.draw_max_qubits!(options))
 
     table_data = build_table_data(state, precision, hide_zeros)
 

@@ -1,6 +1,10 @@
 defmodule Qx.Validation do
   @moduledoc false
 
+  # Default `:max_qubits` of the state-sized draw functions: they build at
+  # most 2^12 = 4096 bars/rows unless the caller raises the limit.
+  @default_draw_max_qubits 12
+
   @doc """
   Validates a single qubit state.
 
@@ -218,4 +222,42 @@ defmodule Qx.Validation do
     raise Qx.OptionError,
           {:renormalize, value, "Expected false, true, or a positive integer."}
   end
+
+  # Reads the `:max_qubits` option of the state-sized draw functions
+  # (`Qx.Draw.plot/2`, `counts/2`, `histogram/2`, `state_table/2`), applying
+  # the shared default, and validates it. The default lives here, not in
+  # `Qx.Draw`, so `Qx.Draw.Tables` can use it without a new tables -> draw
+  # dependency edge.
+  @doc false
+  @spec draw_max_qubits!(keyword()) :: pos_integer()
+  def draw_max_qubits!(options) do
+    options |> Keyword.get(:max_qubits, @default_draw_max_qubits) |> validate_max_qubits!()
+  end
+
+  # Validates a `:max_qubits` draw option: a positive integer. Raises
+  # Qx.OptionError on anything else.
+  @doc false
+  @spec validate_max_qubits!(term()) :: pos_integer()
+  def validate_max_qubits!(max_qubits) when is_integer(max_qubits) and max_qubits > 0,
+    do: max_qubits
+
+  def validate_max_qubits!(value) do
+    raise Qx.OptionError, {:max_qubits, value, "Expected a positive integer."}
+  end
+
+  # Validates that a draw call builds at most 2^max_qubits bars/rows. Raises
+  # Qx.DrawSizeError above that. `size > 2^max_qubits` is tested as
+  # `(size - 1) >>> max_qubits > 0`, so a very large `max_qubits` never
+  # builds a 2^max_qubits bignum.
+  @doc false
+  @spec validate_draw_size!(non_neg_integer(), pos_integer()) :: :ok
+  def validate_draw_size!(size, max_qubits)
+      when is_integer(size) and is_integer(max_qubits) and max_qubits > 0 and
+             Bitwise.bsr(size - 1, max_qubits) > 0 do
+    raise Qx.DrawSizeError, {size, max_qubits}
+  end
+
+  def validate_draw_size!(size, max_qubits)
+      when is_integer(size) and is_integer(max_qubits) and max_qubits > 0,
+      do: :ok
 end

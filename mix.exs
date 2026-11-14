@@ -119,6 +119,7 @@ defmodule Qx.MixProject do
         "Error Handling": [
           Qx.Error,
           Qx.OptionError,
+          Qx.DrawSizeError,
           Qx.QubitIndexError,
           Qx.StateNormalizationError,
           Qx.StateShapeError,

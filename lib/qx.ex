@@ -1435,6 +1435,8 @@ defmodule Qx do
     * `:title` - Plot title
     * `:width` - Plot width (default: 400)
     * `:height` - Plot height (default: 300)
+    * `:max_qubits` - Size limit: at most `2^max_qubits` bars are drawn
+      (default: 12, so 4096). A positive integer
 
   ## Returns
   A `VegaLite.t()` chart specification.
@@ -1442,6 +1444,10 @@ defmodule Qx do
   ## Raises
     * `Qx.MissingDependencyError` - if the optional `:vega_lite`
       dependency is not available
+    * `Qx.DrawSizeError` - if the result has more than `2^max_qubits`
+      basis states (more than 12 qubits by default); pass a larger
+      `:max_qubits` to draw it anyway
+    * `Qx.OptionError` - if `:max_qubits` is not a positive integer
 
   ## Examples
 
@@ -1467,7 +1473,16 @@ defmodule Qx do
 
   ## Parameters
     * `result` - Simulation result containing measurement data
-    * `options` - Optional plotting parameters (`:title`, `:width`, `:height`)
+    * `options` - Optional plotting parameters
+
+  ## Options
+    * `:title` - Plot title (default: "Measurement Counts")
+    * `:width` - Plot width (default: 400)
+    * `:height` - Plot height (default: 300)
+    * `:max_qubits` - Size limit: at most `2^max_qubits` bars are drawn
+      (default: 12, so 4096). A positive integer. The limit is on the
+      number of distinct outcomes in the result, not on the number of
+      qubits measured
 
   ## Returns
   A `VegaLite.t()` chart specification.
@@ -1475,6 +1490,9 @@ defmodule Qx do
   ## Raises
     * `Qx.MissingDependencyError` - if the optional `:vega_lite`
       dependency is not available
+    * `Qx.DrawSizeError` - if the result has more than `2^max_qubits`
+      distinct outcomes; pass a larger `:max_qubits` to draw it anyway
+    * `Qx.OptionError` - if `:max_qubits` is not a positive integer
 
   ## Examples
 
@@ -1502,6 +1520,13 @@ defmodule Qx do
     * `probabilities` - Nx tensor of probabilities (should sum to 1.0)
     * `options` - Optional plotting parameters
 
+  ## Options
+    * `:title` - Plot title (default: "Probability Histogram")
+    * `:width` - Plot width (default: 400)
+    * `:height` - Plot height (default: 300)
+    * `:max_qubits` - Size limit: at most `2^max_qubits` bars are drawn
+      (default: 12, so 4096). A positive integer
+
   ## Returns
 
   A `VegaLite.t()` chart specification.
@@ -1518,6 +1543,9 @@ defmodule Qx do
   ## Raises
 
     * `Qx.MissingDependencyError` - If the optional `:vega_lite` dependency is not available
+    * `Qx.DrawSizeError` - If the tensor has more than `2^max_qubits` elements; pass a
+      larger `:max_qubits` to draw it anyway
+    * `Qx.OptionError` - If `:max_qubits` is not a positive integer
 
   ## See Also
     * `draw/2` - For plotting from simulation results
@@ -1587,9 +1615,20 @@ defmodule Qx do
   ## Options
     * `:precision` - Decimal places (default: 3)
     * `:hide_zeros` - Hide zero-amplitude states (default: false)
+    * `:max_qubits` - Size limit: a state with more than `2^max_qubits`
+      amplitudes is refused (default: 12, so 4096). A positive integer.
+      `:hide_zeros` does not lift the limit, because the zero rows are
+      dropped only after the whole state has been read. To draw a large
+      state with few non-zero amplitudes, pass both:
+      `hide_zeros: true, max_qubits: 16`
 
   ## Returns
   A `Qx.Draw.StateTable` struct.
+
+  ## Raises
+    * `Qx.DrawSizeError` - if the state has more than `2^max_qubits`
+      amplitudes; pass a larger `:max_qubits` to draw it anyway
+    * `Qx.OptionError` - if `:max_qubits` is not a positive integer
 
   ## Examples
 

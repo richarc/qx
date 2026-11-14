@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** the state-sized draw functions now have a size limit.
+  `Qx.draw/2`, `Qx.draw_histogram/2` and `Qx.draw_state/2` (and
+  `Qx.Draw.plot/2`, `histogram/2`, `state_table/2`) raise
+  `Qx.DrawSizeError` for an input with more than 4096 basis states, that
+  is, more than 12 qubits. `Qx.draw_counts/2` (`Qx.Draw.counts/2`) raises
+  it for a result with more than 4096 distinct outcomes, however many
+  qubits were measured. Previously these built one bar or row per basis
+  state with no limit: about a million for a 20-qubit state. Inputs of up
+  to 4096 bars/rows draw exactly as before.
+  - To draw a larger input, pass `max_qubits:` to the call, for example
+    `Qx.draw(result, max_qubits: 14)`. The error message names the
+    smallest value that works. `:max_qubits` must be a positive integer;
+    anything else raises `Qx.OptionError`.
+  - `Qx.draw_state/2` with `hide_zeros: true` is still limited, because
+    the zero rows are dropped only after the whole state is read. For a
+    large state with few non-zero amplitudes, pass both:
+    `Qx.draw_state(state, hide_zeros: true, max_qubits: 16)`.
+  - `Qx.draw_bloch/2` and `Qx.draw_circuit/2` are not affected.
+
+### Added
+
+- `Qx.DrawSizeError`, raised by the draw functions above their size
+  limit. Fields: `:size`, `:limit`, `:max_qubits`.
+- `:max_qubits` option on `Qx.draw/2`, `Qx.draw_counts/2`,
+  `Qx.draw_histogram/2` and `Qx.draw_state/2` (default 12).
+
 ### Performance
 
 - Rewrote the statevector gate kernels in `Qx.CalcFast` (internal) as

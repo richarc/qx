@@ -8,8 +8,9 @@ defmodule Qx.Error do
   (`Qx.QubitIndexError`, `Qx.GateError`, `Qx.ClassicalBitError`,
   `Qx.QubitCountError`, `Qx.StateNormalizationError`,
   `Qx.StateShapeError`, `Qx.MeasurementError`, `Qx.ConditionalError`,
-  `Qx.ParameterError`, `Qx.OptionError`, `Qx.RegisterError`,
-  `Qx.BasisError`, `Qx.QasmParseError`, `Qx.QasmUnsupportedError`,
+  `Qx.ParameterError`, `Qx.OptionError`, `Qx.DrawSizeError`,
+  `Qx.RegisterError`, `Qx.BasisError`, `Qx.QasmParseError`,
+  `Qx.QasmUnsupportedError`,
   `Qx.Hardware.ConfigError`, `Qx.Hardware.ExecutionError`,
   `Qx.Hardware.NoMeasurementsError`). To rescue any of those, list them
   explicitly:
@@ -176,6 +177,56 @@ defmodule Qx.OptionError do
   def exception(message) when is_binary(message) do
     %__MODULE__{message: message}
   end
+end
+
+defmodule Qx.DrawSizeError do
+  @moduledoc """
+  Raised when a draw function is asked for more bars or rows than its
+  size limit allows.
+
+  `Qx.draw/2`, `Qx.draw_histogram/2` and `Qx.draw_state/2` build one bar
+  or row per basis state, and `Qx.draw_counts/2` one bar per distinct
+  outcome. They refuse to build more than `2^max_qubits` of them
+  (4096 by default). Pass a larger `:max_qubits` to the same call to
+  draw the input anyway; the message names the smallest value that
+  works.
+
+  Fields:
+
+    * `:size` - the number of bars/rows the call would have drawn
+    * `:limit` - the largest number allowed, `2^max_qubits`
+    * `:max_qubits` - the `:max_qubits` value in effect for the call
+  """
+  defexception [:size, :limit, :max_qubits, :message]
+
+  @type t :: %__MODULE__{
+          size: non_neg_integer() | nil,
+          limit: pos_integer() | nil,
+          max_qubits: pos_integer() | nil,
+          message: String.t()
+        }
+
+  @impl true
+  def exception({size, max_qubits})
+      when is_integer(size) and size > 0 and is_integer(max_qubits) and max_qubits > 0 do
+    limit = Bitwise.bsl(1, max_qubits)
+
+    %__MODULE__{
+      size: size,
+      limit: limit,
+      max_qubits: max_qubits,
+      message:
+        "Cannot draw #{size} states: the limit is #{limit} (max_qubits: #{max_qubits}). " <>
+          "Pass max_qubits: #{qubits_to_hold(size)} (or higher) to draw it anyway."
+    }
+  end
+
+  def exception(message) when is_binary(message) do
+    %__MODULE__{message: message}
+  end
+
+  # Smallest n with 2^n >= size: the bit length of size - 1.
+  defp qubits_to_hold(size), do: (size - 1) |> Integer.digits(2) |> length()
 end
 
 defmodule Qx.QubitIndexError do

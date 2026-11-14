@@ -378,6 +378,8 @@ SVG/table artifacts through `Kino.Render`; a standalone application
 uses the returned value directly (see "Using Qx outside Livebook"
 below).
 
+`Qx.draw/2`, `Qx.draw_histogram/2` and `Qx.draw_state/2` draw at most 4096 bars or rows (a 12-qubit state), and `Qx.draw_counts/2` at most 4096 distinct outcomes; above that they raise `Qx.DrawSizeError`. Pass `max_qubits:` to raise the limit, e.g. `Qx.draw(result, max_qubits: 14)`.
+
 **Circuit diagrams:**
 
 ```elixir
