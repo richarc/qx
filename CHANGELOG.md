@@ -112,6 +112,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   built a `2^n × 2^n` matrix in a `{re, im}` layout that nothing else in
   Qx reads. CCX runs through `Qx.CalcFast.apply_toffoli/5`, as before.
 
+### Security
+
+- Updated the HTTP client dependency `mint` from 1.9.3 to 1.11.0 (and its
+  dependency `hpax` from 1.0.4 to 1.1.0). `Qx.Hardware` reaches `mint`
+  through `req` and `finch`. mint 1.9.3 has six published advisories,
+  all of which need a malicious or compromised server: two HIGH
+  (CVE-2026-82728, unbounded HTTP/1 status-line and chunk-extension
+  buffering; CVE-2026-91043, HTTP/2 header-size limit bypass) and four
+  MEDIUM (CVE-2026-82729, CVE-2026-82672, CVE-2026-92103,
+  CVE-2026-94194). The advisories give 1.10.2 as the first version with
+  all six fixed; 1.11.0 is the current release and has them too. No Qx code changed. If your application's lockfile pins
+  `mint` below 1.10.2, run `mix deps.update mint`.
+
 ### Fixed
 
 - Documentation examples in `Qx.Simulation` (`run/2`) that used an
