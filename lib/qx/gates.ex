@@ -523,48 +523,4 @@ defmodule Qx.Gates do
         end
     end
   end
-
-  @doc """
-  Returns the Toffoli (CCX) gate matrix for n qubits.
-
-  ## Parameters
-    * `control1` - Index of the first control qubit
-    * `control2` - Index of the second control qubit
-    * `target` - Index of the target qubit
-    * `num_qubits` - Total number of qubits
-
-  ## Examples
-
-      iex> toffoli = Qx.Gates.toffoli(0, 1, 2, 3)
-  """
-  def toffoli(control1, control2, target, num_qubits) do
-    state_size = Integer.pow(2, num_qubits)
-
-    # Create identity matrix
-    identity_matrix = Nx.broadcast(0.0, {state_size, state_size, 2})
-
-    for i <- 0..(state_size - 1), reduce: identity_matrix do
-      acc ->
-        control1_bit = Bitwise.band(Bitwise.bsr(i, control1), 1)
-        control2_bit = Bitwise.band(Bitwise.bsr(i, control2), 1)
-
-        if control1_bit == 1 and control2_bit == 1 do
-          # Apply X gate to target
-          j = Bitwise.bxor(i, Bitwise.bsl(1, target))
-
-          acc
-          # Real part
-          |> Nx.put_slice([i, j, 0], Nx.tensor([[[1.0]]]))
-          # Imaginary part
-          |> Nx.put_slice([i, j, 1], Nx.tensor([[[0.0]]]))
-        else
-          # Identity on this basis state
-          acc
-          # Real part
-          |> Nx.put_slice([i, i, 0], Nx.tensor([[[1.0]]]))
-          # Imaginary part
-          |> Nx.put_slice([i, i, 1], Nx.tensor([[[0.0]]]))
-        end
-    end
-  end
 end

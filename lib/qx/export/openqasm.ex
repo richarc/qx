@@ -65,10 +65,11 @@ defmodule Qx.Export.OpenQASM do
   ### Not supported (raises `Qx.QasmUnsupportedError`)
 
   Multi-register programs, gate modifiers (`inv`/`pow`/`ctrl`/`negctrl`),
-  `else` branches, complex boolean conditions, classical types beyond
-  `bit`, `def`, `for`, `while`, `switch`, `defcal`, `let`, `pragma`,
-  `extern`, `box`, `delay`, `reset`, the stdgates `ch/cu/rxx/ryy/rzz/rzx`,
-  and the Qiskit extensions `rxx/ryy/rzz/rzx`.
+  `else` branches, measurements inside an `if` block, complex boolean
+  conditions, classical types beyond `bit`, `def`, `for`, `while`,
+  `switch`, `defcal`, `let`, `pragma`, `extern`, `box`, `delay`, `reset`,
+  the stdgates `ch/cu/rxx/ryy/rzz/rzx`, and the Qiskit extensions
+  `rxx/ryy/rzz/rzx`.
 
   ## Exporting
 

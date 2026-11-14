@@ -546,9 +546,6 @@ defmodule Qx.Simulation do
         [theta, phi, lambda] = params
         Calc.apply_single_qubit_gate(state, Gates.u(theta, phi, lambda), qubit, num_qubits)
 
-      :measure ->
-        state
-
       _ ->
         raise Qx.GateError, {:unsupported_gate, gate_name}
     end
@@ -570,6 +567,9 @@ defmodule Qx.Simulation do
       :iswap ->
         Calc.apply_iswap(state, c, t, num_qubits)
 
+      # Reachable: a circuit with no `c_if` runs every instruction through
+      # this dispatch, and its `{:measure, [qubit, cbit], []}` instructions
+      # are sampled after the gates, not applied as one.
       :measure ->
         state
 

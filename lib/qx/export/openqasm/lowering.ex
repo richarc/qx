@@ -197,12 +197,30 @@ defmodule Qx.Export.OpenQASM.Lowering do
     line = Keyword.get(meta, :line)
 
     with {:ok, ci} <- resolve_cbit(cbit_ref, state, line),
+         :ok <- reject_measurement_in_body(body),
          {:ok, body_instructions} <- lower_body(body, state) do
       {:ok,
        %{
          state
          | instructions: [{:c_if, [ci, value], body_instructions} | state.instructions]
        }}
+    end
+  end
+
+  # The simulator applies an `if` body as gates only: a measurement there
+  # would be skipped without setting its classical bit.
+  defp reject_measurement_in_body(body) do
+    case Enum.find(body, &match?({:measure, _qubit, _cbit, _meta}, &1)) do
+      nil ->
+        :ok
+
+      {:measure, _qubit, _cbit, meta} ->
+        {:error,
+         Qx.QasmUnsupportedError.exception(
+           feature: "measurement inside an `if` block",
+           line: Keyword.get(meta, :line),
+           hint: "Measure after the `if` block instead"
+         )}
     end
   end
 

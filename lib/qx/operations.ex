@@ -828,8 +828,15 @@ defmodule Qx.Operations do
   ## Constraints
     - Classical bit must be valid for the circuit
     - Value must be 0 or 1
-    - Gates in conditional block cannot contain measurements
+    - The conditional block cannot contain measurements (`measure/3`,
+      `measure_x/3`, `measure_y/3`); measure after the block instead
     - No nesting of conditional blocks
+
+  ## Raises
+
+    * `Qx.ClassicalBitError` - If `classical_bit` is out of range or not an integer
+    * `Qx.ConditionalError` - If `value` is not 0 or 1, `gate_fn` is not a
+      1-arity function, or the block contains a measurement or another `c_if`
   """
   @spec c_if(QuantumCircuit.t(), non_neg_integer(), 0 | 1, (QuantumCircuit.t() ->
                                                               QuantumCircuit.t())) ::
@@ -882,6 +889,11 @@ defmodule Qx.Operations do
       case instruction do
         {:c_if, _, _} ->
           raise Qx.ConditionalError, :nested_conditionals
+
+        # The simulator applies a block's instructions as gates only, so a
+        # measurement here would be skipped without setting its classical bit.
+        {:measure, _, _} ->
+          raise Qx.ConditionalError, :measurement_in_conditional
 
         _ ->
           :ok

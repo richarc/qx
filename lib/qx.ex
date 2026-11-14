@@ -1203,7 +1203,7 @@ defmodule Qx do
   ## Raises
 
     * `Qx.ClassicalBitError` - If `classical_bit` is not a valid classical bit index
-    * `Qx.ConditionalError` - If `value` is not 0 or 1, the block nests another conditional, or `gate_fn` is not a 1-arity function
+    * `Qx.ConditionalError` - If `value` is not 0 or 1, the block contains a measurement or another conditional, or `gate_fn` is not a 1-arity function
 
   ## See Also
     * OpenQASM 3.0 if-statements for hardware compatibility

@@ -350,6 +350,14 @@ defmodule Qx.ConditionalError do
     }
   end
 
+  def exception(:measurement_in_conditional) do
+    %__MODULE__{
+      message:
+        "Measurement is not supported inside a conditional block; " <>
+          "measure after the c_if block instead"
+    }
+  end
+
   def exception({:bit_not_measured, bit}) do
     %__MODULE__{
       message: "Classical bit #{bit} must be measured before use in conditional"

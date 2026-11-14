@@ -108,9 +108,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sites and `Bitwise.bsl(1, n)` at one. For a non-negative integer `n`,
   which is what every caller passes, the values are identical; this is a
   readability change.
+- Internal: removed `Qx.Gates.toffoli/4` (hidden module, no callers). It
+  built a `2^n × 2^n` matrix in a `{re, im}` layout that nothing else in
+  Qx reads. CCX runs through `Qx.CalcFast.apply_toffoli/5`, as before.
 
 ### Fixed
 
+- **Breaking:** a measurement inside a `Qx.c_if/4` block is now rejected with
+  `Qx.ConditionalError` when the circuit is built. This covers
+  `Qx.measure/3`, `Qx.measure_x/3` and `Qx.measure_y/3`. Before, the block
+  was accepted and the measurement was skipped when the circuit ran: the
+  gates in the block were applied but the classical bit stayed 0, so the
+  counts were wrong. The documentation already said a block cannot contain
+  measurements. A circuit that did this now raises; move the measurement
+  to after the block.
+- **Breaking:** OpenQASM import (`Qx.Export.OpenQASM.from_qasm/1`) returns
+  `Qx.QasmUnsupportedError` for a measurement inside an `if` block, for
+  the same reason. Before, the program imported and ran with the
+  measurement skipped.
 - `Qx.StateInit.basis_state/3` now accepts a real or integer tensor type
   (for example `:f32` or `:s32`) and returns a one-hot tensor of that
   type. It previously crashed with a `CaseClauseError` or an
