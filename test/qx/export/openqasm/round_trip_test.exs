@@ -15,12 +15,15 @@ defmodule Qx.Export.OpenQASM.RoundTripTest do
 
   defp drop_measurements(%QuantumCircuit{} = circuit) do
     instructions =
-      Enum.reject(circuit.instructions, fn
+      Enum.reject(QuantumCircuit.get_instructions(circuit), fn
         {:measure, _, _} -> true
         _ -> false
       end)
 
-    %{circuit | instructions: instructions, measurements: [], measured_qubits: MapSet.new()}
+    QuantumCircuit.put_instructions(
+      %{circuit | measurements: [], measured_qubits: MapSet.new()},
+      instructions
+    )
   end
 
   defp simulate_state!(circuit) do

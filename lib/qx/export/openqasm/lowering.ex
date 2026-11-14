@@ -93,12 +93,15 @@ defmodule Qx.Export.OpenQASM.Lowering do
 
     # `QuantumCircuit.new/2` already builds the |0…0⟩ state vector via the
     # canonical Nx primitives, avoiding a host-side 2^n list allocation.
-    %{
+    circuit = %{
       QuantumCircuit.new(qubits, cbits)
-      | instructions: Enum.reverse(state.instructions),
-        measurements: Enum.reverse(state.measurements),
+      | measurements: Enum.reverse(state.measurements),
         measured_qubits: state.measured_qubits
     }
+
+    # `state.instructions` is this module's own newest-first accumulator;
+    # `put_instructions/2` takes circuit order.
+    QuantumCircuit.put_instructions(circuit, Enum.reverse(state.instructions))
   end
 
   # --- Statement handlers ----------------------------------------------

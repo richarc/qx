@@ -1882,7 +1882,7 @@ defmodule Qx do
       # Inspect instructions while building circuit
       circuit = Qx.create_circuit(2)
         |> Qx.h(0)
-        |> Qx.tap_circuit(fn c -> IO.puts("Gates: #\{length(c.instructions)}") end)
+        |> Qx.tap_circuit(fn c -> IO.puts("Gates: #\{Qx.QuantumCircuit.depth(c)}") end)
         |> Qx.cx(0, 1)
 
   """

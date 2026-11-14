@@ -82,7 +82,7 @@ defmodule Qx.Export.OpenQASMImportTest do
       assert circuit.num_qubits == 2
       assert circuit.num_classical_bits == 2
 
-      assert circuit.instructions == [
+      assert Qx.QuantumCircuit.get_instructions(circuit) == [
                {:h, [0], []},
                {:cx, [0, 1], []},
                {:measure, [0, 0], []},
@@ -147,7 +147,7 @@ defmodule Qx.Export.OpenQASMImportTest do
       """
 
       circuit = OpenQASM.from_qasm!(src)
-      assert circuit.instructions == [{:h, [0], []}]
+      assert Qx.QuantumCircuit.get_instructions(circuit) == [{:h, [0], []}]
     end
 
     test "raises on invalid input" do

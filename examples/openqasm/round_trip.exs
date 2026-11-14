@@ -16,7 +16,7 @@ original =
   |> Qx.cx(0, 1)
 
 IO.puts("Original circuit instructions:")
-IO.inspect(original.instructions)
+IO.inspect(Qx.QuantumCircuit.get_instructions(original))
 
 # 2. Export it to OpenQASM 3.0 source.
 qasm = OpenQASM.to_qasm(original)
@@ -26,7 +26,7 @@ IO.puts(qasm)
 # 3. Re-import the QASM and confirm the round-trip is loss-free.
 {:ok, reimported} = OpenQASM.from_qasm(qasm)
 IO.puts("--- Reimported circuit instructions ---")
-IO.inspect(reimported.instructions)
+IO.inspect(Qx.QuantumCircuit.get_instructions(reimported))
 
 # 4. Simulate both and compare statevectors. Within numerical tolerance the
 #    state should be identical.
@@ -66,7 +66,7 @@ swap q[0], q[2];
 
 case OpenQASM.from_qasm(qiskit_style_qasm) do
   {:ok, qft_circuit} ->
-    IO.puts("\nImported a 3-qubit QFT — #{length(qft_circuit.instructions)} instructions.")
+    IO.puts("\nImported a 3-qubit QFT — #{Qx.QuantumCircuit.depth(qft_circuit)} instructions.")
 
   {:error, exception} ->
     IO.puts("Import failed: #{Exception.message(exception)}")

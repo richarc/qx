@@ -97,22 +97,22 @@ defmodule Qx.TypedErrorsSweepTest do
     end
 
     test "an unsupported gate raises Qx.GateError" do
-      circuit = %Qx.QuantumCircuit{
-        num_qubits: 1,
-        num_classical_bits: 0,
-        instructions: [{:bogus, [0], []}]
-      }
+      circuit =
+        Qx.QuantumCircuit.put_instructions(
+          %Qx.QuantumCircuit{num_qubits: 1, num_classical_bits: 0},
+          [{:bogus, [0], []}]
+        )
 
       e = assert_raise Qx.GateError, fn -> SvgCircuit.render(circuit) end
       assert e.gate == :bogus
     end
 
     test "an out-of-range gate qubit raises Qx.QubitIndexError" do
-      circuit = %Qx.QuantumCircuit{
-        num_qubits: 1,
-        num_classical_bits: 0,
-        instructions: [{:h, [5], []}]
-      }
+      circuit =
+        Qx.QuantumCircuit.put_instructions(
+          %Qx.QuantumCircuit{num_qubits: 1, num_classical_bits: 0},
+          [{:h, [5], []}]
+        )
 
       assert_raise Qx.QubitIndexError, fn -> SvgCircuit.render(circuit) end
     end

@@ -26,7 +26,7 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
 
       assert circuit.num_qubits == 3
       assert circuit.num_classical_bits == 2
-      assert circuit.instructions == []
+      assert Qx.QuantumCircuit.get_instructions(circuit) == []
     end
 
     test "legacy qreg/creg accepted" do
@@ -80,7 +80,7 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
           #{unquote(qasm_name)} q[0];
           """)
 
-        assert circuit.instructions == [{unquote(atom), [0], []}]
+        assert Qx.QuantumCircuit.get_instructions(circuit) == [{unquote(atom), [0], []}]
       end
     end
 
@@ -92,7 +92,7 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
         cx q[0], q[1];
         """)
 
-      assert circuit.instructions == [{:cx, [0, 1], []}]
+      assert Qx.QuantumCircuit.get_instructions(circuit) == [{:cx, [0, 1], []}]
     end
 
     test "uppercase CX is alias for cx" do
@@ -103,7 +103,7 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
         CX q[0], q[1];
         """)
 
-      assert circuit.instructions == [{:cx, [0, 1], []}]
+      assert Qx.QuantumCircuit.get_instructions(circuit) == [{:cx, [0, 1], []}]
     end
 
     test "ccx (Toffoli)" do
@@ -114,7 +114,7 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
         ccx q[0], q[1], q[2];
         """)
 
-      assert circuit.instructions == [{:ccx, [0, 1, 2], []}]
+      assert Qx.QuantumCircuit.get_instructions(circuit) == [{:ccx, [0, 1, 2], []}]
     end
 
     test "rx with parameter expression" do
@@ -125,7 +125,7 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
         rx(pi/2) q[0];
         """)
 
-      assert [{:rx, [0], [theta]}] = circuit.instructions
+      assert [{:rx, [0], [theta]}] = Qx.QuantumCircuit.get_instructions(circuit)
       assert_in_delta theta, :math.pi() / 2, 1.0e-12
     end
 
@@ -137,7 +137,7 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
         p(pi/4) q[0];
         """)
 
-      assert [{:phase, [0], [theta]}] = circuit.instructions
+      assert [{:phase, [0], [theta]}] = Qx.QuantumCircuit.get_instructions(circuit)
       assert_in_delta theta, :math.pi() / 4, 1.0e-12
     end
 
@@ -149,7 +149,7 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
         u(0, 0, pi) q[0];
         """)
 
-      assert [{:u, [0], [a, b, c]}] = circuit.instructions
+      assert [{:u, [0], [a, b, c]}] = Qx.QuantumCircuit.get_instructions(circuit)
       assert a == 0.0
       assert b == 0.0
       assert_in_delta c, :math.pi(), 1.0e-12
@@ -168,7 +168,7 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
         sx q[0];
         """)
 
-      assert [{:u, [0], [a, b, c]}] = circuit.instructions
+      assert [{:u, [0], [a, b, c]}] = Qx.QuantumCircuit.get_instructions(circuit)
       assert_in_delta a, :math.pi() / 2, 1.0e-12
       assert_in_delta b, -:math.pi() / 2, 1.0e-12
       assert_in_delta c, :math.pi() / 2, 1.0e-12
@@ -182,7 +182,7 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
         u1(pi/3) q[0];
         """)
 
-      assert [{:phase, [0], [theta]}] = circuit.instructions
+      assert [{:phase, [0], [theta]}] = Qx.QuantumCircuit.get_instructions(circuit)
       assert_in_delta theta, :math.pi() / 3, 1.0e-12
     end
 
@@ -194,7 +194,7 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
         u2(0.5, 0.7) q[0];
         """)
 
-      assert [{:u, [0], [a, b, c]}] = circuit.instructions
+      assert [{:u, [0], [a, b, c]}] = Qx.QuantumCircuit.get_instructions(circuit)
       assert_in_delta a, :math.pi() / 2, 1.0e-12
       assert_in_delta b, 0.5, 1.0e-12
       assert_in_delta c, 0.7, 1.0e-12
@@ -210,7 +210,7 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
         x q[0];
         """)
 
-      assert circuit.instructions == [{:h, [0], []}, {:x, [0], []}]
+      assert Qx.QuantumCircuit.get_instructions(circuit) == [{:h, [0], []}, {:x, [0], []}]
     end
   end
 
@@ -263,7 +263,7 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
         c[0] = measure q[0];
         """)
 
-      assert circuit.instructions == [{:measure, [0, 0], []}]
+      assert Qx.QuantumCircuit.get_instructions(circuit) == [{:measure, [0, 0], []}]
     end
 
     test "legacy measure produces :measure instruction" do
@@ -275,7 +275,7 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
         measure q[0] -> c[0];
         """)
 
-      assert circuit.instructions == [{:measure, [0, 0], []}]
+      assert Qx.QuantumCircuit.get_instructions(circuit) == [{:measure, [0, 0], []}]
     end
 
     test "explicit barrier list" do
@@ -286,7 +286,7 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
         barrier q[0], q[2];
         """)
 
-      assert circuit.instructions == [{:barrier, [0, 2], []}]
+      assert Qx.QuantumCircuit.get_instructions(circuit) == [{:barrier, [0, 2], []}]
     end
 
     test "whole-register barrier expands to all qubits" do
@@ -297,7 +297,7 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
         barrier q;
         """)
 
-      assert circuit.instructions == [{:barrier, [0, 1, 2], []}]
+      assert Qx.QuantumCircuit.get_instructions(circuit) == [{:barrier, [0, 1, 2], []}]
     end
   end
 
@@ -311,7 +311,7 @@ defmodule Qx.Export.OpenQASM.LoweringTest do
         if (c[0] == 1) x q[1];
         """)
 
-      assert [{:c_if, [0, 1], inner}] = circuit.instructions
+      assert [{:c_if, [0, 1], inner}] = Qx.QuantumCircuit.get_instructions(circuit)
       assert inner == [{:x, [1], []}]
     end
   end
