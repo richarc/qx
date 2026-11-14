@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-15
+
 ### Changed
 
 - **Breaking:** the state-sized draw functions now have a size limit.
@@ -1246,7 +1248,8 @@ decided while v0.10 was still unpublished.
 
 ---
 
-[Unreleased]: https://github.com/richarc/qx/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/richarc/qx/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/richarc/qx/releases/tag/v0.12.0
 [0.11.0]: https://github.com/richarc/qx/releases/tag/v0.11.0
 [0.10.1]: https://github.com/richarc/qx/releases/tag/v0.10.1
 [0.10.0]: https://github.com/richarc/qx/releases/tag/v0.10.0
