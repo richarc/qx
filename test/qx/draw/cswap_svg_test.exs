@@ -15,7 +15,12 @@ defmodule Qx.Draw.CswapSvgTest do
       svg = Qx.Draw.circuit(circuit).svg
 
       assert svg =~ "<circle"
-      assert svg =~ "×"
+
+      # Each × is two round-capped lines in the Exchange stroke.
+      cross_lines =
+        Regex.scan(~r/<line [^>]*stroke="#5D3A9B"[^>]*stroke-linecap="round"/, svg)
+
+      assert length(cross_lines) == 4
     end
 
     test "SVG contains vertical connecting line" do

@@ -4,6 +4,7 @@ defmodule Qx.Validation do
   # Default `:max_qubits` of the state-sized draw functions: they build at
   # most 2^12 = 4096 bars/rows unless the caller raises the limit.
   @default_draw_max_qubits 12
+  @max_draw_image_size 10_000
 
   @doc """
   Validates a single qubit state.
@@ -142,6 +143,10 @@ defmodule Qx.Validation do
     :ok
   end
 
+  def validate_classical_bit!(index, num_bits) when is_integer(num_bits) do
+    raise Qx.ClassicalBitError, {:not_an_integer, index}
+  end
+
   # Validates state vector shape matches `expected_size`. Raises
   # Qx.StateShapeError on mismatch.
   @doc false
@@ -246,6 +251,89 @@ defmodule Qx.Validation do
 
   def validate_max_qubits!(value) do
     raise Qx.OptionError, {:max_qubits, value, "Expected a positive integer."}
+  end
+
+  # Reads and validates the second argument of `Qx.Draw.circuit/2`: a title
+  # (a string or nil) or a keyword list with `:title` and `:style`. Returns
+  # `{title, style}`. Raises Qx.OptionError on anything else.
+  @doc false
+  @spec draw_circuit_options!(term()) :: {String.t() | nil, :color | :mono}
+  def draw_circuit_options!(title) when is_binary(title) or is_nil(title),
+    do: {validate_draw_title!(title), :color}
+
+  def draw_circuit_options!(options) when is_list(options) do
+    if Keyword.keyword?(options) do
+      validate_draw_options!(options, [:title, :style])
+
+      {validate_draw_title!(Keyword.get(options, :title)),
+       validate_draw_style!(Keyword.get(options, :style, :color))}
+    else
+      raise Qx.OptionError, {:options, options, "Expected a title string or a keyword list."}
+    end
+  end
+
+  def draw_circuit_options!(value) do
+    raise Qx.OptionError, {:options, value, "Expected a title string or a keyword list."}
+  end
+
+  # Validates the options of a `Qx.Draw` function: a keyword list holding
+  # only the keys in `allowed`, so a misspelt option is not ignored
+  # silently. Raises Qx.OptionError on anything else.
+  @doc false
+  @spec validate_draw_options!(term(), [atom()]) :: keyword()
+  def validate_draw_options!(options, allowed) when is_list(options) do
+    if !Keyword.keyword?(options) do
+      raise Qx.OptionError, {:options, options, "Expected a keyword list."}
+    end
+
+    case Enum.find(options, fn {key, _value} -> key not in allowed end) do
+      nil ->
+        options
+
+      {key, value} ->
+        known = Enum.map_join(allowed, ", ", &inspect/1)
+        raise Qx.OptionError, {key, value, "Unknown option. The options are #{known}."}
+    end
+  end
+
+  def validate_draw_options!(value, _allowed) do
+    raise Qx.OptionError, {:options, value, "Expected a keyword list."}
+  end
+
+  # Validates the `:title` option of an image: a string, or nil for none.
+  # An empty string is no title. Raises Qx.OptionError on anything else.
+  @doc false
+  @spec validate_draw_title!(term()) :: String.t() | nil
+  def validate_draw_title!(""), do: nil
+  def validate_draw_title!(title) when is_binary(title) or is_nil(title), do: title
+
+  def validate_draw_title!(value) do
+    raise Qx.OptionError, {:title, value, "Expected a string or nil."}
+  end
+
+  # Validates the `:size` option of the Bloch sphere: a positive number of
+  # pixels, at most @max_draw_image_size. The upper bound keeps the
+  # renderer's arithmetic inside the float range. Raises Qx.OptionError on
+  # anything else.
+  @doc false
+  @spec validate_draw_image_size!(term()) :: number()
+  def validate_draw_image_size!(size)
+      when is_number(size) and size > 0 and size <= @max_draw_image_size,
+      do: size
+
+  def validate_draw_image_size!(value) do
+    raise Qx.OptionError,
+          {:size, value, "Expected a positive number up to #{@max_draw_image_size}."}
+  end
+
+  # Validates the `:style` option of a circuit diagram: `:color` or `:mono`.
+  # Raises Qx.OptionError on anything else.
+  @doc false
+  @spec validate_draw_style!(term()) :: :color | :mono
+  def validate_draw_style!(style) when style in [:color, :mono], do: style
+
+  def validate_draw_style!(value) do
+    raise Qx.OptionError, {:style, value, "Expected :color or :mono."}
   end
 
   # Validates that a draw call builds at most 2^max_qubits bars/rows. Raises

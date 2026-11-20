@@ -1,6 +1,8 @@
 defmodule Qx.Draw.IswapSvgTest do
   use ExUnit.Case, async: true
 
+  alias Qx.Test.SVGText
+
   describe "iswap gate SVG rendering" do
     test "renders an SVG string" do
       circuit = Qx.create_circuit(2) |> Qx.iswap(0, 1)
@@ -10,13 +12,18 @@ defmodule Qx.Draw.IswapSvgTest do
       assert svg =~ "<svg"
     end
 
-    test "SVG contains iSW label text for both qubit boxes" do
+    test "adjacent qubits draw one Exchange box spanning both wires, labelled iSWAP" do
       circuit = Qx.create_circuit(2) |> Qx.iswap(0, 1)
       svg = Qx.Draw.circuit(circuit).svg
 
-      # Two iSW labels — one per qubit
-      isw_count = svg |> String.split("iSW") |> length() |> Kernel.-(1)
-      assert isw_count >= 2
+      # One box in the Exchange stroke, 80 tall: from 16 above the upper
+      # wire to 16 below the lower one.
+      assert [[box]] = Regex.scan(~r/<rect [^>]*stroke="#5D3A9B"[^>]*>/, svg)
+      assert box =~ ~s(height="80")
+
+      labels = SVGText.labels(svg)
+
+      assert Enum.count(labels, &(&1 == "iSWAP")) == 1
     end
 
     test "SVG contains rect elements for the labelled boxes" do
@@ -32,7 +39,12 @@ defmodule Qx.Draw.IswapSvgTest do
 
       assert is_binary(svg)
       assert svg =~ "<svg"
-      assert svg =~ "iSW"
+
+      # Not adjacent: one labelled Exchange box on each wire.
+      labels = SVGText.labels(svg)
+
+      assert Enum.count(labels, &(&1 == "iSWAP")) == 2
+      assert length(Regex.scan(~r/<rect [^>]*stroke="#5D3A9B"[^>]*>/, svg)) == 2
     end
   end
 end

@@ -45,7 +45,10 @@ a `c_if` block, in `Qx.c_if/4` and on OpenQASM import.
 
 Polish the Bloch renderer, broaden hardware support beyond IBM.
 
-- [ ] Improve Bloch sphere SVG visual quality (qx-w93). Raised stakes since v0.10: the SVG renderer is now the *only* Bloch path (the VegaLite projection was deleted in the Draw rework) and ships as the `Qx.Draw.Image` artifact rendered inline in Livebook
+- [x] Improve Bloch sphere SVG visual quality (qx-w93). Raised stakes since v0.10: the SVG renderer is now the *only* Bloch path (the VegaLite projection was deleted in the Draw rework) and ships as the `Qx.Draw.Image` artifact rendered inline in Livebook (plan: visual-design-guide)
+- [x] Shared draw theme and chart config: one palette, three font stacks and one Vega-Lite config behind every image and chart; all three charts in data blue with a fixed 0 to 1 probability axis and ket labels (plan: visual-design-guide)
+- [x] Circuit diagrams to the Qx visual design guide: quantikz-style wires and boxes coloured by gate family, labels set as mathematics, boxes that widen with their label. Also draws the five gates `Qx.draw_circuit/2` raises on today (`cy`, `crx`, `cry`, `crz`, `phase`) (plan: visual-design-guide)
+- [x] `Qx.draw_circuit/2` options: `title:` and `style: :mono` for a colour-free diagram (plan: visual-design-guide)
 - [ ] Support for running on AWS Braket QPUs (moved from v0.7)
 
 ---

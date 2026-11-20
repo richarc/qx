@@ -7,6 +7,106 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Qx.draw_circuit/2` (and `Qx.Draw.circuit/2`) takes options as well as a
+  title: `Qx.draw_circuit(qc, title: "Bell", style: :mono)`. `:style` is
+  `:color` (the default) or `:mono`, which draws every gate in ink on
+  white, for print and papers. A title string as the second argument works
+  as before.
+
+### Changed
+
+- Every drawing has a new look, from one visual design guide. No function
+  is removed and no return type changes: `Qx.draw_circuit/2` and
+  `Qx.draw_bloch/2` still return a `Qx.Draw.Image`, and `Qx.draw/2`,
+  `Qx.draw_counts/2` and `Qx.draw_histogram/2` a `VegaLite.t()`. What
+  changes is the content of the SVG and of the chart spec. **If your code
+  reads the SVG markup or the Vega-Lite spec, check it against the new
+  output.**
+  - **Circuit diagrams** are drawn the way quantikz draws them: thin ink
+    wires, boxed gates labelled as mathematics, a dot for a control and ⊕
+    for a target. Each gate is coloured by its family (Pauli, Hadamard,
+    Phase, Rotation, Exchange; measurements and barriers are neutral). A
+    box widens to fit its label and every gate in that column shares the
+    wider slot, so image widths differ from 0.12. An iSWAP on adjacent
+    wires is one box spanning both. A barrier is drawn only over the wires
+    it covers and has a column of its own: a gate added after a barrier is
+    drawn after it.
+  - **The Bloch sphere** has a shaded body, three great circles (solid on
+    the near side, dashed on the far side) and ink axes. The state vector
+    is the only coloured mark; its head is solid when it points toward the
+    reader and hollow when it points away. θ and φ arcs and a drop line to
+    the equatorial plane are new. The title is left-aligned, and
+    `title: nil` draws none.
+  - **Charts** are one colour and share one Vega-Lite config. The
+    probability axis of `Qx.draw/2` and `Qx.draw_histogram/2` is fixed at
+    0 to 1 (it was fitted to the data). The x title is "Basis state" (was
+    "Quantum State" and "Measurement Outcome") and the counts y title is
+    "Counts" (was "Count"). Bars are labelled with kets; with more than 16
+    bars the labels are bare bit strings set vertically, and with more
+    than 64 only every fourth is shown. Up to 8 bars carry their value
+    above them, and such a chart is a layered spec (`"layer"`).
+    `Qx.draw_counts/2` draws its bars in bit-string order (before, the
+    order was only reliable up to 32 distinct outcomes). The data field
+    names (`"state"`, `"probability"`, `"measurement"`, `"count"`) and
+    their values are unchanged.
+- `Qx.draw_circuit/2` raises `Qx.OptionError` for a second argument that is
+  not a string, `nil` or a keyword list, and for an invalid `:style` or
+  `:title`. Before, any term was written into the SVG as the title.
+- **Breaking:** `Qx.draw_bloch/2` raises `Qx.OptionError` for a `:title`
+  that is not a string or `nil` and for a `:size` that is not a positive
+  number up to 10000. Before, any size was drawn.
+- **Breaking:** the draw functions no longer ignore an option they do not
+  know.
+  `Qx.draw/2`, `Qx.draw_counts/2`, `Qx.draw_histogram/2`, `Qx.draw_bloch/2`
+  and `Qx.draw_circuit/2` raise `Qx.OptionError` naming it, so a misspelt
+  option (`colour:` for `style:`, say) is noticed. They raise the same
+  error for options that are not a keyword list (before, a
+  `FunctionClauseError`). `Qx.draw_state/2` is unchanged.
+- `title: ""` draws no title in `Qx.draw_circuit/2` and `Qx.draw_bloch/2`,
+  the same as `title: nil`.
+- `Qx.draw_counts/2` on a result with no counts uses the `:title` it is
+  given. "No Measurements" is now only the default.
+
+### Fixed
+
+- `Qx.draw_circuit/2` could not draw five gates: a circuit containing
+  `Qx.cy/3`, `Qx.crx/4`, `Qx.cry/4`, `Qx.crz/4` or `Qx.phase/3` raised
+  `Qx.GateError` ("Unsupported gate"), and so did a Livebook cell that
+  ended in such a circuit. Inside a `Qx.c_if/4` block the same gates
+  raised `FunctionClauseError`. All five draw now, and the drawer takes
+  its list of gates from the same table as its colours, so it cannot fall
+  behind again.
+- `Qx.draw_circuit/2` raised `Qx.QubitIndexError` for a measurement into a
+  classical bit whose index was at least the number of qubits, for example
+  `Qx.create_circuit(1, 2) |> Qx.measure(0, 1)`.
+- In a circuit diagram, the line joining a conditional gate to the
+  classical register could be drawn across a gate on a lower wire. A
+  conditional gate now takes a column in which the wires below it are
+  free.
+- A title containing `<`, `&` or `"` produced malformed SVG from
+  `Qx.draw_circuit/2` and `Qx.draw_bloch/2`. Titles are escaped.
+- The Bloch sphere readout showed a negative φ (`-0.5π` for `S†H|0⟩`). φ
+  is now shown from 0 up to 2π, and is 0 at a pole.
+- `Qx.draw_circuit/2` raised untyped errors for three circuits. A barrier
+  with no qubits (`Qx.barrier(qc, [])`) raised `Enum.EmptyError`, an
+  integer angle too large for a float (`Qx.rx(qc, 0, 10 ** 400)`) raised
+  `ArithmeticError`, and an instruction of the wrong shape in a circuit
+  built by hand raised `FunctionClauseError`. All three raise
+  `Qx.GateError`. Building and running such circuits is unchanged.
+- `Qx.draw_bloch/2` raised `MatchError` for a state that is not one qubit.
+  It raises `Qx.StateShapeError`, and `Qx.StateNormalizationError` for an
+  amplitude that is NaN or infinite.
+- `Qx.draw_bloch/2` could show a value for φ beside θ = 0.00π when
+  float32 rounding left a trace in the amplitude that should be zero. A
+  state within 1e-5 of a pole now reads φ = 0. A state that is not
+  normalised is drawn by its direction (`[0.5, 0.5]` is on the equator;
+  before, it was drawn at θ = 0.67π).
+- A title containing a character XML does not allow (a NUL byte, most
+  other control characters, bytes that are not UTF-8) produced an SVG that
+  no XML parser reads. Such characters are left out of the title.
+
 ## [0.12.0] - 2026-11-15
 
 ### Changed

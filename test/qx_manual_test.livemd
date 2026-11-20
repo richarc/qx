@@ -946,3 +946,188 @@ Qx.draw_bloch(Nx.tensor([a0, a1], type: :c64), title: "Teleported state on q2 (s
 ```
 
 If the two spheres match, state preparation, entanglement, mid-circuit measurement, classical feedback, the stepper, and the Bloch renderer are all working together correctly.
+
+## 12. Visual Design Guide
+
+These cells draw the reference pictures of the Qx visual design guide with Qx itself. Put each one next to the matching drawing in the guide: wires, controls and outlines are ink, each gate box takes the colour of its family, and the Bloch vector is the only coloured mark on its sphere.
+
+### Circuit: quantum teleportation
+
+```elixir
+# Expected: orange H boxes; blue ⊕ targets on black control dots; a dashed grey barrier
+# across all three wires; two grey meters whose double lines drop to arrowheads on the
+# classical register, labelled 0 and 1; blue X and Z boxes on q2, each joined by a double
+# line to a dot on the register and labelled c₁ = 1 and c₀ = 1. Title top left.
+Qx.create_circuit(3, 2)
+|> Qx.h(1)
+|> Qx.cx(1, 2)
+|> Qx.barrier([0, 1, 2])
+|> Qx.cx(0, 1)
+|> Qx.h(0)
+|> Qx.measure(0, 0)
+|> Qx.measure(1, 1)
+|> Qx.c_if(1, 1, &Qx.x(&1, 2))
+|> Qx.c_if(0, 1, &Qx.z(&1, 2))
+|> Qx.draw_circuit("Quantum teleportation")
+```
+
+### Circuit: three-qubit QFT, colour and mono
+
+```elixir
+qft3 =
+  Qx.create_circuit(3)
+  |> Qx.h(0)
+  |> Qx.cp(1, 0, pi / 2)
+  |> Qx.cp(2, 0, pi / 4)
+  |> Qx.h(1)
+  |> Qx.cp(2, 1, pi / 2)
+  |> Qx.h(2)
+  |> Qx.barrier([0, 1, 2])
+  |> Qx.swap(0, 2)
+
+# Expected: orange H boxes; green P(π/2) and P(π/4) boxes, wider than the H boxes, each
+# joined to a black control dot below it; a dashed barrier; two purple crosses on q0 and q2
+# joined by a black line. Every label sits inside its box with room either side.
+Qx.draw_circuit(qft3, "Three-qubit quantum Fourier transform")
+```
+
+```elixir
+# Expected: the SAME diagram with no colour at all: white boxes with black outlines, black
+# crosses. Box positions and sizes identical to the cell above.
+Qx.draw_circuit(qft3, title: "Mono style", style: :mono)
+```
+
+### Circuit: variational layer and the gates 0.12 could not draw
+
+```elixir
+# Expected: pink Ry and Rz boxes with their angles (the y and z are small italic subscripts);
+# a green T and a green S† (dagger raised); a wide pink U box with three angles. S† sits
+# centred above the U box in the same column.
+Qx.create_circuit(2)
+|> Qx.ry(0, 0.3)
+|> Qx.ry(1, 0.6)
+|> Qx.cx(0, 1)
+|> Qx.rz(0, pi / 2)
+|> Qx.t(1)
+|> Qx.u(1, pi / 2, pi / 4, pi / 8)
+|> Qx.sdg(0)
+|> Qx.draw_circuit("Variational layer")
+```
+
+```elixir
+# Expected: draws without an error (each of these raised "Unsupported gate" in 0.12).
+# Left to right: a blue Y box under a control dot; pink Rx(π/2), Ry(0.70) and Rz(−π/4) boxes,
+# each joined to a control dot; a green P(π/8) box on q0; one purple iSWAP box spanning q0
+# and q1; two purple iSWAP boxes on q0 and q2 joined by a black line.
+Qx.create_circuit(3)
+|> Qx.cy(0, 1)
+|> Qx.crx(1, 2, pi / 2)
+|> Qx.cry(0, 2, 0.7)
+|> Qx.crz(2, 0, -pi / 4)
+|> Qx.phase(0, pi / 8)
+|> Qx.iswap(0, 1)
+|> Qx.iswap(0, 2)
+|> Qx.draw_circuit("Controlled gates, phase and iSWAP")
+```
+
+### Bloch sphere: the six states
+
+```elixir
+bloch_state = fn theta, phi ->
+  Nx.tensor(
+    [
+      Complex.new(:math.cos(theta / 2), 0.0),
+      Complex.new(
+        :math.sin(theta / 2) * :math.cos(phi),
+        :math.sin(theta / 2) * :math.sin(phi)
+      )
+    ],
+    type: :c64
+  )
+end
+
+# Expected, on every sphere: a shaded ball with a firm black outline; three great circles,
+# solid on the near side and dashed on the far side; grey axes with x toward you and left,
+# y right, z up; one orange vector.
+#   |0⟩   vector up the z axis, SOLID head, no arcs
+#   |1⟩   vector down the z axis, HOLLOW head (the south pole is on the far side), no arcs
+#   |+⟩   vector along x toward you, SOLID head, θ arc only
+#   |−⟩   vector along −x away from you, HOLLOW head, inside the dashed arcs
+#   |i⟩   vector along y to the right, full length, SOLID head
+#   last  below the equator on the near side: SOLID head, a dashed line rising from the
+#         tip to the plane; readout θ = 0.65π  φ = 0.45π
+[
+  {"|0⟩", bloch_state.(0.0, 0.0)},
+  {"|1⟩", bloch_state.(pi, 0.0)},
+  {"|+⟩", bloch_state.(pi / 2, 0.0)},
+  {"|−⟩", bloch_state.(pi / 2, pi)},
+  {"|i⟩", bloch_state.(pi / 2, pi / 2)},
+  {"θ = 0.65π, φ = 0.45π", bloch_state.(0.65 * pi, 0.45 * pi)}
+]
+|> Enum.map(fn {title, state} -> Qx.draw_bloch(state, title: title, size: 280) end)
+|> Kino.Layout.grid(columns: 3)
+```
+
+```elixir
+# Expected: no arrowhead on either sphere. LEFT: a SOLID orange dot at the centre (the
+# vector points straight at you). RIGHT: a HOLLOW orange ring at the centre (straight away).
+[
+  Qx.draw_bloch(bloch_state.(0.4 * pi, pi / 6), title: "Toward the reader", size: 280),
+  Qx.draw_bloch(bloch_state.(0.6 * pi, 7 * pi / 6), title: "Away from the reader", size: 280)
+]
+|> Kino.Layout.grid(columns: 2)
+```
+
+```elixir
+# Expected: readout θ = 0.50π  φ = 1.50π (never a negative φ); vector along −y, to the left,
+# with a HOLLOW head.
+Qx.create_circuit(1)
+|> Qx.h(0)
+|> Qx.sdg(0)
+|> Qx.get_state()
+|> Qx.draw_bloch(title: "S†H|0⟩")
+```
+
+### Charts
+
+```elixir
+# Expected: 8 BLUE bars on a probability axis that runs from 0.00 to 1.00 whatever the
+# data; x labels are level kets |000⟩ … |111⟩ in a monospace face; each bar carries its
+# value above it; x title "Basis state"; title top left; no frame around the plot.
+Qx.create_circuit(3)
+|> Qx.h(0)
+|> Qx.h(1)
+|> Qx.ry(2, 0.6)
+|> Qx.run(shots: 256)
+|> Qx.draw(title: "Eight bars, with values")
+```
+
+```elixir
+# Expected: 2 BLUE bars (same blue as above, not orange) labelled |00⟩ and |11⟩, each with
+# its count above it; y axis titled "Counts", starting at 0 and ending on a round number.
+Qx.create_circuit(2, 2)
+|> Qx.h(0)
+|> Qx.cx(0, 1)
+|> Qx.measure_all()
+|> Qx.run(shots: 1024)
+|> Qx.draw_counts(title: "Bell state, 1,024 shots")
+```
+
+```elixir
+# Expected: 32 BLUE bars (not green), no values above them; x labels are bare bit strings
+# (no | ⟩) set vertically; probability axis still 0.00 to 1.00, so the bars are short.
+Qx.create_circuit(5)
+|> Qx.h_all()
+|> Qx.get_probabilities()
+|> Qx.draw_histogram(title: "Thirty-two bars")
+```
+
+```elixir
+# Expected: 128 bars with only every fourth x label shown (0000000, 0000100, 0001000, …).
+Qx.create_circuit(7)
+|> Qx.h_all()
+|> Qx.run(shots: 16)
+|> Qx.draw(title: "One hundred and twenty-eight bars", width: 700)
+```
+
+If each picture matches its drawing in the guide, the theme, the circuit renderer, the Bloch renderer and the shared chart config are all working together.

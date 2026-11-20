@@ -27,6 +27,37 @@ defmodule Qx.Draw do
   naming the fix when it's absent. The SVG and table artifacts have
   no dependency at all.
 
+  ## Visual style
+
+  The images and charts share one visual language. Structure (wires,
+  controls, outlines, axes) is always drawn in ink, and colour carries
+  one meaning per picture.
+
+  A circuit diagram colours each gate by its family, that is, by what the
+  gate does to the state:
+
+  | Family | Gates |
+  |---|---|
+  | Pauli | X, Y, Z, the ⊕ of CNOT and Toffoli, controlled-Y |
+  | Hadamard | H |
+  | Phase | S, S†, T, T†, P(λ), controlled-P |
+  | Rotation | Rx, Ry, Rz, U, the controlled rotations |
+  | Exchange | SWAP, iSWAP, CSWAP |
+
+  Measurements, classical conditions and barriers are neutral. A control
+  dot is ink, and a controlled gate takes the family of the gate it
+  controls; CZ is symmetric, so it is two ink dots. A gate is always
+  named by its label, so the diagram reads without colour:
+  `circuit(qc, style: :mono)` draws it in ink alone.
+
+  On the Bloch sphere the state vector is the only coloured mark. Its
+  head is solid when the vector points toward the reader and hollow when
+  it points away.
+
+  The three charts are one colour, and the probability axis of `plot/2`
+  and `histogram/2` always runs from 0 to 1, so two charts can be
+  compared by eye.
+
   ## Size limit
 
   `plot/2`, `histogram/2` and `state_table/2` build one bar or row per
@@ -53,8 +84,16 @@ defmodule Qx.Draw do
 
   @vega_lite_requirement "~> 0.1"
 
+  @chart_options [:title, :width, :height, :max_qubits]
+
   @doc """
   Plots the probability distribution from a simulation result.
+
+  The probability axis is fixed at 0 to 1, so two charts can be compared
+  by eye. Each bar is labelled with its basis state as a ket (`|01⟩`).
+  With more than 16 bars the labels become bare bit strings set
+  vertically, and with more than 64 only every fourth is shown. Up to 8
+  bars carry their value above them.
 
   ## Parameters
     * `result` - Simulation result map containing probabilities
@@ -75,7 +114,8 @@ defmodule Qx.Draw do
       dependency is not available
     * `Qx.DrawSizeError` - if the result has more than `2^max_qubits`
       basis states
-    * `Qx.OptionError` - if `:max_qubits` is not a positive integer
+    * `Qx.OptionError` - if `:max_qubits` is not a positive integer, or
+      `options` is not a keyword list of the options above
 
   ## Examples
 
@@ -86,6 +126,7 @@ defmodule Qx.Draw do
   @spec plot(Qx.SimulationResult.t(), keyword()) :: VegaLite.t()
   def plot(result, options \\ []) do
     ensure_vega_lite!()
+    Validation.validate_draw_options!(options, @chart_options)
     validate_size!(Nx.size(result.probabilities), options)
     title = Keyword.get(options, :title, "Quantum State Probabilities")
     width = Keyword.get(options, :width, 400)
@@ -100,12 +141,19 @@ defmodule Qx.Draw do
   Works with results from both local simulation (`Qx.run/2`) and remote
   hardware execution (`Qx.Hardware.run/3`).
 
+  Bars are in bit-string order and the count axis starts at zero. Each
+  bar is labelled with its outcome as a ket (`|01⟩`). With more than 16
+  bars the labels become bare bit strings set vertically, and with more
+  than 64 only every fourth is shown. Up to 8 bars carry their count
+  above them.
+
   ## Parameters
     * `result` - Simulation result containing measurement counts
     * `options` - Optional plotting parameters (default: [])
 
   ## Options
-    * `:title` - Plot title (default: "Measurement Counts")
+    * `:title` - Plot title (default: "Measurement Counts", or "No
+      Measurements" for a result with no counts)
     * `:width` - Plot width (default: 400)
     * `:height` - Plot height (default: 300)
     * `:max_qubits` - Size limit: at most `2^max_qubits` bars are drawn
@@ -121,7 +169,8 @@ defmodule Qx.Draw do
       dependency is not available
     * `Qx.DrawSizeError` - if the result has more than `2^max_qubits`
       distinct outcomes
-    * `Qx.OptionError` - if `:max_qubits` is not a positive integer
+    * `Qx.OptionError` - if `:max_qubits` is not a positive integer, or
+      `options` is not a keyword list of the options above
 
   ## Examples
 
@@ -134,8 +183,13 @@ defmodule Qx.Draw do
   @spec counts(Qx.SimulationResult.t(), keyword()) :: VegaLite.t()
   def counts(result, options \\ []) do
     ensure_vega_lite!()
+    Validation.validate_draw_options!(options, @chart_options)
     validate_size!(map_size(result.counts), options)
-    title = Keyword.get(options, :title, "Measurement Counts")
+
+    default_title =
+      if map_size(result.counts) == 0, do: "No Measurements", else: "Measurement Counts"
+
+    title = Keyword.get(options, :title, default_title)
     width = Keyword.get(options, :width, 400)
     height = Keyword.get(options, :height, 300)
 
@@ -144,6 +198,12 @@ defmodule Qx.Draw do
 
   @doc """
   Creates a histogram from a raw probability tensor.
+
+  The probability axis is fixed at 0 to 1, so two charts can be compared
+  by eye. Each bar is labelled with its basis state as a ket (`|01⟩`).
+  With more than 16 bars the labels become bare bit strings set
+  vertically, and with more than 64 only every fourth is shown. Up to 8
+  bars carry their value above them.
 
   ## Parameters
     * `probabilities` - Nx tensor of probabilities (must sum to 1.0)
@@ -164,7 +224,8 @@ defmodule Qx.Draw do
       dependency is not available
     * `Qx.DrawSizeError` - if the tensor has more than `2^max_qubits`
       elements
-    * `Qx.OptionError` - if `:max_qubits` is not a positive integer
+    * `Qx.OptionError` - if `:max_qubits` is not a positive integer, or
+      `options` is not a keyword list of the options above
 
   ## Examples
 
@@ -175,39 +236,47 @@ defmodule Qx.Draw do
   @spec histogram(Nx.Tensor.t(), keyword()) :: VegaLite.t()
   def histogram(probabilities, options \\ []) do
     ensure_vega_lite!()
+    Validation.validate_draw_options!(options, @chart_options)
     validate_size!(Nx.size(probabilities), options)
     title = Keyword.get(options, :title, "Probability Histogram")
     width = Keyword.get(options, :width, 400)
     height = Keyword.get(options, :height, 300)
 
-    probabilities_list = Nx.to_flat_list(probabilities)
-    num_states = length(probabilities_list)
-
-    data =
-      probabilities_list
-      |> Enum.with_index()
-      |> Enum.map(fn {prob, index} ->
-        state_label = Qx.Format.state_label(index, num_states)
-        %{"state" => state_label, "probability" => prob}
-      end)
-
-    VL.histogram(data, title, width, height)
+    VL.histogram(Nx.to_flat_list(probabilities), title, width, height)
   end
 
   @doc """
   Visualizes a single qubit state on the Bloch sphere.
+
+  The sphere is drawn with x toward the reader and to the left, y to the
+  right and z up. The state vector is the one coloured mark: its head is
+  solid when the tip is on the near hemisphere and hollow when it is on
+  the far one, and a vector aimed straight at or away from the reader
+  ends in a dot. A dashed line drops from the tip to the equatorial
+  plane, arcs mark θ and φ, and both angles are written under the sphere
+  as fractions of π, with φ from 0 up to 2π.
 
   ## Parameters
     * `qubit` - Single qubit state tensor (2-element c64 tensor)
     * `options` - Optional plotting parameters (default: [])
 
   ## Options
-    * `:title` - Plot title (default: "Bloch Sphere")
-    * `:size` - Sphere size (default: 400)
+    * `:title` - Plot title, or `nil` or `""` for none (default: "Bloch
+      Sphere")
+    * `:size` - Width and height of the image in pixels, up to 10000
+      (default: 400). Everything scales with it; text and lines stop shrinking at 80% of
+      their default size, so a small sphere stays legible
 
   ## Returns
   A `Qx.Draw.Image` artifact carrying the SVG. Livebook renders it
   inline; standalone applications read `image.svg`.
+
+  ## Raises
+    * `Qx.OptionError` - if `:title` is not a string or `nil`, `:size` is
+      not a positive number up to 10000, or `options` is not a keyword
+      list of the options above
+    * `Qx.StateShapeError` - if `qubit` is not a tensor of two amplitudes
+    * `Qx.StateNormalizationError` - if an amplitude is NaN or infinite
 
   ## Examples
 
@@ -217,8 +286,9 @@ defmodule Qx.Draw do
   """
   @spec bloch(Nx.Tensor.t(), keyword()) :: Image.t()
   def bloch(qubit, options \\ []) do
-    title = Keyword.get(options, :title, "Bloch Sphere")
-    size = Keyword.get(options, :size, 400)
+    Validation.validate_draw_options!(options, [:title, :size])
+    title = options |> Keyword.get(:title, "Bloch Sphere") |> Validation.validate_draw_title!()
+    size = options |> Keyword.get(:size, 400) |> Validation.validate_draw_image_size!()
 
     coords = Bloch.qubit_to_bloch_coordinates(qubit)
     %Image{svg: Bloch.render(coords, title, size), title: title}
@@ -271,14 +341,35 @@ defmodule Qx.Draw do
   @doc """
   Draws a quantum circuit diagram.
 
+  The diagram is drawn the way quantikz draws one: thin ink wires, boxed
+  gates labelled as mathematics, a dot for a control and ⊕ for a target.
+  Each gate is coloured by its family (see "Visual style" in the module
+  documentation). A box widens to fit its label, and every gate in that
+  column shares the wider slot.
+
   ## Parameters
     * `circuit` - `Qx.QuantumCircuit` struct to visualize
-    * `title` - Optional circuit title (default: `nil`)
+    * `title_or_options` - The title (a string or `nil`), or a keyword
+      list of options (default: `nil`)
+
+  ## Options
+    * `:title` - Diagram title, drawn above the circuit (default: `nil`;
+      `""` is also no title)
+    * `:style` - `:color` (default) or `:mono`. The mono style draws every
+      gate in ink on white, for print and papers
 
   ## Returns
-  A `Qx.Draw.Image` artifact carrying the SVG diagram (IEEE notation).
-  Livebook renders it inline; standalone applications read
-  `image.svg`.
+  A `Qx.Draw.Image` artifact carrying the SVG diagram. Livebook renders
+  it inline; standalone applications read `image.svg`.
+
+  ## Raises
+    * `Qx.OptionError` - if `:style` is not `:color` or `:mono`, `:title`
+      is not a string or `nil`, an option is not one of the two above, or
+      the second argument is neither a title nor a keyword list
+    * `Qx.QubitCountError` - if the circuit has more than 20 qubits
+    * `Qx.GateError` - if a barrier has no qubits, an angle is too large
+      to draw, or an instruction of a circuit built by hand does not have
+      the shape its gate takes
 
   ## Examples
 
@@ -290,10 +381,14 @@ defmodule Qx.Draw do
 
       image = Qx.Draw.circuit(qc, "Bell State Circuit")
       File.write!("bell.svg", image.svg)
+
+      # The same diagram without colour
+      Qx.Draw.circuit(qc, title: "Bell State Circuit", style: :mono)
   """
-  @spec circuit(Qx.QuantumCircuit.t(), String.t() | nil) :: Image.t()
-  def circuit(%Qx.QuantumCircuit{} = circuit, title \\ nil) do
-    %Image{svg: Circuit.render(circuit, title), title: title}
+  @spec circuit(Qx.QuantumCircuit.t(), String.t() | nil | keyword()) :: Image.t()
+  def circuit(%Qx.QuantumCircuit{} = circuit, title_or_options \\ nil) do
+    {title, style} = Validation.draw_circuit_options!(title_or_options)
+    %Image{svg: Circuit.render(circuit, title: title, style: style), title: title}
   end
 
   # The three chart functions need the optional :vega_lite dep; fail

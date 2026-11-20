@@ -1427,6 +1427,12 @@ defmodule Qx do
   renders it via kino_vega_lite, standalone apps feed it to any Vega
   renderer.
 
+  The probability axis is fixed at 0 to 1, so two charts can be compared
+  by eye. Each bar is labelled with its basis state as a ket (`|01⟩`).
+  With more than 16 bars the labels become bare bit strings set
+  vertically, and with more than 64 only every fourth is shown. Up to 8
+  bars carry their value above them.
+
   ## Parameters
     * `result` - Simulation result from `run/1` or `run/2`
     * `options` - Optional plotting parameters
@@ -1447,7 +1453,8 @@ defmodule Qx do
     * `Qx.DrawSizeError` - if the result has more than `2^max_qubits`
       basis states (more than 12 qubits by default); pass a larger
       `:max_qubits` to draw it anyway
-    * `Qx.OptionError` - if `:max_qubits` is not a positive integer
+    * `Qx.OptionError` - if `:max_qubits` is not a positive integer, or
+      `options` is not a keyword list of the options above
 
   ## Examples
 
@@ -1471,6 +1478,12 @@ defmodule Qx do
   renders it via kino_vega_lite. Works with results from both local
   simulation and `Qx.Hardware` execution.
 
+  Bars are in bit-string order and the count axis starts at zero. Each
+  bar is labelled with its outcome as a ket (`|01⟩`). With more than 16
+  bars the labels become bare bit strings set vertically, and with more
+  than 64 only every fourth is shown. Up to 8 bars carry their count
+  above them.
+
   ## Parameters
     * `result` - Simulation result containing measurement data
     * `options` - Optional plotting parameters
@@ -1492,7 +1505,8 @@ defmodule Qx do
       dependency is not available
     * `Qx.DrawSizeError` - if the result has more than `2^max_qubits`
       distinct outcomes; pass a larger `:max_qubits` to draw it anyway
-    * `Qx.OptionError` - if `:max_qubits` is not a positive integer
+    * `Qx.OptionError` - if `:max_qubits` is not a positive integer, or
+      `options` is not a keyword list of the options above
 
   ## Examples
 
@@ -1515,6 +1529,12 @@ defmodule Qx do
   - Comparing different probability distributions
 
   For quick visualization of simulation results, use `draw/2` instead.
+
+  The probability axis is fixed at 0 to 1, so two charts can be compared
+  by eye. Each bar is labelled with its basis state as a ket (`|01⟩`).
+  With more than 16 bars the labels become bare bit strings set
+  vertically, and with more than 64 only every fourth is shown. Up to 8
+  bars carry their value above them.
 
   ## Parameters
     * `probabilities` - Nx tensor of probabilities (should sum to 1.0)
@@ -1545,7 +1565,8 @@ defmodule Qx do
     * `Qx.MissingDependencyError` - If the optional `:vega_lite` dependency is not available
     * `Qx.DrawSizeError` - If the tensor has more than `2^max_qubits` elements; pass a
       larger `:max_qubits` to draw it anyway
-    * `Qx.OptionError` - If `:max_qubits` is not a positive integer
+    * `Qx.OptionError` - if `:max_qubits` is not a positive integer, or
+      `options` is not a keyword list of the options above
 
   ## See Also
     * `draw/2` - For plotting from simulation results
@@ -1560,6 +1581,10 @@ defmodule Qx do
   The Bloch sphere provides a geometric representation of a pure qubit state.
   Handy for seeing what a single-qubit gate did to the state.
 
+  The state vector is the one coloured mark on the sphere. Its head is
+  solid when it points toward you and hollow when it points away, and θ
+  and φ are written under the sphere as fractions of π.
+
   ## Parameters
     * `qubit` - Single-qubit state tensor (2 amplitudes), e.g. from
       `Qx.get_state/1` on a 1-qubit circuit or from a `Qx.Step`
@@ -1570,11 +1595,20 @@ defmodule Qx do
   the SVG from `image.svg`.
 
   ## Options
-    * `:title` - Plot title (default: "Bloch Sphere")
-    * `:size` - Sphere size (default: 400)
+    * `:title` - Plot title, or `nil` or `""` for none (default: "Bloch
+      Sphere")
+    * `:size` - Width and height of the image in pixels, up to 10000
+      (default: 400)
 
   ## Returns
   A `Qx.Draw.Image` struct carrying the SVG.
+
+  ## Raises
+    * `Qx.OptionError` - if `:title` is not a string or `nil`, `:size` is
+      not a positive number up to 10000, or `options` is not a keyword
+      list of the options above
+    * `Qx.StateShapeError` - if `qubit` is not a tensor of two amplitudes
+    * `Qx.StateNormalizationError` - if an amplitude is NaN or infinite
 
   ## Examples
 
@@ -1659,12 +1693,29 @@ defmodule Qx do
   returns a circuit already renders it), standalone applications read
   the SVG from `image.svg`.
 
+  The diagram is drawn the way quantikz draws one, with each gate
+  coloured by its family: Pauli, Hadamard, Phase, Rotation or Exchange.
+  A gate is always named by its label; the colour only groups.
+
   ## Parameters
     * `circuit` - The quantum circuit to visualize
-    * `title` - Optional diagram title (default: `nil`)
+    * `title_or_options` - The diagram title (a string or `nil`), or a
+      keyword list of options (default: `nil`)
+
+  ## Options
+    * `:title` - Diagram title (default: `nil`)
+    * `:style` - `:color` (default) or `:mono`. The mono style draws every
+      gate in ink on white, for print and papers
 
   ## Returns
   A `Qx.Draw.Image` struct carrying the SVG diagram.
+
+  ## Raises
+    * `Qx.OptionError` - if `:style` is not `:color` or `:mono`, `:title`
+      is not a string or `nil`, or an option is not one of the two above
+    * `Qx.QubitCountError` - if the circuit has more than 20 qubits
+    * `Qx.GateError` - if a barrier has no qubits or an angle is too large
+      to draw
 
   ## Examples
 
@@ -1673,11 +1724,17 @@ defmodule Qx do
       iex> String.contains?(image.svg, "<svg")
       true
 
+      # Options: a title and the mono style
+      iex> qc = Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1)
+      iex> image = Qx.draw_circuit(qc, title: "Bell", style: :mono)
+      iex> {image.title, String.contains?(image.svg, "#0072B2")}
+      {"Bell", false}
+
   ## See Also
     * `draw_state/2` - The state the circuit produces, as a table
   """
-  @spec draw_circuit(circuit(), String.t() | nil) :: Qx.Draw.Image.t()
-  defdelegate draw_circuit(circuit, title \\ nil), to: Draw, as: :circuit
+  @spec draw_circuit(circuit(), String.t() | nil | keyword()) :: Qx.Draw.Image.t()
+  defdelegate draw_circuit(circuit, title_or_options \\ nil), to: Draw, as: :circuit
 
   # OpenQASM interoperability — thin facade over Qx.Export.OpenQASM.
 

@@ -1,6 +1,8 @@
 defmodule Qx.Draw.USvgTest do
   use ExUnit.Case, async: true
 
+  alias Qx.Test.SVGText
+
   describe "u gate SVG rendering" do
     test "renders an SVG string" do
       circuit = Qx.create_circuit(1) |> Qx.u(0, :math.pi(), 0, :math.pi())
@@ -14,7 +16,9 @@ defmodule Qx.Draw.USvgTest do
       circuit = Qx.create_circuit(1) |> Qx.u(0, :math.pi(), 0, :math.pi())
       svg = Qx.Draw.circuit(circuit).svg
 
-      assert svg =~ ">U("
+      labels = SVGText.labels(svg)
+
+      assert Enum.any?(labels, &String.starts_with?(&1, "U("))
     end
 
     test "SVG contains rect element for the labelled box" do
@@ -30,7 +34,10 @@ defmodule Qx.Draw.USvgTest do
 
       assert is_binary(svg)
       assert svg =~ "<svg"
-      assert svg =~ ">U("
+
+      labels = SVGText.labels(svg)
+
+      assert Enum.any?(labels, &String.starts_with?(&1, "U("))
     end
   end
 end

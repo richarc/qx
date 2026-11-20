@@ -396,7 +396,11 @@ File.write!("bell_state.svg", image.svg)
 In Livebook a cell that simply returns a circuit renders the diagram
 automatically.
 
-Circuit diagrams support all quantum gates with proper IEEE notation, parametric gates with displayed angles, multi-qubit gates, barriers, and measurements with classical bit connections.
+Circuit diagrams are drawn in the quantikz style: ink wires, boxed gates labelled as mathematics, and each gate coloured by its family (Pauli, Hadamard, Phase, Rotation or Exchange). Parametric gates show their angle, and measurements drop to the classical register. For print, draw the same diagram without colour:
+
+```elixir
+Qx.draw_circuit(circuit, title: "Bell State", style: :mono)
+```
 
 **Bloch sphere (single qubit):**
 

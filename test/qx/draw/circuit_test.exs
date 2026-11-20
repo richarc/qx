@@ -1,6 +1,8 @@
 defmodule Qx.Draw.CircuitTest do
   use ExUnit.Case, async: true
 
+  alias Qx.Test.SVGText
+
   defp parse_float(str) do
     case Float.parse(str) do
       {f, _} -> f
@@ -29,7 +31,7 @@ defmodule Qx.Draw.CircuitTest do
       # Find the bottom register line y-coordinate (the larger y value).
       classical_ys =
         Regex.scan(
-          ~r/<line x1="(\d+)" y1="([\d.]+)" x2="(\d+)" y2="([\d.]+)" stroke="#778899"/,
+          ~r/<line x1="(\d+)" y1="([\d.]+)" x2="(\d+)" y2="([\d.]+)" stroke="#4A5261"/,
           svg
         )
         |> Enum.filter(fn [_, x1, _y1, x2, _y2] -> x1 != x2 end)
@@ -52,7 +54,7 @@ defmodule Qx.Draw.CircuitTest do
     test "arrowhead base is above the classical register top line", %{svg: svg} do
       classical_ys =
         Regex.scan(
-          ~r/<line x1="(\d+)" y1="([\d.]+)" x2="(\d+)" y2="([\d.]+)" stroke="#778899"/,
+          ~r/<line x1="(\d+)" y1="([\d.]+)" x2="(\d+)" y2="([\d.]+)" stroke="#4A5261"/,
           svg
         )
         |> Enum.filter(fn [_, x1, _y1, x2, _y2] -> x1 != x2 end)
@@ -75,29 +77,43 @@ defmodule Qx.Draw.CircuitTest do
       end)
     end
 
-    test "connector line terminates exactly at the arrowhead tip (no gap or overshoot)",
+    test "connector lines end exactly 1 inside the arrowhead base (no gap or overshoot)",
          %{svg: svg} do
-      # The vertical connector line's y2 should equal the polygon tip y.
-      # Both must be classical_y — verified by checking they match each other.
+      # The classical connector is a double line, one line 1.5 either side
+      # of the arrowhead tip. Each ends exactly 1 past the arrowhead's base:
+      # covered by the head, so there is no gap, and well short of the tip.
       [_, points_str] = Regex.run(~r/<polygon points="([^"]+)"/, svg)
-      [tip_point | _] = String.split(points_str, " ")
+      [tip_point | base_points] = String.split(points_str, " ")
       [tip_x_str, tip_y_str] = String.split(tip_point, ",")
       tip_x = parse_float(tip_x_str)
       tip_y = parse_float(tip_y_str)
 
-      # The vertical connector line has x1 == x2 == gate_x and y2 == classical_y.
-      connector_y2 =
+      base_y =
+        base_points
+        |> List.first()
+        |> String.split(",")
+        |> List.last()
+        |> parse_float()
+
+      # The vertical connector lines have x1 == x2 == gate_x -/+ 1.5.
+      connectors =
         Regex.scan(
-          ~r/<line x1="([\d.]+)" y1="[\d.]+" x2="([\d.]+)" y2="([\d.]+)" stroke="#778899"/,
+          ~r/<line x1="([\d.]+)" y1="[\d.]+" x2="([\d.]+)" y2="([\d.]+)" stroke="#4A5261"/,
           svg
         )
-        |> Enum.find(fn [_, x1, x2, _y2] ->
-          parse_float(x1) == parse_float(x2) and parse_float(x1) == tip_x
-        end)
-        |> then(fn [_, _x1, _x2, y2] -> parse_float(y2) end)
+        |> Enum.filter(fn [_, x1, x2, _y2] -> parse_float(x1) == parse_float(x2) end)
 
-      assert connector_y2 == tip_y,
-             "Connector line y2 (#{connector_y2}) does not match arrowhead tip y (#{tip_y})"
+      offsets = Enum.map(connectors, fn [_, x1, _x2, _y2] -> parse_float(x1) - tip_x end)
+      assert Enum.sort(offsets) == [-1.5, 1.5]
+
+      Enum.each(connectors, fn [_, _x1, _x2, y2] ->
+        connector_y2 = parse_float(y2)
+
+        assert connector_y2 == base_y + 1.0,
+               "Connector line y2 (#{connector_y2}) is not 1 inside the arrowhead base (#{base_y})"
+
+        assert connector_y2 < tip_y
+      end)
     end
 
     test "arrowhead has visible height of at least 6px", %{svg: svg} do
@@ -124,12 +140,20 @@ defmodule Qx.Draw.CircuitTest do
   describe "Draw.circuit/2 — dagger gate labels (tdg + sdg draw-gap fix)" do
     test "tdg renders a T† gate box" do
       svg = Qx.create_circuit(1) |> Qx.Operations.tdg(0) |> Qx.Draw.circuit() |> Map.fetch!(:svg)
-      assert svg =~ "T†"
+
+      # The dagger is a superscript, so the letter and † are separate
+      # spans of one text element.
+      labels = SVGText.labels(svg)
+
+      assert "T†" in labels
     end
 
     test "sdg renders an S† gate box (previously raised {:unsupported_gate, :sdg})" do
       svg = Qx.create_circuit(1) |> Qx.Operations.sdg(0) |> Qx.Draw.circuit() |> Map.fetch!(:svg)
-      assert svg =~ "S†"
+
+      labels = SVGText.labels(svg)
+
+      assert "S†" in labels
     end
   end
 end

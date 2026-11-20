@@ -157,7 +157,7 @@ defmodule Qx.QuantumCircuitInstructionOrderTest do
 
   # The x coordinate of the single gate label `label` in a circuit SVG.
   defp gate_label_x(svg, label) do
-    pattern = Regex.compile!(~s{<text x="([0-9.]+)"[^>]*>#{label}</text>})
+    pattern = Regex.compile!(~s{<text x="([0-9.]+)"[^>]*><tspan[^>]*>#{label}</tspan></text>})
     assert [[_, x]] = Regex.scan(pattern, svg)
     {value, ""} = Float.parse(x)
     value

@@ -1,54 +1,87 @@
 defmodule Qx.Draw.SVG.Circuit do
   @moduledoc false
 
-  # Private data structure for circuit diagram
-  defmodule CircuitDiagram do
-    @moduledoc false
-    defstruct [
-      :num_qubits,
-      :num_classical_bits,
-      :width,
-      :height,
-      :title,
-      :instructions,
-      :measurements,
-      :gate_layout,
-      :num_columns
-    ]
-  end
+  # Internal: draws a circuit as an SVG diagram in the quantikz grammar of
+  # the Qx visual design guide (Circuit diagrams sheet): thin ink wires,
+  # boxed gates labelled as mathematics, dots and ⊕ for controls and
+  # targets, and one family colour on every gate.
+  #
+  # The work is in three steps. `place/2` gives every gate a column,
+  # `columns/1` turns the columns into x positions (a column is as wide as
+  # its widest gate), and `draw/3` draws one gate. Drawing a gate returns
+  # its lines, shapes and texts separately, so the whole diagram is
+  # layered: lines under shapes under text.
 
-  # Constants for circuit visualization
-  @gate_width 30
-  @gate_height 30
-  @qubit_spacing 45
-  @gate_spacing 40
-  @padding 20
-  @control_radius 4.5
-  @target_radius 10.5
-  @measure_radius 10.5
-  @line_thickness 2
-  @gate_border_thickness 1.5
-  @barrier_dash "3.7,1.6"
-  @font_family "Helvetica"
-  @label_font_size 13
-  @gate_font_size 10
-  @title_font_size 15
+  alias Qx.Draw.SVG.Markup
+  alias Qx.Draw.Theme
+  alias Qx.Validation
 
-  # Colors
-  @color_pauli_x "#fa4d56"
-  @color_hadamard "#33b1ff"
-  @color_control_small "#002d9c"
-  @color_control_large "#33b1ff"
-  @color_measurement "#a8a8a8"
-  @color_barrier "#a8a8a8"
-  @color_classical_line "#778899"
+  import Qx.Draw.SVG.Markup, only: [num: 1]
+
+  # Geometry, in SVG user units. Read from the guide's reference drawings.
+  @pitch 48
+  @box 32
+  @half_box 16
+  @column_gap 24
+  @wire_start 54
+  @run_in 12
+  @run_out 16
+  @right_margin 10
+  @label_x 46
+  @top_titled 52
+  @top_plain 26
+  @bottom 26
+  @register_drop 44
+  @register_bottom 24
+  @register_half_gap 1.5
+  @baseline 5.1
+  @dot_radius 3.5
+  @target_radius 9
+  @cross 5
+  @barrier_overhang 20
+  @label_size 15
+  @iswap_label_size 13
+  @iswap_baseline 4.4
+  @small_size 10.5
+  @condition_size 11
+  @condition_drop 17.7
+  @title_size 13
+  @title_x 24
+  @title_y 18
+  # Average advance of the sans title face, used only to keep a long title
+  # inside the image.
+  @title_advance 7.2
+
+  @stroke "1.25"
+  @classical_stroke "1"
+  @cross_stroke "1.75"
+
+  @max_qubits 20
+
+  @letter_gates [:h, :x, :y, :z, :s, :t]
+  @boxed [:h, :x, :y, :z, :s, :sdg, :t, :tdg, :rx, :ry, :rz, :phase, :u]
+  # A controlled gate drawn as a control joined to the box of the gate it
+  # controls.
+  @controlled_boxes %{cy: :y, cp: :phase, crx: :rx, cry: :ry, crz: :rz}
+
+  # How many qubits each gate acts on. A measurement, a barrier and a
+  # `c_if` have shapes of their own and are validated separately.
+  @qubit_counts Map.new(@boxed, &{&1, 1})
+                |> Map.merge(
+                  Map.new([:cx, :cy, :cz, :cp, :crx, :cry, :crz, :swap, :iswap], &{&1, 2})
+                )
+                |> Map.merge(%{ccx: 3, cswap: 3})
+
+  # An integer angle beyond this cannot be turned into a float.
+  @max_integer_angle 1.0e300
 
   @doc """
   Renders a quantum circuit as an SVG diagram.
 
   ## Parameters
     * `circuit` - `Qx.QuantumCircuit` struct to visualize
-    * `title` - Optional circuit title (default: `nil`)
+    * `options` - `:title` (a string or `nil`) and `:style` (`:color` or
+      `:mono`), already validated by the caller
 
   ## Returns
   SVG string representing the complete circuit diagram.
@@ -56,673 +89,579 @@ defmodule Qx.Draw.SVG.Circuit do
   ## Validation
   Raises a typed `Qx.*Error` on a malformed circuit:
   - `Qx.QubitCountError` if the circuit exceeds 20 qubits
-  - `Qx.GateError` if an unsupported gate type is present
+  - `Qx.GateError` if an unsupported gate type is present, an instruction
+    does not have the shape its gate takes (a barrier with no qubits
+    included), or an angle is too large to draw
   - `Qx.QubitIndexError` / `Qx.ClassicalBitError` if a qubit or classical
     bit index is out of range
-
-  ## Examples
-
-      circuit = Qx.QuantumCircuit.new(2, 2)
-      |> Qx.Operations.h(0)
-      |> Qx.Operations.cx(0, 1)
-
-      svg = Qx.Draw.SVG.Circuit.render(circuit, "Bell State")
-      File.write!("bell_circuit.svg", svg)
   """
-  def render(%Qx.QuantumCircuit{} = circuit, title \\ nil) do
+  def render(%Qx.QuantumCircuit{} = circuit, options \\ []) do
+    title = Keyword.get(options, :title)
+    style = Keyword.get(options, :style, :color)
+
     # One read for the whole render: get_instructions/1 is O(n) per call.
     instructions = Qx.QuantumCircuit.get_instructions(circuit)
-
-    # Validate circuit
     validate_circuit!(circuit, instructions)
 
-    # Analyze circuit and create layout
-    diagram = analyze_circuit(circuit, instructions, title)
+    gates = instructions |> Enum.flat_map(&flatten/1) |> place(circuit.num_qubits)
+    {centers, wire_end} = columns(gates)
 
-    # Generate SVG
-    generate_svg(diagram)
+    top = if title, do: @top_titled, else: @top_plain
+    last_wire = top + (circuit.num_qubits - 1) * @pitch
+    register = if circuit.num_classical_bits > 0, do: last_wire + @register_drop
+
+    context = %{style: style, top: top, register: register}
+
+    drawn =
+      Enum.map(gates, fn gate ->
+        x = Map.fetch!(centers, gate.column)
+        gate |> draw(x, context) |> with_condition(gate.condition, x, context)
+      end)
+
+    width = max(wire_end + @right_margin, title_extent(title))
+    height = if register, do: register + @register_bottom, else: last_wire + @bottom
+
+    [
+      ~s(<?xml version="1.0" encoding="utf-8" standalone="no"?>),
+      ~s(<svg xmlns="http://www.w3.org/2000/svg" role="img" ) <>
+        ~s(aria-label="#{Markup.escape(aria_label(circuit, title))}" ) <>
+        ~s(width="#{num(width)}" height="#{num(height)}" ) <>
+        ~s(viewBox="0 0 #{num(width)} #{num(height)}">),
+      ~s(<rect width="#{num(width)}" height="#{num(height)}" fill="#{Theme.color(:paper)}"/>),
+      title_text(title),
+      wires(circuit.num_qubits, wire_end, context),
+      register_lines(wire_end, context),
+      Enum.map(drawn, & &1.lines),
+      Enum.map(drawn, & &1.shapes),
+      wire_labels(circuit.num_qubits, context),
+      register_texts(circuit.num_classical_bits, context),
+      Enum.map(drawn, & &1.texts),
+      "</svg>"
+    ]
+    |> List.flatten()
+    |> Enum.join("\n")
+    |> Kernel.<>("\n")
   end
 
-  # Validates circuit before drawing
+  # -- validation ------------------------------------------------------
+
   defp validate_circuit!(%Qx.QuantumCircuit{} = circuit, instructions) do
-    # Check qubit limit
-    if circuit.num_qubits > 20 do
-      raise Qx.QubitCountError, {circuit.num_qubits, 1, 20}
+    if circuit.num_qubits > @max_qubits do
+      raise Qx.QubitCountError, {circuit.num_qubits, 1, @max_qubits}
     end
 
-    # Validate all instructions
-    Enum.each(instructions, fn {gate_name, qubits, params} ->
-      validate_gate!(gate_name, qubits, params, circuit.num_qubits)
-    end)
+    Enum.each(instructions, &validate_instruction!(&1, circuit))
 
-    # Validate all measurements
     Enum.each(circuit.measurements, fn {qubit, classical_bit} ->
-      if qubit < 0 or qubit >= circuit.num_qubits do
-        raise Qx.QubitIndexError, {qubit, circuit.num_qubits}
-      end
-
-      if classical_bit < 0 or classical_bit >= circuit.num_classical_bits do
-        raise Qx.ClassicalBitError, {classical_bit, circuit.num_classical_bits}
-      end
+      Validation.validate_qubit_index!(qubit, circuit.num_qubits)
+      Validation.validate_classical_bit!(classical_bit, circuit.num_classical_bits)
     end)
 
     :ok
   end
 
-  # Validates a gate instruction
-  defp validate_gate!(gate_name, qubits, _params, num_qubits) do
-    # Check if gate is supported
-    supported_gates = [
-      :h,
-      :x,
-      :y,
-      :z,
-      :s,
-      :sdg,
-      :t,
-      :tdg,
-      :rx,
-      :ry,
-      :rz,
-      :p,
-      :cx,
-      :cz,
-      :cp,
-      :swap,
-      :iswap,
-      :u,
-      :ccx,
-      :cswap,
-      :barrier,
-      :measure,
-      :c_if
-    ]
+  defp validate_instruction!({:c_if, [classical_bit, value], block}, circuit)
+       when is_integer(value) and is_list(block) do
+    Validation.validate_classical_bit!(classical_bit, circuit.num_classical_bits)
+    Enum.each(block, &validate_conditional_instruction!(&1, circuit))
+  end
 
-    unless gate_name in supported_gates do
-      raise Qx.GateError, {:unsupported_gate, gate_name}
-    end
+  # The second index of a measurement is its classical bit, not a qubit.
+  defp validate_instruction!({:measure, [qubit, classical_bit], _params}, circuit) do
+    Validation.validate_qubit_index!(qubit, circuit.num_qubits)
+    Validation.validate_classical_bit!(classical_bit, circuit.num_classical_bits)
+  end
 
-    # Validate qubit indices (skip for c_if which has classical bit indices)
-    unless gate_name == :c_if do
-      validate_qubit_indices!(qubits, num_qubits)
+  defp validate_instruction!({:barrier, [], _params}, _circuit) do
+    raise Qx.GateError, "A barrier with no qubits cannot be drawn"
+  end
+
+  defp validate_instruction!({:barrier, qubits, _params}, circuit) when is_list(qubits) do
+    Enum.each(qubits, &Validation.validate_qubit_index!(&1, circuit.num_qubits))
+  end
+
+  # The supported set is the theme's: a gate can be drawn when it has a
+  # family. `Theme.family/1` raises `Qx.GateError` for any other atom. The
+  # shape is checked too, so a circuit built by hand cannot reach a draw
+  # clause that does not match it.
+  defp validate_instruction!({gate, qubits, params} = instruction, circuit)
+       when is_atom(gate) and is_list(qubits) and is_list(params) do
+    _family = Theme.family(gate)
+
+    if length(qubits) != Map.get(@qubit_counts, gate), do: malformed!(instruction)
+
+    Enum.each(qubits, &Validation.validate_qubit_index!(&1, circuit.num_qubits))
+    Enum.each(params, &validate_angle!(gate, &1))
+  end
+
+  defp validate_instruction!(instruction, _circuit), do: malformed!(instruction)
+
+  defp malformed!(instruction) do
+    raise Qx.GateError, "Malformed instruction, cannot be drawn: #{inspect(instruction)}"
+  end
+
+  # A parameter that is not a number is drawn as θ. A number must fit in
+  # a float to be formatted.
+  defp validate_angle!(gate, angle) when is_integer(angle) and abs(angle) > @max_integer_angle,
+    do: raise(Qx.GateError, {:invalid_parameter, gate, angle})
+
+  defp validate_angle!(_gate, _angle), do: :ok
+
+  # `Qx.c_if/4` rejects both of these, so they are reachable only from a
+  # circuit built by hand.
+  defp validate_conditional_instruction!({:c_if, _condition, _block}, _circuit),
+    do: raise(Qx.ConditionalError, :nested_conditionals)
+
+  defp validate_conditional_instruction!({:measure, _qubits, _params}, _circuit),
+    do: raise(Qx.ConditionalError, :measurement_in_conditional)
+
+  defp validate_conditional_instruction!(instruction, circuit),
+    do: validate_instruction!(instruction, circuit)
+
+  # -- layout ----------------------------------------------------------
+
+  # A `c_if` block becomes its gates, each carrying the condition.
+  defp flatten({:c_if, [classical_bit, value], block}) do
+    for {gate, qubits, params} <- block do
+      %{gate: gate, qubits: qubits, params: params, condition: {classical_bit, value}}
     end
   end
 
-  defp validate_qubit_indices!(qubits, num_qubits) do
-    Enum.each(qubits, fn qubit ->
-      if qubit < 0 or qubit >= num_qubits do
-        raise Qx.QubitIndexError, {qubit, num_qubits}
-      end
-    end)
+  defp flatten({gate, qubits, params}),
+    do: [%{gate: gate, qubits: qubits, params: params, condition: nil}]
+
+  # Gives each gate the first column in which every wire it occupies is
+  # free. `free` maps a qubit to its next free column.
+  defp place(gates, num_qubits) do
+    free = Map.new(0..(num_qubits - 1), &{&1, 0})
+
+    {placed, _free} =
+      Enum.map_reduce(gates, free, fn gate, free ->
+        occupied = occupied_wires(gate, num_qubits)
+        column = occupied |> Enum.map(&Map.fetch!(free, &1)) |> Enum.max()
+        free = Enum.reduce(occupied, free, &Map.put(&2, &1, column + 1))
+        {Map.put(gate, :column, column), free}
+      end)
+
+    placed
   end
 
-  # Analyzes circuit and creates layout
-  defp analyze_circuit(%Qx.QuantumCircuit{} = circuit, instructions, title) do
-    # Layout gates with collision avoidance
-    {gate_layout, num_columns} = layout_gates(instructions, circuit.num_qubits)
+  # A barrier is a slice through the whole circuit: its column holds
+  # nothing else, and a gate added after it is drawn after it.
+  defp occupied_wires(%{gate: :barrier}, num_qubits), do: Enum.to_list(0..(num_qubits - 1))
 
-    # Calculate dimensions
-    label_width = 60
-    title_height = if title, do: 40, else: 0
+  # A measurement drops to the register, crossing every wire below it.
+  defp occupied_wires(%{gate: :measure, qubits: [qubit, _classical_bit]}, num_qubits),
+    do: Enum.to_list(qubit..(num_qubits - 1))
 
-    width =
-      label_width + num_columns * (@gate_width + @gate_spacing) + @gate_spacing + 2 * @padding
+  # A conditional gate is joined to the register from below.
+  defp occupied_wires(%{qubits: qubits, condition: {_bit, _value}}, num_qubits),
+    do: Enum.to_list(Enum.min(qubits)..(num_qubits - 1))
 
-    qubit_area_height = (circuit.num_qubits - 1) * @qubit_spacing + @gate_height
-    classical_height = if circuit.num_classical_bits > 0, do: @qubit_spacing + 30, else: 0
+  # A multi-qubit gate crosses every wire between its qubits.
+  defp occupied_wires(%{qubits: qubits}, _num_qubits),
+    do: Enum.to_list(Enum.min(qubits)..Enum.max(qubits))
 
-    height = title_height + qubit_area_height + classical_height + 2 * @padding
+  # The centre x of every column and the x the wires end at. A column is as
+  # wide as the widest gate in it.
+  defp columns([]), do: {%{}, @wire_start + @run_in + @box + @run_out}
 
-    %CircuitDiagram{
-      num_qubits: circuit.num_qubits,
-      num_classical_bits: circuit.num_classical_bits,
-      width: width,
-      height: height,
-      title: title,
-      instructions: instructions,
-      measurements: circuit.measurements,
-      gate_layout: gate_layout,
-      num_columns: num_columns
+  defp columns(gates) do
+    widths =
+      Enum.reduce(gates, %{}, fn gate, widths ->
+        width = width(gate)
+        Map.update(widths, gate.column, width, &max(&1, width))
+      end)
+
+    {centers, next_left} =
+      widths
+      |> Enum.sort()
+      |> Enum.map_reduce(@wire_start + @run_in, fn {column, width}, left ->
+        {{column, left + width / 2}, left + width + @column_gap}
+      end)
+
+    {Map.new(centers), next_left - @column_gap + @run_out}
+  end
+
+  defp width(%{gate: :barrier}), do: 0
+  defp width(%{gate: :iswap}), do: Markup.box_width(iswap_label(), @iswap_label_size)
+
+  defp width(%{gate: gate, params: params}) when gate in @boxed,
+    do: box_width(gate, params)
+
+  defp width(%{gate: gate, params: params}) when is_map_key(@controlled_boxes, gate),
+    do: box_width(Map.fetch!(@controlled_boxes, gate), params)
+
+  # Dots, targets, crosses and meters take one box of room.
+  defp width(_gate), do: @box
+
+  defp box_width(gate, params),
+    do: Markup.box_width(label(gate, params), @label_size, min_box_width(gate))
+
+  # The guide draws every single-angle rotation in a 64 box, every phase
+  # gate with an angle in a 56 box and U in an 84 box; a longer label
+  # widens its box from there.
+  defp min_box_width(gate) when gate in [:rx, :ry, :rz], do: 64
+  defp min_box_width(:phase), do: 56
+  defp min_box_width(:u), do: 84
+  defp min_box_width(_gate), do: @box
+
+  # -- labels ----------------------------------------------------------
+
+  defp label(gate, _params) when gate in @letter_gates,
+    do: [{:italic, gate |> Atom.to_string() |> String.upcase()}]
+
+  defp label(:sdg, _params), do: [{:italic, "S"}, {:sup, "†"}]
+  defp label(:tdg, _params), do: [{:italic, "T"}, {:sup, "†"}]
+  defp label(:rx, params), do: rotation_label("x", params)
+  defp label(:ry, params), do: rotation_label("y", params)
+  defp label(:rz, params), do: rotation_label("z", params)
+  defp label(:phase, params), do: [{:italic, "P"}, {:upright, angles(params)}]
+  defp label(:u, params), do: [{:italic, "U"}, {:upright, angles(params)}]
+
+  defp rotation_label(axis, params),
+    do: [{:italic, "R"}, {:sub_italic, axis}, {:upright, angles(params)}]
+
+  defp iswap_label, do: [{:italic, "i"}, {:upright, "SWAP"}]
+
+  defp angles([]), do: "(θ)"
+  defp angles(params), do: "(" <> Enum.map_join(params, ", ", &Markup.angle/1) <> ")"
+
+  # -- gates -----------------------------------------------------------
+
+  # Each clause returns the lines, shapes and texts of one gate centred on
+  # `x`, and the y of its lowest point (a condition line starts there).
+
+  defp draw(%{gate: gate, qubits: [qubit], params: params}, x, context) when gate in @boxed do
+    y = wire_y(qubit, context)
+
+    %{
+      lines: [],
+      shapes: [labelled_box(gate, params, x, y, context)],
+      texts: [box_label(gate, params, x, y)],
+      bottom: y + @half_box
     }
   end
 
-  # Layout gates with collision avoidance
-  defp layout_gates(operations, num_qubits) do
-    qubit_columns = for i <- 0..(num_qubits - 1), into: %{}, do: {i, 0}
-    initial_state = {[], qubit_columns, 0}
+  defp draw(%{gate: :cx, qubits: [control, target]}, x, context) do
+    control_y = wire_y(control, context)
+    target_y = wire_y(target, context)
 
-    {layout, _final_columns, max_column} =
-      Enum.reduce(operations, initial_state, fn operation, {layout, columns, max_col} ->
-        {gate_name, qubits, params} = operation
-
-        if gate_name == :c_if do
-          process_conditional_gate(qubits, params, layout, columns, max_col, num_qubits)
-        else
-          process_regular_gate(gate_name, qubits, params, layout, columns, max_col, num_qubits)
-        end
-      end)
-
-    {Enum.reverse(layout), max_column + 1}
+    %{
+      lines: [connector(x, control_y, target_y)],
+      shapes: [dot(x, control_y), target(x, target_y, context)],
+      texts: [],
+      bottom: lowest([{control_y, @dot_radius}, {target_y, @target_radius}])
+    }
   end
 
-  defp process_conditional_gate(
-         [classical_bit, value],
-         sub_instructions,
-         layout,
-         columns,
-         max_col,
-         num_qubits
-       ) do
-    Enum.reduce(sub_instructions, {layout, columns, max_col}, fn sub_instr,
-                                                                 {sub_layout, sub_columns,
-                                                                  sub_max_col} ->
-      {sub_gate_name, sub_qubits, sub_params} = sub_instr
+  defp draw(%{gate: :ccx, qubits: [control_a, control_b, target]}, x, context) do
+    ys = [control_a, control_b, target] |> Enum.map(&wire_y(&1, context))
+    [a_y, b_y, target_y] = ys
 
-      column = find_available_column(sub_gate_name, sub_qubits, sub_columns, num_qubits)
+    %{
+      lines: [connector(x, Enum.min(ys), Enum.max(ys))],
+      shapes: [dot(x, a_y), dot(x, b_y), target(x, target_y, context)],
+      texts: [],
+      bottom: lowest([{a_y, @dot_radius}, {b_y, @dot_radius}, {target_y, @target_radius}])
+    }
+  end
 
-      qubits_to_update = get_qubits_to_update(sub_gate_name, sub_qubits, num_qubits, true)
+  defp draw(%{gate: gate, qubits: [control, target], params: params}, x, context)
+       when is_map_key(@controlled_boxes, gate) do
+    controlled = Map.fetch!(@controlled_boxes, gate)
+    control_y = wire_y(control, context)
+    target_y = wire_y(target, context)
+    # The connector stops at the near edge of the box.
+    edge = if control_y < target_y, do: target_y - @half_box, else: target_y + @half_box
 
-      new_columns = update_columns(sub_columns, qubits_to_update, column)
+    %{
+      lines: [connector(x, control_y, edge)],
+      shapes: [dot(x, control_y), labelled_box(controlled, params, x, target_y, context)],
+      texts: [box_label(controlled, params, x, target_y)],
+      bottom: lowest([{control_y, @dot_radius}, {target_y, @half_box}])
+    }
+  end
 
-      gate_info = %{
-        gate: sub_gate_name,
-        qubits: sub_qubits,
-        params: sub_params,
-        column: column,
-        conditional: %{classical_bit: classical_bit, value: value}
+  # CZ is symmetric: two ink dots and no colour.
+  defp draw(%{gate: :cz, qubits: [qubit_a, qubit_b]}, x, context) do
+    a_y = wire_y(qubit_a, context)
+    b_y = wire_y(qubit_b, context)
+
+    %{
+      lines: [connector(x, a_y, b_y)],
+      shapes: [dot(x, a_y), dot(x, b_y)],
+      texts: [],
+      bottom: max(a_y, b_y) + @dot_radius
+    }
+  end
+
+  defp draw(%{gate: :swap, qubits: [qubit_a, qubit_b]}, x, context) do
+    a_y = wire_y(qubit_a, context)
+    b_y = wire_y(qubit_b, context)
+
+    %{
+      lines: [connector(x, a_y, b_y)],
+      shapes: [cross(x, a_y, context), cross(x, b_y, context)],
+      texts: [],
+      bottom: max(a_y, b_y) + @cross
+    }
+  end
+
+  defp draw(%{gate: :cswap, qubits: [control, target_a, target_b]}, x, context) do
+    ys = [control, target_a, target_b] |> Enum.map(&wire_y(&1, context))
+    [control_y, a_y, b_y] = ys
+
+    %{
+      lines: [connector(x, Enum.min(ys), Enum.max(ys))],
+      shapes: [dot(x, control_y), cross(x, a_y, context), cross(x, b_y, context)],
+      texts: [],
+      bottom: lowest([{control_y, @dot_radius}, {a_y, @cross}, {b_y, @cross}])
+    }
+  end
+
+  defp draw(%{gate: :iswap, qubits: [qubit_a, qubit_b]} = gate, x, context) do
+    upper = wire_y(min(qubit_a, qubit_b), context)
+    lower = wire_y(max(qubit_a, qubit_b), context)
+    width = width(gate)
+
+    if abs(qubit_a - qubit_b) == 1 do
+      # Adjacent wires: one box spanning both.
+      middle = (upper + lower) / 2
+
+      %{
+        lines: [],
+        shapes: [box(x, upper - @half_box, width, lower - upper + @box, :exchange, context)],
+        texts: [iswap_text(x, middle)],
+        bottom: lower + @half_box
       }
-
-      {[gate_info | sub_layout], new_columns, max(sub_max_col, column)}
-    end)
+    else
+      %{
+        lines: [connector(x, upper + @half_box, lower - @half_box)],
+        shapes: [
+          box(x, upper - @half_box, width, @box, :exchange, context),
+          box(x, lower - @half_box, width, @box, :exchange, context)
+        ],
+        texts: [iswap_text(x, upper), iswap_text(x, lower)],
+        bottom: lower + @half_box
+      }
+    end
   end
 
-  defp process_regular_gate(gate_name, qubits, params, layout, columns, max_col, num_qubits) do
-    column = find_available_column(gate_name, qubits, columns, num_qubits)
+  # A meter: a neutral box with an ink arc and needle, a double line down
+  # to an arrowhead on the register, and the classical bit index.
+  defp draw(%{gate: :measure, qubits: [qubit, classical_bit]}, x, context) do
+    y = wire_y(qubit, context)
+    upper_line = context.register - @register_half_gap
+    ink = Theme.color(:ink)
+    ink2 = Theme.color(:ink2)
 
-    qubits_to_update = get_qubits_to_update(gate_name, qubits, num_qubits, false)
+    arc =
+      ~s(<path d="M#{num(x - 9)} #{num(y + 6)}A9 9 0 0 1 #{num(x + 9)} #{num(y + 6)}" ) <>
+        ~s(fill="none" stroke="#{ink}" stroke-width="#{@stroke}"/>)
 
-    new_columns = update_columns(columns, qubits_to_update, column)
+    # Tip first, then the base.
+    arrowhead =
+      ~s(<polygon points="#{num(x)},#{num(upper_line - 0.5)} ) <>
+        ~s(#{num(x - 4.5)},#{num(upper_line - 7.5)} #{num(x + 4.5)},#{num(upper_line - 7.5)}" ) <>
+        ~s(fill="#{ink2}"/>)
 
-    gate_info = %{
-      gate: gate_name,
-      qubits: qubits,
-      params: params,
-      column: column
+    %{
+      lines: double_line(x, y + @half_box, upper_line - 6.5),
+      shapes: [
+        box(x, y - @half_box, @box, @box, :non_unitary, context),
+        arc,
+        line(x, y + 6, x + 7, y - 8, ink, @stroke),
+        arrowhead
+      ],
+      texts: [
+        Markup.text(x + 8, upper_line - 5.5, Integer.to_string(classical_bit),
+          size: @small_size,
+          fill: ink2
+        )
+      ],
+      bottom: y + @half_box
     }
-
-    {[gate_info | layout], new_columns, max(max_col, column)}
   end
 
-  defp get_qubits_to_update(gate_name, qubits, num_qubits, is_conditional) do
-    if is_conditional or needs_vertical_line?(gate_name) do
-      if gate_name == :measure or is_conditional do
-        qubit = hd(qubits)
-        Enum.to_list(qubit..(num_qubits - 1))
-      else
-        min_q = Enum.min(qubits)
-        max_q = Enum.max(qubits)
-        Enum.to_list(min_q..max_q)
-      end
-    else
-      qubits
+  defp draw(%{gate: :barrier, qubits: qubits}, x, context) do
+    top = wire_y(Enum.min(qubits), context) - @barrier_overhang
+    bottom = wire_y(Enum.max(qubits), context) + @barrier_overhang
+
+    barrier =
+      line(x, top, x, bottom, Theme.color(:muted), @classical_stroke, ~s( stroke-dasharray="4 3"))
+
+    %{lines: [barrier], shapes: [], texts: [], bottom: bottom}
+  end
+
+  # A classical condition: a double line up from a dot on the register to
+  # the gate, labelled with the bit and the value it must hold.
+  defp with_condition(drawn, nil, _x, _context), do: drawn
+
+  defp with_condition(drawn, {classical_bit, value}, x, context) do
+    ink2 = Theme.color(:ink2)
+    register = context.register
+
+    dot =
+      ~s(<circle cx="#{num(x)}" cy="#{num(register)}" r="#{num(@dot_radius)}" fill="#{ink2}"/>)
+
+    label =
+      Markup.text(
+        x,
+        register + @condition_drop,
+        [{:italic, "c"}, {:sub, Integer.to_string(classical_bit)}, {:upright, " = #{value}"}],
+        size: @condition_size,
+        fill: ink2,
+        anchor: "middle"
+      )
+
+    %{
+      drawn
+      | lines: drawn.lines ++ double_line(x, drawn.bottom, register),
+        shapes: drawn.shapes ++ [dot],
+        texts: drawn.texts ++ [label]
+    }
+  end
+
+  # -- parts -----------------------------------------------------------
+
+  defp wire_y(qubit, context), do: context.top + qubit * @pitch
+
+  defp lowest(points), do: points |> Enum.map(fn {y, extent} -> y + extent end) |> Enum.max()
+
+  defp line(x1, y1, x2, y2, stroke, width, extra \\ "") do
+    ~s(<line x1="#{num(x1)}" y1="#{num(y1)}" x2="#{num(x2)}" y2="#{num(y2)}" ) <>
+      ~s(stroke="#{stroke}" stroke-width="#{width}"#{extra}/>)
+  end
+
+  defp connector(x, from_y, to_y), do: line(x, from_y, x, to_y, Theme.color(:ink), @stroke)
+
+  # Anything classical is a double line in Ink 2.
+  defp double_line(x, from_y, to_y) do
+    ink2 = Theme.color(:ink2)
+
+    [
+      line(x - @register_half_gap, from_y, x - @register_half_gap, to_y, ink2, @classical_stroke),
+      line(x + @register_half_gap, from_y, x + @register_half_gap, to_y, ink2, @classical_stroke)
+    ]
+  end
+
+  defp box(x, top, width, height, family, context) do
+    %{stroke: stroke, fill: fill} = Theme.family_colors(family, context.style)
+
+    ~s(<rect x="#{num(x - width / 2)}" y="#{num(top)}" width="#{num(width)}" ) <>
+      ~s(height="#{num(height)}" rx="2" fill="#{fill}" stroke="#{stroke}" ) <>
+      ~s(stroke-width="#{@stroke}"/>)
+  end
+
+  defp labelled_box(gate, params, x, y, context) do
+    box(x, y - @half_box, box_width(gate, params), @box, Theme.family(gate), context)
+  end
+
+  defp box_label(gate, params, x, y) do
+    Markup.text(x, y + @baseline, label(gate, params), size: @label_size, anchor: "middle")
+  end
+
+  defp iswap_text(x, y) do
+    Markup.text(x, y + @iswap_baseline, iswap_label(), size: @iswap_label_size, anchor: "middle")
+  end
+
+  defp dot(x, y) do
+    ink = Theme.color(:ink)
+
+    ~s(<circle cx="#{num(x)}" cy="#{num(y)}" r="#{num(@dot_radius)}" fill="#{ink}" ) <>
+      ~s(stroke="#{ink}" stroke-width="#{@stroke}"/>)
+  end
+
+  # ⊕: an X, so it is drawn in the Pauli family. The cross stops at the rim.
+  defp target(x, y, context) do
+    %{stroke: stroke, fill: fill} = Theme.family_colors(:pauli, context.style)
+    r = @target_radius
+
+    [
+      ~s(<circle cx="#{num(x)}" cy="#{num(y)}" r="#{r}" fill="#{fill}" stroke="#{stroke}" ) <>
+        ~s(stroke-width="#{@stroke}"/>),
+      ~s(<path d="M#{num(x - r)} #{num(y)}H#{num(x + r)}M#{num(x)} #{num(y - r)}V#{num(y + r)}" ) <>
+        ~s(stroke="#{stroke}" stroke-width="#{@stroke}" fill="none"/>)
+    ]
+  end
+
+  defp cross(x, y, context) do
+    %{stroke: stroke} = Theme.family_colors(:exchange, context.style)
+    cap = ~s( stroke-linecap="round")
+    d = @cross
+
+    [
+      line(x - d, y - d, x + d, y + d, stroke, @cross_stroke, cap),
+      line(x + d, y - d, x - d, y + d, stroke, @cross_stroke, cap)
+    ]
+  end
+
+  # -- frame -----------------------------------------------------------
+
+  defp wires(num_qubits, wire_end, context) do
+    for qubit <- 0..(num_qubits - 1) do
+      y = wire_y(qubit, context)
+      line(@wire_start, y, wire_end, y, Theme.color(:ink), @stroke)
     end
   end
 
-  defp update_columns(columns, qubits_to_update, column) do
-    Enum.reduce(qubits_to_update, columns, fn qubit, cols ->
-      Map.put(cols, qubit, column + 1)
-    end)
-  end
-
-  defp find_available_column(gate_name, qubits, columns, num_qubits) do
-    min_column = qubits |> Enum.map(&Map.get(columns, &1, 0)) |> Enum.max()
-
-    if needs_vertical_line?(gate_name) do
-      check_collision_and_advance(gate_name, qubits, columns, min_column, num_qubits)
-    else
-      min_column
+  defp wire_labels(num_qubits, context) do
+    for qubit <- 0..(num_qubits - 1) do
+      Markup.text(
+        @label_x,
+        wire_y(qubit, context) + @baseline,
+        [{:italic, "q"}, {:sub, Integer.to_string(qubit)}],
+        size: @label_size,
+        anchor: "end"
+      )
     end
   end
 
-  defp needs_vertical_line?(gate_name) do
-    gate_name in [:cx, :cz, :cp, :swap, :iswap, :ccx, :cswap, :measure]
+  # The classical register is a bundle: a double line with a slash and the
+  # bit count. The slash is a path, not a line, so the register lines are
+  # the only horizontal lines in Ink 2.
+  defp register_lines(_wire_end, %{register: nil}), do: []
+
+  defp register_lines(wire_end, %{register: y}) do
+    ink2 = Theme.color(:ink2)
+    upper = y - @register_half_gap
+    lower = y + @register_half_gap
+
+    [
+      line(@wire_start, upper, wire_end, upper, ink2, @classical_stroke),
+      line(@wire_start, lower, wire_end, lower, ink2, @classical_stroke),
+      ~s(<path d="M#{@wire_start + 7} #{num(y + 6)}L#{@wire_start + 13} #{num(y - 6)}" ) <>
+        ~s(stroke="#{ink2}" stroke-width="#{@classical_stroke}" fill="none"/>)
+    ]
   end
 
-  defp check_collision_and_advance(gate_name, qubits, columns, column, num_qubits) do
-    {min_qubit, max_qubit} =
-      if gate_name == :measure do
-        qubit = hd(qubits)
-        {qubit, num_qubits - 1}
-      else
-        {Enum.min(qubits), Enum.max(qubits)}
-      end
+  defp register_texts(_num_classical_bits, %{register: nil}), do: []
 
-    qubits_to_check = for q <- min_qubit..max_qubit, do: q
-
-    has_collision? =
-      Enum.any?(qubits_to_check, fn q ->
-        Map.get(columns, q, 0) > column
-      end)
-
-    if has_collision? do
-      check_collision_and_advance(gate_name, qubits, columns, column + 1, num_qubits)
-    else
-      column
-    end
+  defp register_texts(num_classical_bits, %{register: y}) do
+    [
+      Markup.text(@label_x, y + @baseline, [{:italic, "c"}], size: @label_size, anchor: "end"),
+      Markup.text(@wire_start + 15, y - 7, Integer.to_string(num_classical_bits),
+        size: @small_size,
+        fill: Theme.color(:ink2)
+      )
+    ]
   end
 
-  defp generate_svg(%CircuitDiagram{} = diagram) do
-    label_width = 60
-    title_height = if diagram.title, do: 40, else: 0
-    start_x = label_width + @padding
-    start_y = title_height + @padding
+  defp title_text(nil), do: []
 
-    title_svg = if diagram.title, do: render_title(diagram), else: ""
-    lines_svg = render_lines(diagram, start_x, start_y, label_width)
-    gates_svg = render_gates(diagram, start_x, start_y)
-
-    """
-    <?xml version="1.0" encoding="utf-8" standalone="no"?>
-    <svg xmlns="http://www.w3.org/2000/svg" width="#{diagram.width}" height="#{diagram.height}" viewBox="0 0 #{diagram.width} #{diagram.height}">
-      <rect width="#{diagram.width}" height="#{diagram.height}" fill="#ffffff"/>
-      #{title_svg}
-      #{lines_svg}
-      #{gates_svg}
-    </svg>
-    """
+  defp title_text(title) do
+    [Markup.text(@title_x, @title_y, title, voice: :sans, size: @title_size, weight: 600)]
   end
 
-  defp render_title(%CircuitDiagram{title: title, width: width}) do
-    """
-      <text x="#{width / 2}" y="25" text-anchor="middle" font-family="#{@font_family}" font-size="#{@title_font_size}">#{title}</text>
-    """
-  end
+  defp title_extent(nil), do: 0
 
-  defp render_lines(%CircuitDiagram{} = diagram, start_x, start_y, _label_width) do
-    line_end_x =
-      start_x + diagram.num_columns * (@gate_width + @gate_spacing) + @gate_spacing
+  defp title_extent(title),
+    do: ceil(2 * @title_x + String.length(title) * @title_advance)
 
-    qubit_lines =
-      Enum.map_join(0..(diagram.num_qubits - 1), "\n", fn q ->
-        y = start_y + q * @qubit_spacing
+  defp aria_label(_circuit, title) when is_binary(title), do: title
 
-        """
-          <line x1="#{start_x}" y1="#{y}" x2="#{line_end_x}" y2="#{y}" stroke="#000000" stroke-width="#{@line_thickness}"/>
-          <text x="#{start_x - 10}" y="#{y + 5}" text-anchor="end" font-family="#{@font_family}" font-size="#{@label_font_size}">q<tspan baseline-shift="sub" font-size="#{@label_font_size * 0.7}">#{q}</tspan></text>
-        """
-      end)
+  defp aria_label(%Qx.QuantumCircuit{num_qubits: 1}, nil), do: "Quantum circuit, 1 qubit"
 
-    classical_lines =
-      if diagram.num_classical_bits > 0 do
-        y = start_y + diagram.num_qubits * @qubit_spacing + 20
-        y2 = y + 3
-
-        """
-          <line x1="#{start_x}" y1="#{y}" x2="#{line_end_x}" y2="#{y}" stroke="#{@color_classical_line}" stroke-width="#{@line_thickness}"/>
-          <line x1="#{start_x}" y1="#{y2}" x2="#{line_end_x}" y2="#{y2}" stroke="#{@color_classical_line}" stroke-width="#{@line_thickness}"/>
-          <text x="#{start_x - 10}" y="#{y + 5}" text-anchor="end" font-family="#{@font_family}" font-size="#{@label_font_size}">c/#{diagram.num_classical_bits}</text>
-        """
-      else
-        ""
-      end
-
-    qubit_lines <> classical_lines
-  end
-
-  defp render_gates(%CircuitDiagram{} = diagram, start_x, start_y) do
-    diagram.gate_layout
-    |> Enum.map_join("\n", fn gate_info ->
-      render_gate(gate_info, diagram, start_x, start_y)
-    end)
-  end
-
-  defp render_gate(gate_info, diagram, start_x, start_y) do
-    %{gate: gate_name, qubits: qubits, params: params, column: column} = gate_info
-    gate_x = start_x + column * (@gate_width + @gate_spacing) + @gate_spacing
-
-    gate_svg = dispatch_gate_svg(gate_name, qubits, params, gate_x, start_y, diagram)
-
-    conditional_svg =
-      if Map.has_key?(gate_info, :conditional) do
-        render_classical_control(gate_info, gate_x, start_y, diagram)
-      else
-        ""
-      end
-
-    gate_svg <> conditional_svg
-  end
-
-  defp dispatch_gate_svg(:barrier, qubits, _params, gate_x, start_y, diagram),
-    do: render_barrier(qubits, gate_x, start_y, diagram)
-
-  defp dispatch_gate_svg(:measure, qubits, params, gate_x, start_y, diagram),
-    do: render_measurement(qubits, params, gate_x, start_y, diagram)
-
-  defp dispatch_gate_svg(:cx, qubits, _params, gate_x, start_y, _diagram),
-    do: render_cnot(qubits, gate_x, start_y)
-
-  defp dispatch_gate_svg(:cz, qubits, _params, gate_x, start_y, _diagram),
-    do: render_controlled_z(qubits, gate_x, start_y)
-
-  defp dispatch_gate_svg(:cp, qubits, params, gate_x, start_y, _diagram),
-    do: render_controlled_phase(qubits, params, gate_x, start_y)
-
-  defp dispatch_gate_svg(:swap, qubits, _params, gate_x, start_y, _diagram),
-    do: render_swap(qubits, gate_x, start_y)
-
-  defp dispatch_gate_svg(:iswap, qubits, _params, gate_x, start_y, _diagram),
-    do: render_iswap(qubits, gate_x, start_y)
-
-  defp dispatch_gate_svg(:u, qubits, params, gate_x, start_y, _diagram),
-    do: render_single_qubit_gate(:u, qubits, params, gate_x, start_y)
-
-  defp dispatch_gate_svg(:ccx, qubits, _params, gate_x, start_y, _diagram),
-    do: render_toffoli(qubits, gate_x, start_y)
-
-  defp dispatch_gate_svg(:cswap, qubits, _params, gate_x, start_y, _diagram),
-    do: render_cswap(qubits, gate_x, start_y)
-
-  defp dispatch_gate_svg(gate_name, qubits, params, gate_x, start_y, _diagram),
-    do: render_single_qubit_gate(gate_name, qubits, params, gate_x, start_y)
-
-  defp render_barrier(_qubits, gate_x, start_y, diagram) do
-    y1 = start_y
-    y2 = start_y + (diagram.num_qubits - 1) * @qubit_spacing
-
-    """
-      <line x1="#{gate_x}" y1="#{y1}" x2="#{gate_x}" y2="#{y2}" stroke="#{@color_barrier}" stroke-width="1" stroke-dasharray="#{@barrier_dash}" opacity="0.6"/>
-    """
-  end
-
-  defp render_measurement([qubit, _classical_bit], _params, gate_x, start_y, diagram) do
-    qubit_y = start_y + qubit * @qubit_spacing
-    classical_y = start_y + diagram.num_qubits * @qubit_spacing + 20 + 1.5
-
-    box_x = gate_x - @gate_width / 2
-    box_y = qubit_y - @gate_height / 2
-
-    arc_cx = gate_x
-    arc_cy = qubit_y + 3
-    arc_start_x = gate_x - @measure_radius * 0.7
-    arc_start_y = qubit_y + 3
-    arc_end_x = gate_x + @measure_radius * 0.7
-    arc_end_y = qubit_y + 3
-    arrow_x = gate_x + @measure_radius * 0.5
-    arrow_y = qubit_y - @measure_radius * 0.5
-
-    arrow_tip_y = classical_y
-    arrow_left_x = gate_x - 6
-    arrow_left_y = classical_y - 8
-    arrow_right_x = gate_x + 6
-    arrow_right_y = classical_y - 8
-
-    """
-      <rect x="#{box_x}" y="#{box_y}" width="#{@gate_width}" height="#{@gate_height}" fill="#{@color_measurement}" stroke="#{@color_measurement}" stroke-width="#{@gate_border_thickness}"/>
-      <path d="M #{arc_start_x} #{arc_start_y} A #{@measure_radius * 0.7} #{@measure_radius * 0.7} 0 0 1 #{arc_end_x} #{arc_end_y}" fill="none" stroke="#000000" stroke-width="2"/>
-      <line x1="#{arc_cx}" y1="#{arc_cy}" x2="#{arrow_x}" y2="#{arrow_y}" stroke="#000000" stroke-width="2"/>
-      <line x1="#{gate_x}" y1="#{qubit_y + @gate_height / 2}" x2="#{gate_x}" y2="#{classical_y}" stroke="#{@color_classical_line}" stroke-width="#{@line_thickness}"/>
-      <polygon points="#{gate_x},#{arrow_tip_y} #{arrow_left_x},#{arrow_left_y} #{arrow_right_x},#{arrow_right_y}" fill="#{@color_classical_line}"/>
-    """
-  end
-
-  defp render_cnot([control, target], gate_x, start_y) do
-    control_y = start_y + control * @qubit_spacing
-    target_y = start_y + target * @qubit_spacing
-
-    control_svg = """
-      <circle cx="#{gate_x}" cy="#{control_y}" r="#{@control_radius}" fill="#{@color_control_small}" stroke="#{@color_control_small}" stroke-width="#{@gate_border_thickness}"/>
-    """
-
-    target_svg = """
-      <circle cx="#{gate_x}" cy="#{target_y}" r="#{@target_radius}" fill="none" stroke="#000000" stroke-width="2"/>
-      <line x1="#{gate_x - @target_radius}" y1="#{target_y}" x2="#{gate_x + @target_radius}" y2="#{target_y}" stroke="#000000" stroke-width="2"/>
-      <line x1="#{gate_x}" y1="#{target_y - @target_radius}" x2="#{gate_x}" y2="#{target_y + @target_radius}" stroke="#000000" stroke-width="2"/>
-    """
-
-    line_svg = """
-      <line x1="#{gate_x}" y1="#{control_y}" x2="#{gate_x}" y2="#{target_y}" stroke="#{@color_control_large}" stroke-width="#{@line_thickness}"/>
-    """
-
-    line_svg <> control_svg <> target_svg
-  end
-
-  defp render_controlled_z([control, target], gate_x, start_y) do
-    control_y = start_y + control * @qubit_spacing
-    target_y = start_y + target * @qubit_spacing
-
-    control_svg = """
-      <circle cx="#{gate_x}" cy="#{control_y}" r="#{@control_radius}" fill="#{@color_control_small}" stroke="#{@color_control_small}" stroke-width="#{@gate_border_thickness}"/>
-    """
-
-    target_svg = """
-      <circle cx="#{gate_x}" cy="#{target_y}" r="#{@control_radius}" fill="#{@color_control_small}" stroke="#{@color_control_small}" stroke-width="#{@gate_border_thickness}"/>
-    """
-
-    line_svg = """
-      <line x1="#{gate_x}" y1="#{control_y}" x2="#{gate_x}" y2="#{target_y}" stroke="#{@color_control_large}" stroke-width="#{@line_thickness}"/>
-    """
-
-    line_svg <> control_svg <> target_svg
-  end
-
-  defp render_swap([qubit_a, qubit_b], gate_x, start_y) do
-    y_a = start_y + qubit_a * @qubit_spacing
-    y_b = start_y + qubit_b * @qubit_spacing
-    d = @control_radius
-
-    cross = fn y ->
-      """
-        <line x1="#{gate_x - d}" y1="#{y - d}" x2="#{gate_x + d}" y2="#{y + d}" stroke="#{@color_control_large}" stroke-width="#{@line_thickness}"/>
-        <line x1="#{gate_x + d}" y1="#{y - d}" x2="#{gate_x - d}" y2="#{y + d}" stroke="#{@color_control_large}" stroke-width="#{@line_thickness}"/>
-      """
-    end
-
-    line_svg = """
-      <line x1="#{gate_x}" y1="#{y_a}" x2="#{gate_x}" y2="#{y_b}" stroke="#{@color_control_large}" stroke-width="#{@line_thickness}"/>
-    """
-
-    line_svg <> cross.(y_a) <> cross.(y_b)
-  end
-
-  defp render_iswap([qubit_a, qubit_b], gate_x, start_y) do
-    y_a = start_y + qubit_a * @qubit_spacing
-    y_b = start_y + qubit_b * @qubit_spacing
-    half_w = div(@gate_width, 2)
-    half_h = div(@gate_height, 2)
-
-    box = fn y ->
-      """
-        <rect x="#{gate_x - half_w}" y="#{y - half_h}" width="#{@gate_width}" height="#{@gate_height}" rx="3" ry="3" fill="white" stroke="#{@color_control_large}" stroke-width="#{@gate_border_thickness}"/>
-        <text x="#{gate_x}" y="#{y + 4}" text-anchor="middle" font-family="#{@font_family}" font-size="#{@gate_font_size}" fill="#000000">iSW</text>
-      """
-    end
-
-    line_svg = """
-      <line x1="#{gate_x}" y1="#{y_a + half_h}" x2="#{gate_x}" y2="#{y_b - half_h}" stroke="#{@color_control_large}" stroke-width="#{@line_thickness}"/>
-    """
-
-    line_svg <> box.(y_a) <> box.(y_b)
-  end
-
-  defp render_controlled_phase([control, target], params, gate_x, start_y) do
-    control_y = start_y + control * @qubit_spacing
-    target_y = start_y + target * @qubit_spacing
-    half_w = div(@gate_width, 2)
-    half_h = div(@gate_height, 2)
-    label = "P(#{format_param(params)})"
-
-    control_svg = """
-      <circle cx="#{gate_x}" cy="#{control_y}" r="#{@control_radius}" fill="#{@color_control_small}" stroke="#{@color_control_small}" stroke-width="#{@gate_border_thickness}"/>
-    """
-
-    target_svg = """
-      <rect x="#{gate_x - half_w}" y="#{target_y - half_h}" width="#{@gate_width}" height="#{@gate_height}" rx="3" ry="3" fill="white" stroke="#{@color_control_large}" stroke-width="#{@gate_border_thickness}"/>
-      <text x="#{gate_x}" y="#{target_y + 4}" text-anchor="middle" font-family="#{@font_family}" font-size="#{@gate_font_size}" fill="#000000">#{label}</text>
-    """
-
-    line_svg = """
-      <line x1="#{gate_x}" y1="#{control_y}" x2="#{gate_x}" y2="#{target_y - half_h}" stroke="#{@color_control_large}" stroke-width="#{@line_thickness}"/>
-    """
-
-    line_svg <> control_svg <> target_svg
-  end
-
-  defp render_toffoli([control1, control2, target], gate_x, start_y) do
-    control1_y = start_y + control1 * @qubit_spacing
-    control2_y = start_y + control2 * @qubit_spacing
-    target_y = start_y + target * @qubit_spacing
-
-    min_y = Enum.min([control1_y, control2_y, target_y])
-    max_y = Enum.max([control1_y, control2_y, target_y])
-
-    controls_svg = """
-      <circle cx="#{gate_x}" cy="#{control1_y}" r="#{@control_radius}" fill="#{@color_control_small}" stroke="#{@color_control_small}" stroke-width="#{@gate_border_thickness}"/>
-      <circle cx="#{gate_x}" cy="#{control2_y}" r="#{@control_radius}" fill="#{@color_control_small}" stroke="#{@color_control_small}" stroke-width="#{@gate_border_thickness}"/>
-    """
-
-    target_svg = """
-      <circle cx="#{gate_x}" cy="#{target_y}" r="#{@target_radius}" fill="none" stroke="#000000" stroke-width="2"/>
-      <line x1="#{gate_x - @target_radius}" y1="#{target_y}" x2="#{gate_x + @target_radius}" y2="#{target_y}" stroke="#000000" stroke-width="2"/>
-      <line x1="#{gate_x}" y1="#{target_y - @target_radius}" x2="#{gate_x}" y2="#{target_y + @target_radius}" stroke="#000000" stroke-width="2"/>
-    """
-
-    line_svg = """
-      <line x1="#{gate_x}" y1="#{min_y}" x2="#{gate_x}" y2="#{max_y}" stroke="#{@color_control_large}" stroke-width="#{@line_thickness}"/>
-    """
-
-    line_svg <> controls_svg <> target_svg
-  end
-
-  defp render_cswap([control, target_a, target_b], gate_x, start_y) do
-    control_y = start_y + control * @qubit_spacing
-    ta_y = start_y + target_a * @qubit_spacing
-    tb_y = start_y + target_b * @qubit_spacing
-
-    min_y = Enum.min([control_y, ta_y, tb_y])
-    max_y = Enum.max([control_y, ta_y, tb_y])
-
-    control_svg = """
-      <circle cx="#{gate_x}" cy="#{control_y}" r="#{@control_radius}" fill="#{@color_control_small}" stroke="#{@color_control_small}" stroke-width="#{@gate_border_thickness}"/>
-    """
-
-    r = @control_radius
-
-    target_a_svg = """
-      <text x="#{gate_x}" y="#{ta_y + 5}" text-anchor="middle" font-family="#{@font_family}" font-size="#{@gate_font_size + 4}" fill="#000000">×</text>
-    """
-
-    target_b_svg = """
-      <text x="#{gate_x}" y="#{tb_y + 5}" text-anchor="middle" font-family="#{@font_family}" font-size="#{@gate_font_size + 4}" fill="#000000">×</text>
-    """
-
-    line_svg = """
-      <line x1="#{gate_x}" y1="#{min_y}" x2="#{gate_x}" y2="#{max_y}" stroke="#{@color_control_large}" stroke-width="#{@line_thickness}"/>
-    """
-
-    _ = r
-    line_svg <> control_svg <> target_a_svg <> target_b_svg
-  end
-
-  defp render_classical_control(gate_info, gate_x, start_y, diagram) do
-    %{qubits: qubits, conditional: %{classical_bit: classical_bit, value: value}} = gate_info
-
-    qubit = hd(qubits)
-    qubit_y = start_y + qubit * @qubit_spacing
-
-    classical_y = start_y + diagram.num_qubits * @qubit_spacing + 20
-
-    line_spacing = 3
-    line1_x = gate_x - line_spacing / 2
-    line2_x = gate_x + line_spacing / 2
-
-    line_start_y = qubit_y + @gate_height / 2
-
-    lines_svg = """
-      <line x1="#{line1_x}" y1="#{line_start_y}" x2="#{line1_x}" y2="#{classical_y}" stroke="#{@color_classical_line}" stroke-width="#{@line_thickness}"/>
-      <line x1="#{line2_x}" y1="#{line_start_y}" x2="#{line2_x}" y2="#{classical_y}" stroke="#{@color_classical_line}" stroke-width="#{@line_thickness}"/>
-    """
-
-    circle_radius = 5
-    circle_fill = if value == 1, do: @color_classical_line, else: "none"
-
-    circle_svg = """
-      <circle cx="#{gate_x}" cy="#{classical_y}" r="#{circle_radius}" fill="#{circle_fill}" stroke="#{@color_classical_line}" stroke-width="#{@line_thickness}"/>
-    """
-
-    label_svg = """
-      <text x="#{gate_x + 12}" y="#{classical_y - 8}" font-family="#{@font_family}" font-size="#{@label_font_size}" fill="#000000">c#{classical_bit}</text>
-    """
-
-    lines_svg <> circle_svg <> label_svg
-  end
-
-  defp render_single_qubit_gate(gate_name, [qubit], params, gate_x, start_y) do
-    qubit_y = start_y + qubit * @qubit_spacing
-    box_x = gate_x - @gate_width / 2
-    box_y = qubit_y - @gate_height / 2
-
-    {label, color} = gate_label_and_color(gate_name, params)
-
-    """
-      <rect x="#{box_x}" y="#{box_y}" width="#{@gate_width}" height="#{@gate_height}" fill="#{color}" stroke="#{color}" stroke-width="#{@gate_border_thickness}"/>
-      <text x="#{gate_x}" y="#{qubit_y + 4}" text-anchor="middle" font-family="#{@font_family}" font-size="#{@gate_font_size}" fill="#000000">#{label}</text>
-    """
-  end
-
-  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
-  defp gate_label_and_color(gate_name, params) do
-    case gate_name do
-      :h -> {"H", @color_hadamard}
-      :x -> {"X", @color_pauli_x}
-      :y -> {"Y", @color_pauli_x}
-      :z -> {"Z", @color_pauli_x}
-      :s -> {"S", @color_hadamard}
-      :sdg -> {"S†", @color_hadamard}
-      :t -> {"T", @color_hadamard}
-      :tdg -> {"T†", @color_hadamard}
-      _ -> parameterized_gate_label(gate_name, params)
-    end
-  end
-
-  defp parameterized_gate_label(gate_name, params) do
-    case gate_name do
-      :rx ->
-        {"RX(#{format_param(params)})", @color_hadamard}
-
-      :ry ->
-        {"RY(#{format_param(params)})", @color_hadamard}
-
-      :rz ->
-        {"RZ(#{format_param(params)})", @color_hadamard}
-
-      :p ->
-        {"P(#{format_param(params)})", @color_hadamard}
-
-      :u ->
-        [theta, phi, lambda] = params
-        label = "U(#{format_param([theta])},#{format_param([phi])},#{format_param([lambda])})"
-        {label, @color_hadamard}
-
-      _ ->
-        {to_string(gate_name) |> String.upcase(), @color_hadamard}
-    end
-  end
-
-  defp format_param([param]) when is_number(param) do
-    pi_val = :math.pi()
-    ratio = param / pi_val
-
-    cond do
-      abs(param) < 0.01 -> "0"
-      abs(ratio - 1) < 0.01 -> "π"
-      abs(ratio - 0.5) < 0.01 -> "π/2"
-      abs(ratio - 0.25) < 0.01 -> "π/4"
-      abs(ratio + 1) < 0.01 -> "-π"
-      abs(ratio + 0.5) < 0.01 -> "-π/2"
-      abs(ratio + 0.25) < 0.01 -> "-π/4"
-      true -> Float.round(param * 1.0, 2) |> to_string()
-    end
-  end
-
-  defp format_param(_), do: "θ"
+  defp aria_label(%Qx.QuantumCircuit{num_qubits: n}, nil), do: "Quantum circuit, #{n} qubits"
 end

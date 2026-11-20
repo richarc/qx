@@ -29,7 +29,8 @@ defmodule Qx.SimulationResult do
       {"10", 1000}
 
   Keys of `:counts` are outcome strings joining each shot's classical
-  bits in measurement order, the same labels `Qx.draw_counts/2` renders.
+  bits in measurement order. `Qx.draw_counts/2` labels its bars with
+  them, written as kets.
   """
 
   @type t :: %__MODULE__{
