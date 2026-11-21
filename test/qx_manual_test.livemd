@@ -1091,8 +1091,8 @@ Qx.create_circuit(1)
 ### Charts
 
 ```elixir
-# Expected: 8 BLUE bars on a probability axis that runs from 0.00 to 1.00 whatever the
-# data; x labels are level kets |000⟩ … |111⟩ in a monospace face; each bar carries its
+# Expected: 8 BLUE bars on a probability axis that runs from 0.00 to 1.00 (the tallest
+# bar is above 0.2); x labels are level kets |000⟩ … |111⟩ in a monospace face; each bar carries its
 # value above it; x title "Basis state"; title top left; no frame around the plot.
 Qx.create_circuit(3)
 |> Qx.h(0)
@@ -1115,7 +1115,8 @@ Qx.create_circuit(2, 2)
 
 ```elixir
 # Expected: 32 BLUE bars (not green), no values above them; x labels are bare bit strings
-# (no | ⟩) set vertically; probability axis still 0.00 to 1.00, so the bars are short.
+# (no | ⟩) set vertically. Every bar is 0.031, under 0.2, so the probability axis fits
+# the data (0 to about 0.03) and the bars fill the chart.
 Qx.create_circuit(5)
 |> Qx.h_all()
 |> Qx.get_probabilities()

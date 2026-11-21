@@ -23,13 +23,22 @@ if Code.ensure_loaded?(VegaLite) do
 
     @x_title "Basis state"
 
+    # The probability axis runs from 0 to 1, so two charts can be compared
+    # by eye, as long as some bar reaches this height. When every bar is
+    # shorter (a distribution spread over many states) the bars would be a
+    # few pixels tall, so the axis fits the data instead. The margin keeps
+    # a bar that rounding left a hair under 0.2 on the fixed side.
+    @fixed_axis_min 0.2 - 1.0e-6
+    @fixed_axis [scale: [domain: [0, 1]], axis: [format: ".2f"]]
+    @fitted_axis [scale: [zero: true, nice: true]]
+
     @probability %{
       x_field: "state",
       # The data holds kets: "|01⟩".
       x_values: :kets,
       y_field: "probability",
       y_title: "Probability",
-      y_options: [scale: [domain: [0, 1]], axis: [format: ".2f"]],
+      y_options: @fixed_axis,
       value_format: ".2f"
     }
 
@@ -116,7 +125,14 @@ if Code.ensure_loaded?(VegaLite) do
           %{"state" => Qx.Format.state_label(index, num_states), "probability" => probability}
         end)
 
-      bar_chart(data, @probability, title, width, height)
+      kind = %{@probability | y_options: probability_axis(probabilities)}
+      bar_chart(data, kind, title, width, height)
+    end
+
+    defp probability_axis(probabilities) do
+      if Enum.max(probabilities, fn -> 0 end) >= @fixed_axis_min,
+        do: @fixed_axis,
+        else: @fitted_axis
     end
 
     defp bar_chart(data, kind, title, width, height) do

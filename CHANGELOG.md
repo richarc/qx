@@ -41,7 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `title: nil` draws none.
   - **Charts** are one colour and share one Vega-Lite config. The
     probability axis of `Qx.draw/2` and `Qx.draw_histogram/2` is fixed at
-    0 to 1 (it was fitted to the data). The x title is "Basis state" (was
+    0 to 1 (it was fitted to the data) when at least one bar reaches 0.2.
+    When every bar is shorter, as in a distribution spread over many
+    states, the axis still fits the data, so the bars can be read; its
+    tick labels then use Vega's default number format, not two decimals. The x title is "Basis state" (was
     "Quantum State" and "Measurement Outcome") and the counts y title is
     "Counts" (was "Count"). Bars are labelled with kets; with more than 16
     bars the labels are bare bit strings set vertically, and with more

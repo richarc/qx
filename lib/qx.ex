@@ -1427,8 +1427,9 @@ defmodule Qx do
   renders it via kino_vega_lite, standalone apps feed it to any Vega
   renderer.
 
-  The probability axis is fixed at 0 to 1, so two charts can be compared
-  by eye. Each bar is labelled with its basis state as a ket (`|01⟩`).
+  The probability axis runs from 0 to 1, so two charts can be compared
+  by eye. When every bar is under 0.2 (a distribution spread over many
+  states) the axis fits the data instead, so the bars can be read. Each bar is labelled with its basis state as a ket (`|01⟩`).
   With more than 16 bars the labels become bare bit strings set
   vertically, and with more than 64 only every fourth is shown. Up to 8
   bars carry their value above them.
@@ -1530,8 +1531,9 @@ defmodule Qx do
 
   For quick visualization of simulation results, use `draw/2` instead.
 
-  The probability axis is fixed at 0 to 1, so two charts can be compared
-  by eye. Each bar is labelled with its basis state as a ket (`|01⟩`).
+  The probability axis runs from 0 to 1, so two charts can be compared
+  by eye. When every bar is under 0.2 (a distribution spread over many
+  states) the axis fits the data instead, so the bars can be read. Each bar is labelled with its basis state as a ket (`|01⟩`).
   With more than 16 bars the labels become bare bit strings set
   vertically, and with more than 64 only every fourth is shown. Up to 8
   bars carry their value above them.

@@ -1,7 +1,7 @@
 defmodule Qx.Draw.ChartStyleTest do
   @moduledoc """
   The three Vega-Lite charts follow the Charts sheet of the Qx visual
-  design guide: one config, one colour, a fixed probability axis, ket
+  design guide: one config, one colour, a 0 to 1 probability axis, ket
   labels and value labels while the bars are few (plan:
   visual-design-guide).
 
@@ -102,13 +102,53 @@ defmodule Qx.Draw.ChartStyleTest do
   end
 
   describe "axes" do
-    test "the probability axis is fixed at 0 to 1 for plot and histogram" do
-      for function <- [:plot, :histogram], bars <- [2, 8, 32] do
+    test "the probability axis is fixed at 0 to 1 when a bar reaches 0.2" do
+      # Uniform over 2 and 4 states: bars of 0.5 and 0.25.
+      for function <- [:plot, :histogram], bars <- [2, 4] do
         y = y_encoding(spec(function, bars))
 
         assert y["field"] == "probability"
-        assert y["scale"]["domain"] == [0, 1]
+        assert y["scale"] == %{"domain" => [0, 1]}
+        assert y["axis"]["format"] == ".2f"
         assert y["title"] == "Probability"
+      end
+    end
+
+    test "the probability axis fits the data when every bar is under 0.2" do
+      # Uniform over 8, 32 and 128 states: bars of 0.125, 0.031 and 0.008,
+      # which a 0 to 1 axis would draw as slivers.
+      for function <- [:plot, :histogram], bars <- [8, 32, 128] do
+        y = y_encoding(spec(function, bars))
+
+        assert y["field"] == "probability"
+        assert y["scale"] == %{"zero" => true, "nice" => true}
+        assert y["title"] == "Probability"
+        # The tick format is left to Vega: two decimals cannot tell 0.002
+        # from 0.004.
+        refute Map.has_key?(y, "axis")
+      end
+    end
+
+    test "one bar at 0.2 is enough to keep the 0 to 1 axis, wherever it is" do
+      fixed = %{"domain" => [0, 1]}
+      fitted = %{"zero" => true, "nice" => true}
+
+      # The tallest bar is in the middle of each list, not first.
+      cases = [
+        {[0.1, 0.1, 0.1, 0.1, 0.2, 0.1, 0.1, 0.1, 0.1], fixed},
+        # A hair under 0.2, as float32 arithmetic can leave it.
+        {[0.1, 0.1, 0.1, 0.1, 0.1999995, 0.1, 0.1, 0.1, 0.1000005], fixed},
+        {[0.1, 0.1, 0.1, 0.101, 0.199, 0.1, 0.1, 0.1, 0.1], fitted},
+        {List.duplicate(0.1 / 63, 31) ++ [0.9] ++ List.duplicate(0.1 / 63, 32), fixed}
+      ]
+
+      for {probabilities, scale} <- cases do
+        tensor = Nx.tensor(probabilities, type: :f32)
+
+        for chart <- [Draw.histogram(tensor), Draw.plot(result(probabilities: tensor))] do
+          assert y_encoding(VegaLite.to_spec(chart))["scale"] == scale,
+                 "tallest bar #{Enum.max(probabilities)}"
+        end
       end
     end
 

@@ -54,9 +54,9 @@ defmodule Qx.Draw do
   head is solid when the vector points toward the reader and hollow when
   it points away.
 
-  The three charts are one colour, and the probability axis of `plot/2`
-  and `histogram/2` always runs from 0 to 1, so two charts can be
-  compared by eye.
+  The three charts are one colour. The probability axis of `plot/2` and
+  `histogram/2` runs from 0 to 1, so two charts can be compared by eye;
+  when every bar is under 0.2 it fits the data instead.
 
   ## Size limit
 
@@ -89,8 +89,9 @@ defmodule Qx.Draw do
   @doc """
   Plots the probability distribution from a simulation result.
 
-  The probability axis is fixed at 0 to 1, so two charts can be compared
-  by eye. Each bar is labelled with its basis state as a ket (`|01⟩`).
+  The probability axis runs from 0 to 1, so two charts can be compared
+  by eye. When every bar is under 0.2 (a distribution spread over many
+  states) the axis fits the data instead, so the bars can be read. Each bar is labelled with its basis state as a ket (`|01⟩`).
   With more than 16 bars the labels become bare bit strings set
   vertically, and with more than 64 only every fourth is shown. Up to 8
   bars carry their value above them.
@@ -199,8 +200,9 @@ defmodule Qx.Draw do
   @doc """
   Creates a histogram from a raw probability tensor.
 
-  The probability axis is fixed at 0 to 1, so two charts can be compared
-  by eye. Each bar is labelled with its basis state as a ket (`|01⟩`).
+  The probability axis runs from 0 to 1, so two charts can be compared
+  by eye. When every bar is under 0.2 (a distribution spread over many
+  states) the axis fits the data instead, so the bars can be read. Each bar is labelled with its basis state as a ket (`|01⟩`).
   With more than 16 bars the labels become bare bit strings set
   vertically, and with more than 64 only every fourth is shown. Up to 8
   bars carry their value above them.

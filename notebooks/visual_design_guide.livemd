@@ -1,0 +1,418 @@
+# Qx visual design guide: visual check
+
+```elixir
+# The local Qx checkout, one directory above this notebook.
+qx_path = Path.expand("..", __DIR__)
+
+Mix.install([
+  {:qx, path: qx_path},
+  {:kino, "~> 0.12"},
+  {:vega_lite, "~> 0.1.11"},
+  {:kino_vega_lite, "~> 0.1.11"}
+])
+
+pi = :math.pi()
+```
+
+## How to use this notebook
+
+Run the cells in order. Each cell has an `# Expected:` comment that says what a correct picture looks like; compare the output with it.
+
+The setup cell installs Qx from the local checkout (`notebooks/..`), so it shows the code on disk, not a Hex release. After changing Qx, use **Reconnect and setup** on the setup cell to recompile it.
+
+The colours to look for:
+
+| Family      | Stroke  | Gates                                    |
+| ----------- | ------- | ---------------------------------------- |
+| Pauli       | blue    | X, Y, Z, the ⊕ of CNOT and Toffoli, CY |
+| Hadamard    | orange  | H                                        |
+| Phase       | green   | S, S†, T, T†, P(λ), controlled-P    |
+| Rotation    | magenta | Rx, Ry, Rz, U, the controlled rotations  |
+| Exchange    | purple  | SWAP, iSWAP, CSWAP                       |
+| Non-unitary | grey    | measurement, condition, barrier          |
+
+## 1. Circuit diagrams: single-qubit gates
+
+```elixir
+# Expected: one wire labelled q0 (italic q, upright subscript). Eight
+# 32 x 32 boxes with a pale fill and a coloured outline:
+# H orange; X, Y, Z blue; S, S†, T, T† green.
+# Letters are italic serif; the dagger is a small superscript.
+Qx.create_circuit(1)
+|> Qx.h(0)
+|> Qx.x(0)
+|> Qx.y(0)
+|> Qx.z(0)
+|> Qx.s(0)
+|> Qx.sdg(0)
+|> Qx.t(0)
+|> Qx.tdg(0)
+|> Qx.draw_circuit("Single-qubit gates")
+```
+
+```elixir
+# Expected: boxes wider than the letter gates. Rx(π/2), Ry(π/4), Rz(−π/3)
+# and U(π/2, 0, π) are magenta; P(π/8) is green. The axis letter is an
+# italic subscript, angles are upright fractions of π, and the minus
+# sign is a true minus (−), not a hyphen. No label touches its box.
+Qx.create_circuit(1)
+|> Qx.rx(0, pi / 2)
+|> Qx.ry(0, pi / 4)
+|> Qx.rz(0, -pi / 3)
+|> Qx.phase(0, pi / 8)
+|> Qx.u(0, pi / 2, 0, pi)
+|> Qx.draw_circuit("Rotations and phase")
+```
+
+```elixir
+# Expected: an angle that is not a fraction of π is shown with two
+# decimals: Rx(0.30), Ry(−1.23). An angle that rounds to zero is "0",
+# never "−0.00": Rz(0). The boxes widen to fit.
+Qx.create_circuit(1)
+|> Qx.rx(0, 0.3)
+|> Qx.ry(0, -1.23)
+|> Qx.rz(0, -0.002)
+|> Qx.draw_circuit("Decimal angles")
+```
+
+## 2. Circuit diagrams: multi-qubit gates
+
+```elixir
+# Expected, left to right:
+# CNOT: ink dot on q0, blue ⊕ on q1, ink line between.
+# CZ: two ink dots, no colour.
+# CY: ink dot joined to a blue Y box.
+# SWAP: two purple crosses joined by an ink line.
+# iSWAP on adjacent wires: ONE purple box spanning both wires, labelled
+# iSWAP (italic i, upright SWAP).
+Qx.create_circuit(2)
+|> Qx.cx(0, 1)
+|> Qx.cz(0, 1)
+|> Qx.cy(0, 1)
+|> Qx.swap(0, 1)
+|> Qx.iswap(0, 1)
+|> Qx.draw_circuit("Two-qubit gates")
+```
+
+```elixir
+# Expected: four controlled gates, each an ink dot joined to a box:
+# P(π/2) green; Rx(π/2), Ry(π/4), Rz(π) magenta. The line stops at the
+# edge of the box. These four and CY raised an error in 0.12.
+Qx.create_circuit(2)
+|> Qx.cp(0, 1, pi / 2)
+|> Qx.crx(0, 1, pi / 2)
+|> Qx.cry(0, 1, pi / 4)
+|> Qx.crz(0, 1, pi)
+|> Qx.draw_circuit("Controlled gates with an angle")
+```
+
+```elixir
+# Expected: Toffoli (two ink dots, blue ⊕ on q2), then Fredkin (ink dot
+# on q0, purple crosses on q1 and q2), then an iSWAP on q0 and q2: two
+# purple iSWAP boxes joined by an ink line that passes over q1.
+Qx.create_circuit(3)
+|> Qx.ccx(0, 1, 2)
+|> Qx.cswap(0, 1, 2)
+|> Qx.iswap(0, 2)
+|> Qx.draw_circuit("Three-qubit gates")
+```
+
+```elixir
+# Expected: the control is on the LOWER wire and the target on the upper
+# one in both gates: ⊕ on q0 with the dot on q1, then ⊕ on q0 with dots
+# on q1 and q2.
+Qx.create_circuit(3)
+|> Qx.cx(1, 0)
+|> Qx.ccx(2, 1, 0)
+|> Qx.draw_circuit("Controls below the target")
+```
+
+## 3. Circuit diagrams: measurement, conditions, barriers
+
+```elixir
+# Expected: quantum teleportation.
+# - Three wires q0..q2, and under them a classical register: a double
+#   grey line labelled c, with a slash and the number 2.
+# - A dashed grey barrier after the Bell pair, in a column of its own.
+# - Two meters (grey box, ink arc and needle). From each a double line
+#   drops to an arrowhead on the register, with the bit index beside it.
+# - X (blue) and Z (blue) on q2, each joined from below to a dot on the
+#   register and labelled c1 = 1 and c0 = 1.
+# - No line crosses a gate it does not belong to.
+Qx.create_circuit(3, 2)
+|> Qx.h(1)
+|> Qx.cx(1, 2)
+|> Qx.barrier([0, 1, 2])
+|> Qx.cx(0, 1)
+|> Qx.h(0)
+|> Qx.measure(0, 0)
+|> Qx.measure(1, 1)
+|> Qx.c_if(1, 1, &Qx.x(&1, 2))
+|> Qx.c_if(0, 1, &Qx.z(&1, 2))
+|> Qx.draw_circuit("Quantum teleportation")
+```
+
+```elixir
+# Expected: the conditional X on q1 has a column to itself: its line to
+# the register does NOT run through the H on q2, which is drawn in the
+# next column.
+Qx.create_circuit(3, 1)
+|> Qx.measure(0, 0)
+|> Qx.c_if(0, 1, &Qx.x(&1, 1))
+|> Qx.h(2)
+|> Qx.draw_circuit("A condition line and a bystander")
+```
+
+```elixir
+# Expected: the barrier covers only q0 and q1 (it stops short of q2),
+# and the X added after it is drawn to its right.
+Qx.create_circuit(3)
+|> Qx.h(0)
+|> Qx.barrier([0, 1])
+|> Qx.x(0)
+|> Qx.h(2)
+|> Qx.draw_circuit("A partial barrier")
+```
+
+```elixir
+# Expected: draws without an error (0.12 raised Qx.QubitIndexError):
+# one qubit measured into classical bit 1 of a 2-bit register.
+Qx.create_circuit(1, 2)
+|> Qx.measure(0, 1)
+|> Qx.draw_circuit("More classical bits than qubits")
+```
+
+## 4. Circuit diagrams: whole circuits and options
+
+```elixir
+# Expected: the three-qubit QFT. Columns line up: every gate in a column
+# shares the width of the widest box in it. The P(π/2) and P(π/4) boxes
+# are green and the same width. Ends with a barrier and a SWAP.
+qft3 =
+  Qx.create_circuit(3)
+  |> Qx.h(0)
+  |> Qx.cp(1, 0, pi / 2)
+  |> Qx.cp(2, 0, pi / 4)
+  |> Qx.h(1)
+  |> Qx.cp(2, 1, pi / 2)
+  |> Qx.h(2)
+  |> Qx.barrier([0, 1, 2])
+  |> Qx.swap(0, 2)
+
+Qx.draw_circuit(qft3, "Three-qubit quantum Fourier transform")
+```
+
+```elixir
+# Expected: the same diagram with no colour at all: every box is an ink
+# outline on white, and the geometry is identical to the cell above.
+Qx.draw_circuit(qft3, title: "QFT, mono style", style: :mono)
+```
+
+```elixir
+# Expected: no title, and the first wire sits nearer the top of the
+# image. The second picture (title: "") is identical to the first.
+Kino.Layout.grid([Qx.draw_circuit(qft3), Qx.draw_circuit(qft3, title: "")], columns: 1)
+```
+
+```elixir
+# Expected: the title reads  a < b & "c"  exactly, and the image is at
+# least as wide as the title.
+Qx.create_circuit(1)
+|> Qx.h(0)
+|> Qx.draw_circuit(~s(A long title with a < b & "c" in it, wider than the circuit))
+```
+
+```elixir
+# Expected: a circuit that is the last value of a cell renders as its
+# diagram (no draw call), in colour and with no title.
+Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1)
+```
+
+## 5. Bloch sphere
+
+```elixir
+bloch = fn circuit, title -> circuit |> Qx.get_state() |> Qx.draw_bloch(title: title) end
+
+# Expected: six spheres. Each has a softly shaded body with an ink
+# outline, three great circles (solid on the near side, dashed and pale
+# on the far side), grey axes labelled x, y, z in italics (x toward you
+# and to the left, y to the right, z up), and six ket labels.
+# The orange state vector is the only coloured mark.
+#   |0⟩  straight up              θ = 0.00π  φ = 0.00π
+#   |1⟩  straight down            θ = 1.00π  φ = 0.00π
+#   |+⟩  along x, solid head      θ = 0.50π  φ = 0.00π
+#   |−⟩  along −x, HOLLOW head    θ = 0.50π  φ = 1.00π
+#   |i⟩  along y, solid head      θ = 0.50π  φ = 0.50π
+#   |−i⟩ along −y, HOLLOW head    θ = 0.50π  φ = 1.50π  (never −0.50π)
+Kino.Layout.grid(
+  [
+    bloch.(Qx.create_circuit(1), "|0⟩"),
+    bloch.(Qx.create_circuit(1) |> Qx.x(0), "|1⟩"),
+    bloch.(Qx.create_circuit(1) |> Qx.h(0), "|+⟩"),
+    bloch.(Qx.create_circuit(1) |> Qx.x(0) |> Qx.h(0), "|−⟩"),
+    bloch.(Qx.create_circuit(1) |> Qx.h(0) |> Qx.s(0), "|i⟩"),
+    bloch.(Qx.create_circuit(1) |> Qx.h(0) |> Qx.sdg(0), "|−i⟩")
+  ],
+  columns: 3
+)
+```
+
+```elixir
+# Expected: a general state, θ = 0.65π  φ = 0.45π. The vector points
+# below the equator. A dashed orange line drops from its tip to the
+# tinted equatorial plane, a faint line joins that foot to the centre,
+# and two grey arcs are labelled θ (from the z axis) and φ (in the
+# plane, from the x axis).
+Qx.create_circuit(1)
+|> Qx.ry(0, 0.65 * pi)
+|> Qx.rz(0, 0.45 * pi)
+|> Qx.get_state()
+|> Qx.draw_bloch(title: "A general state")
+```
+
+```elixir
+# Expected: the camera looks from 30° round from x and 18° above the
+# equator. Left: the vector points straight at you and is drawn as a
+# SOLID orange dot at the centre. Right: it points straight away and is
+# a HOLLOW orange ring. Neither has an ink point inside it.
+toward = Qx.create_circuit(1) |> Qx.ry(0, 0.4 * pi) |> Qx.rz(0, pi / 6)
+away = Qx.create_circuit(1) |> Qx.ry(0, 0.6 * pi) |> Qx.rz(0, 7 * pi / 6)
+
+Kino.Layout.grid([bloch.(toward, "Toward the reader"), bloch.(away, "Away from the reader")],
+  columns: 2
+)
+```
+
+```elixir
+# Expected: the same state at 240, 400 and 640 pixels. Everything
+# scales, but in the small one the text and lines are no thinner than
+# 80% of the 400 size, so it stays legible. The last has no title and
+# the sphere is centred.
+state = Qx.create_circuit(1) |> Qx.ry(0, 0.65 * pi) |> Qx.rz(0, 0.45 * pi) |> Qx.get_state()
+
+Kino.Layout.grid(
+  [
+    Qx.draw_bloch(state, size: 240, title: "240"),
+    Qx.draw_bloch(state, title: "400"),
+    Qx.draw_bloch(state, size: 640, title: nil)
+  ],
+  columns: 1
+)
+```
+
+## 6. Charts
+
+```elixir
+# Expected: a Bell state. Two blue bars at |00⟩ and |11⟩, each 0.50,
+# with the value written above every bar (4 bars, so labels are shown).
+# The y axis runs from 0 to 1 exactly, titled Probability; the x axis is
+# titled "Basis state" with level ket labels in a monospace face. No
+# frame round the plot, rounded bar tops, title at the top left.
+bell = Qx.create_circuit(2, 2) |> Qx.h(0) |> Qx.cx(0, 1) |> Qx.measure(0, 0) |> Qx.measure(1, 1)
+bell_result = Qx.run(bell, shots: 1000)
+
+Qx.draw(bell_result, title: "Bell state probabilities")
+```
+
+```elixir
+# Expected: the same result as counts: bars at |00⟩ and |11⟩ near 500
+# each, the count written above each bar as a whole number, y axis
+# titled Counts and starting at zero. Same blue, same style.
+Qx.draw_counts(bell_result, title: "Bell state counts")
+```
+
+```elixir
+# Expected: a uniform distribution over 8 states: eight equal bars with
+# 0.12 above each (0.125 to two decimals; 8 bars is the limit for
+# values). Every bar is under 0.2, so the axis fits the data: it ends
+# just above 0.12 and the bars fill the chart.
+Qx.create_circuit(3)
+|> Qx.h_all()
+|> Qx.get_probabilities()
+|> Qx.draw_histogram(title: "Uniform over 8 states")
+```
+
+```elixir
+# Expected: 32 equal bars that fill the chart: every bar is 0.031, so
+# the axis fits the data (0 to 0.035) and is not 0 to 1. Past 16
+# bars the labels become bare bit strings (00000, 00001, ...) set
+# vertically, and past 8 bars there are no values above the bars.
+Qx.create_circuit(5) |> Qx.h_all() |> Qx.run() |> Qx.draw(title: "32 basis states")
+```
+
+```elixir
+# Expected: 128 equal bars that fill the chart, on an axis from 0 to
+# about 0.008. Past 64 bars only every fourth label is shown.
+Qx.create_circuit(7) |> Qx.h_all() |> Qx.run() |> Qx.draw(title: "128 basis states", width: 700)
+```
+
+```elixir
+# Expected: a peaked distribution over 32 states: one tall bar at 00000
+# (about 0.82) among very short ones. A bar reaches 0.2, so the axis is
+# 0 to 1 again.
+Qx.create_circuit(5)
+|> Qx.ry(0, 0.4)
+|> Qx.ry(1, 0.4)
+|> Qx.ry(2, 0.4)
+|> Qx.ry(3, 0.4)
+|> Qx.ry(4, 0.4)
+|> Qx.run()
+|> Qx.draw(title: "Peaked over 32 states")
+```
+
+```elixir
+# Expected: bars in bit-string order from 000000 upward, even though
+# there are more than 32 distinct outcomes.
+many = Qx.create_circuit(6, 6) |> Qx.h_all() |> Qx.measure_all()
+Qx.run(many, shots: 4000) |> Qx.draw_counts(title: "64 outcomes, in order", width: 700)
+```
+
+```elixir
+# Expected: an empty chart in the same style. The first is titled
+# "No Measurements" (the default), the second "Run 7".
+no_counts = Qx.create_circuit(1) |> Qx.h(0) |> Qx.run()
+
+Kino.Layout.grid([Qx.draw_counts(no_counts), Qx.draw_counts(no_counts, title: "Run 7")],
+  columns: 2
+)
+```
+
+## 7. Errors
+
+Each row should show a typed `Qx.*Error`, not a `FunctionClauseError`, `ArithmeticError`, `MatchError` or `Enum.EmptyError`.
+
+```elixir
+circuit = Qx.create_circuit(2) |> Qx.h(0)
+state = Qx.create_circuit(1) |> Qx.get_state()
+result = Qx.create_circuit(1) |> Qx.h(0) |> Qx.run()
+
+cases = [
+  {"unknown circuit option", fn -> Qx.draw_circuit(circuit, colour: :mono) end},
+  {"invalid style", fn -> Qx.draw_circuit(circuit, style: :dark) end},
+  {"empty barrier", fn -> circuit |> Qx.barrier([]) |> Qx.draw_circuit() end},
+  {"angle too large to draw", fn -> circuit |> Qx.rx(0, 10 ** 400) |> Qx.draw_circuit() end},
+  {"Bloch size too large", fn -> Qx.draw_bloch(state, size: 1.0e160) end},
+  {"unknown Bloch option", fn -> Qx.draw_bloch(state, radius: 3) end},
+  {"two-qubit state on the Bloch sphere",
+   fn -> Qx.create_circuit(2) |> Qx.get_state() |> Qx.draw_bloch() end},
+  {"unknown chart option", fn -> Qx.draw(result, colour: "red") end}
+]
+
+# Expected: every row names a Qx error:
+# OptionError, OptionError, GateError, GateError, OptionError,
+# OptionError, StateShapeError, OptionError.
+rows =
+  for {name, fun} <- cases do
+    outcome =
+      try do
+        fun.()
+        "no error raised"
+      rescue
+        error -> "#{inspect(error.__struct__)}: #{error |> Exception.message() |> String.slice(0, 90)}"
+      end
+
+    %{case: name, outcome: outcome}
+  end
+
+Kino.DataTable.new(rows, keys: [:case, :outcome])
+```
