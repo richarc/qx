@@ -286,3 +286,12 @@ end point), and the shared label helper in `circuit_test.exs`,
 
 Out of scope, for ROADMAP if wanted: validate at construction
 (`Qx.barrier(qc, [])`, angles that do not fit a float) in `Qx.Operations`.
+
+### 2026-11-21 DECISION: Livebook's chart theme is accepted
+
+In Livebook, kino_vega_lite merges its own theme under the spec's config.
+Its `bar.fill` (`#6583FF`) takes precedence over our `bar.color`
+(`#0072B2`), so bars are Livebook's blue there; the title may also use
+Livebook's font. The user chose to accept this (2026-11-21). Do not add
+`bar.fill` or a title font to `Theme.vega_config/0` to override the host.
+Outside Livebook the charts use the guide's colours.
