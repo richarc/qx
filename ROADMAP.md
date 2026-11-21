@@ -7,8 +7,8 @@ milestone sections are removed from this file once they're on Hex.
 Last updated: 2026-07-13. v0.11 (API Review Follow-Through) is
 complete — its scope moved to `CHANGELOG.md` for the 0.11.0 release,
 per the shipped-milestone convention above. Next up: simulation
-refactor & performance (v0.12), visualization & hardware (v0.13),
-with noise and algorithms in v0.14/v0.15. The API
+refactor & performance (v0.12), visualization (v0.13), algorithms
+(v0.14), noise (v0.15) and more hardware (v0.16). The API
 consistency review's yardstick is `spec/api-design-principles.md`; its
 findings and triage buckets are in
 `.claude/plans/api-consistency-review/findings.md`.
@@ -41,28 +41,18 @@ a `c_if` block, in `Qx.c_if/4` and on OpenQASM import.
 
 ---
 
-## v0.13: Visualization & Hardware
+## v0.13: Visualization
 
-Polish the Bloch renderer, broaden hardware support beyond IBM.
+Polish the Bloch renderer and bring every drawing to one visual language.
 
 - [x] Improve Bloch sphere SVG visual quality (qx-w93). Raised stakes since v0.10: the SVG renderer is now the *only* Bloch path (the VegaLite projection was deleted in the Draw rework) and ships as the `Qx.Draw.Image` artifact rendered inline in Livebook (plan: visual-design-guide)
 - [x] Shared draw theme and chart config: one palette, three font stacks and one Vega-Lite config behind every image and chart; all three charts in data blue with a 0 to 1 probability axis (fitted to the data when every bar is under 0.2) and ket labels (plan: visual-design-guide)
 - [x] Circuit diagrams to the Qx visual design guide: quantikz-style wires and boxes coloured by gate family, labels set as mathematics, boxes that widen with their label. Also draws the five gates `Qx.draw_circuit/2` raises on today (`cy`, `crx`, `cry`, `crz`, `phase`) (plan: visual-design-guide)
 - [x] `Qx.draw_circuit/2` options: `title:` and `style: :mono` for a colour-free diagram (plan: visual-design-guide)
-- [ ] Support for running on AWS Braket QPUs (moved from v0.7)
 
 ---
 
-## v0.14: Noise & Realism
-
-- [ ] Noise models for simulating real-hardware decoherence (bit-flip, phase-flip, depolarising)
-- [ ] Density matrix simulation as an alternative to statevector
-- [ ] Circuit optimisation / gate cancellation pass
-- [ ] Mid-circuit reset operation `Qx.reset/2`: QAAL `MzReset q` parity; first-class in OpenQASM 3 / IBM hardware. Needs new `:reset` instruction handler in `Qx.Simulation` (projection-and-relabel) — mind Iron Law #9's producer/dispatch pairing when adding the instruction kind. The name becomes clean once v0.11 deprecates `QuantumCircuit.reset/1` (plan: tbd, see qaal-analysis A3)
-
----
-
-## v0.15: Algorithms & Building Blocks
+## v0.14: Algorithms & Building Blocks
 
 Governed by `spec/api-design-principles.md` §8: building blocks are
 appenders with the gate shape `(circuit, args...) -> circuit`,
@@ -75,6 +65,23 @@ surface those tutorials call.
 - [ ] Algorithm components as appenders: Grover diffusion, QFT, phase estimation
 - [ ] Grow toward a complete algorithm library covering the canonical textbook algorithms (QPE, VQE, Shor's ingredients), with matching tutorial content added on the portal
 - [ ] Quantum error correction building blocks + a portal tutorial (repetition code)
+
+---
+
+## v0.15: Noise & Realism
+
+- [ ] Noise models for simulating real-hardware decoherence (bit-flip, phase-flip, depolarising)
+- [ ] Density matrix simulation as an alternative to statevector
+- [ ] Circuit optimisation / gate cancellation pass
+- [ ] Mid-circuit reset operation `Qx.reset/2`: QAAL `MzReset q` parity; first-class in OpenQASM 3 / IBM hardware. Needs new `:reset` instruction handler in `Qx.Simulation` (projection-and-relabel) — mind Iron Law #9's producer/dispatch pairing when adding the instruction kind. The name becomes clean once v0.11 deprecates `QuantumCircuit.reset/1` (plan: tbd, see qaal-analysis A3)
+
+---
+
+## v0.16: Hardware
+
+Broaden hardware support beyond IBM.
+
+- [ ] Support for running on AWS Braket QPUs (moved from v0.7, then from v0.13 on 2026-11-21)
 
 ---
 
