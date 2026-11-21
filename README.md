@@ -842,6 +842,6 @@ This project is licensed under the Apache License 2.0.
 
 ## Version
 
-Current version: 0.13.0
+Current version: 0.13.1
 
 For detailed API documentation, see the [hexdocs](https://hexdocs.pm/qx_sim/Qx.html).
