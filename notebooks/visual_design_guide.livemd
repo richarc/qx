@@ -234,7 +234,7 @@ Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1)
 bloch = fn circuit, title -> circuit |> Qx.get_state() |> Qx.draw_bloch(title: title) end
 
 # Expected: six spheres. Each has a softly shaded body with NO outline
-# (its edge is the darker rim of the shading), three great circles (solid on the near side, dashed and pale
+# (its edge is an even, darker rim of shading, visible all the way round), three great circles (solid on the near side, dashed and pale
 # on the far side), grey axes labelled x, y, z in italics (x toward you
 # and to the left, y to the right, z up), and six ket labels.
 # The orange state vector is the only coloured mark.

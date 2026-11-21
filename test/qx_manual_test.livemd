@@ -1046,8 +1046,8 @@ bloch_state = fn theta, phi ->
   )
 end
 
-# Expected, on every sphere: a shaded ball with no outline (the darker rim of the shading
-# is its edge); three great circles,
+# Expected, on every sphere: a shaded ball with no outline (an even, darker rim of
+# shading is its edge, all the way round); three great circles,
 # solid on the near side and dashed on the far side; grey axes with x toward you and left,
 # y right, z up; one orange vector.
 #   |0⟩   vector up the z axis, SOLID head, no arcs

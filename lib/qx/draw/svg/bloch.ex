@@ -13,7 +13,7 @@ defmodule Qx.Draw.SVG.Bloch do
   # drawn pale or dashed.
   #
   # The drawing is grouped into `<g data-part="...">` elements, back to
-  # front: body, plane, far, axes-hidden, shadow, arcs, near,
+  # front: body, rim, plane, far, axes-hidden, shadow, arcs, near,
   # labels, vector, centre, axes, title, readout.
 
   alias Qx.Draw.SVG.Markup
@@ -40,6 +40,11 @@ defmodule Qx.Draw.SVG.Bloch do
   @min_scale 0.8
   @radius_ratio 0.335
   @title_shift 6
+
+  # The rim shading starts at this fraction of the radius and reaches
+  # this opacity at the edge.
+  @rim_start 0.82
+  @rim_opacity 0.32
 
   @near_stroke 1.1
   @far_stroke 1.0
@@ -191,7 +196,7 @@ defmodule Qx.Draw.SVG.Bloch do
   SVG string with complete Bloch sphere visualization.
 
   ## Features
-  - A shaded body with no outline: the darker rim of the shading is its edge
+  - A shaded body with no outline: an even, darker rim of shading is its edge
   - Three great circles, the near half solid and the far half dashed
   - Ink axes: solid outside the sphere, pale inside or behind it
   - State labels (|0⟩, |1⟩, |+⟩, |−⟩, |i⟩, |−i⟩)
@@ -217,14 +222,16 @@ defmodule Qx.Draw.SVG.Bloch do
 
     state = %{point: {x, y, z}, theta: theta, phi: phi}
     readout = readout(theta, phi)
+    gradient_id = gradient_id(size, theta, phi)
 
     [
       ~s(<svg xmlns="http://www.w3.org/2000/svg" role="img" ) <>
         ~s(aria-label="#{Markup.escape(aria_label(title, readout))}" ) <>
         ~s(width="#{num(size)}" height="#{num(size)}" viewBox="0 0 #{num(size)} #{num(size)}">),
-      gradient(gradient_id(size, theta, phi)),
+      gradients(gradient_id),
       ~s(<rect width="#{num(size)}" height="#{num(size)}" fill="#{Theme.color(:paper)}"/>),
-      group("body", [body(gradient_id(size, theta, phi), view)]),
+      group("body", [disc(gradient_id, view)]),
+      group("rim", [disc(rim_id(gradient_id), view)]),
       group("plane", [plane(view)]),
       group("far", great_circle_halves(:far, view)),
       group("axes-hidden", hidden_axes(view)),
@@ -271,7 +278,15 @@ defmodule Qx.Draw.SVG.Bloch do
   defp gradient_id(size, theta, phi),
     do: "bloch-#{round(size * 10)}-#{round(theta * 1000)}-#{round(phi * 1000)}"
 
-  defp gradient(id) do
+  defp rim_id(gradient_id), do: gradient_id <> "-rim"
+
+  # Two gradients. The body's is centred on the highlight, up and to the
+  # left, so it darkens toward the lower right and leaves the lit side
+  # almost paper at its edge. The rim's is centred on the sphere: clear
+  # over most of it, then a little Muted rising to the edge, the same
+  # all the way round, so the lit side has an edge too. The edge of the
+  # sphere is this shading; no line is drawn round it.
+  defp gradients(id) do
     [
       "<defs>",
       ~s(<radialGradient id="#{id}" cx="36%" cy="30%" r="75%">),
@@ -280,11 +295,16 @@ defmodule Qx.Draw.SVG.Bloch do
       ~s(<stop offset="0.86" stop-color="#{Theme.color(:sphere_edge)}"/>),
       ~s(<stop offset="1" stop-color="#{Theme.color(:back)}"/>),
       "</radialGradient>",
+      ~s(<radialGradient id="#{rim_id(id)}" cx="50%" cy="50%" r="50%">),
+      ~s(<stop offset="#{@rim_start}" stop-color="#{Theme.color(:muted)}" stop-opacity="0"/>),
+      ~s(<stop offset="1" stop-color="#{Theme.color(:muted)}" stop-opacity="#{@rim_opacity}"/>),
+      "</radialGradient>",
       "</defs>"
     ]
   end
 
-  defp body(gradient_id, view) do
+  # A circle the size of the sphere, filled with a gradient.
+  defp disc(gradient_id, view) do
     ~s(<circle cx="#{num(view.cx)}" cy="#{num(view.cy)}" r="#{num(view.radius)}" ) <>
       ~s|fill="url(##{gradient_id})"/>|
   end

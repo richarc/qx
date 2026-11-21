@@ -33,8 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     wires is one box spanning both. A barrier is drawn only over the wires
     it covers and has a column of its own: a gate added after a barrier is
     drawn after it.
-  - **The Bloch sphere** has a shaded body with no outline (the darker rim
-    of the shading is its edge), three great circles (solid on
+  - **The Bloch sphere** has a shaded body with no outline (an even, darker
+    rim of shading is its edge), three great circles (solid on
     the near side, dashed on the far side) and ink axes. The state vector
     is the only coloured mark; its head is solid when it points toward the
     reader and hollow when it points away. θ and φ arcs and a drop line to

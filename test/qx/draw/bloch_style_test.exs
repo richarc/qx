@@ -18,6 +18,7 @@ defmodule Qx.Draw.BlochStyleTest do
 
   @ink "#16181D"
   @ink2 "#4A5261"
+  @muted "#6B7482"
   @back "#A9B1BD"
   @paper "#FFFFFF"
   @accent "#D55E00"
@@ -149,25 +150,54 @@ defmodule Qx.Draw.BlochStyleTest do
     test "a radial-gradient body whose edge is shading alone, with no outline" do
       svg = svg(general())
 
-      assert [gradient] = elements(svg, "radialGradient")
+      assert [gradient, _rim_gradient] = elements(svg, "radialGradient")
       assert {gradient["cx"], gradient["cy"], gradient["r"]} == {"36%", "30%", "75%"}
 
-      assert Enum.map(elements(svg, "stop"), &{&1["offset"], &1["stop-color"]}) == [
-               {"0", "#FFFFFF"},
-               {"0.6", "#EEF1F5"},
-               {"0.86", "#CBD3DD"},
-               {"1", "#A9B1BD"}
+      stops =
+        Enum.map(elements(svg, "stop"), &{&1["offset"], &1["stop-color"], &1["stop-opacity"]})
+
+      # The body: lit from the upper left.
+      assert Enum.take(stops, 4) == [
+               {"0", "#FFFFFF", nil},
+               {"0.6", "#EEF1F5", nil},
+               {"0.86", "#CBD3DD", nil},
+               {"1", "#A9B1BD", nil}
              ]
 
       assert [body] = svg |> part("body") |> elements("circle")
       assert body["fill"] == "url(##{gradient["id"]})"
-
       refute Map.has_key?(body, "stroke")
 
-      # No line is drawn round the sphere: the darker rim of the gradient
-      # is its edge. The only circle of the sphere's radius is the body.
+      # No line is drawn round the sphere: shading is its edge.
       refute "silhouette" in parts(svg)
-      assert [^body] = Enum.filter(elements(svg, "circle"), &(&1["r"] == body["r"]))
+    end
+
+    test "an even rim all the way round, so the lit side has an edge too" do
+      svg = svg(general())
+
+      assert [gradient, rim_gradient] = elements(svg, "radialGradient")
+      assert rim_gradient["id"] == gradient["id"] <> "-rim"
+
+      # Centred on the sphere, unlike the body's shading: clear to 82% of
+      # the radius, then Muted rising to 32% at the edge.
+      assert {rim_gradient["cx"], rim_gradient["cy"], rim_gradient["r"]} == {"50%", "50%", "50%"}
+
+      stops =
+        Enum.map(elements(svg, "stop"), &{&1["offset"], &1["stop-color"], &1["stop-opacity"]})
+
+      assert length(stops) == 6
+      assert Enum.drop(stops, 4) == [{"0.82", @muted, "0"}, {"1", @muted, "0.32"}]
+
+      assert [body] = svg |> part("body") |> elements("circle")
+      assert [rim] = svg |> part("rim") |> elements("circle")
+      assert rim["fill"] == "url(##{rim_gradient["id"]})"
+      refute Map.has_key?(rim, "stroke")
+      assert {rim["cx"], rim["cy"], rim["r"]} == {body["cx"], body["cy"], body["r"]}
+
+      # The rim lies straight on the body, under everything else, and the
+      # two are the only circles of the sphere's radius.
+      assert Enum.take(parts(svg), 2) == ["body", "rim"]
+      assert Enum.filter(elements(svg, "circle"), &(&1["r"] == body["r"])) == [body, rim]
     end
 
     test "the radius is 33.5% of the size" do
@@ -188,6 +218,10 @@ defmodule Qx.Draw.BlochStyleTest do
 
     test "two spheres for different states have different gradient ids" do
       id = fn svg -> svg |> elements("radialGradient") |> hd() |> Map.fetch!("id") end
+      ids = fn svg -> svg |> elements("radialGradient") |> Enum.map(& &1["id"]) end
+
+      assert MapSet.disjoint?(MapSet.new(ids.(svg(plus()))), MapSet.new(ids.(svg(minus()))))
+      assert ids.(svg(plus())) == Enum.uniq(ids.(svg(plus())))
 
       assert id.(svg(plus())) != id.(svg(minus()))
       assert id.(svg(plus())) != id.(svg(plus(), size: 240))
