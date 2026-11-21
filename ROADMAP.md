@@ -4,51 +4,13 @@ What's planned for Qx, by release version. Released versions and the
 changes they shipped live in [`CHANGELOG.md`](CHANGELOG.md) — shipped
 milestone sections are removed from this file once they're on Hex.
 
-Last updated: 2026-07-13. v0.11 (API Review Follow-Through) is
-complete — its scope moved to `CHANGELOG.md` for the 0.11.0 release,
-per the shipped-milestone convention above. Next up: simulation
-refactor & performance (v0.12), visualization (v0.13), algorithms
-(v0.14), noise (v0.15) and more hardware (v0.16). The API
-consistency review's yardstick is `spec/api-design-principles.md`; its
-findings and triage buckets are in
-`.claude/plans/api-consistency-review/findings.md`.
-
----
-
-## v0.12: Simulation Refactor & Performance
-
-The 2026-06-14 audit's simulation-engine performance work: kill the
-host-side loops and the `2^n × 2^n` matrices. The audit's dispatch and
-Calc / CalcFast refactor items were moved to the Backlog on 2026-11-14.
-Additive and internal, with four breaking changes in three areas: the draw size
-limit (`Qx.DrawSizeError`, plan: draw-state-size-cap), the removal
-of the `Qx.QuantumCircuit` `instructions` field (plan:
-circuit-instruction-append), and the rejection of a measurement inside
-a `c_if` block, in `Qx.c_if/4` and on OpenQASM import.
-
-- [x] Reshape `Qx.CalcFast` kernels to eliminate `Nx.take` gather + `Nx.select` mask: single-qubit (`lib/qx/calc_fast.ex:67–91`), CNOT (`114–143`), CSWAP (`157–185`), Toffoli (`187–229`). Replace with reshape + 2×2 tensor contraction along the qubit axis. Highest-leverage perf change in the audit; depends on the v0.8.1 tolerance widening (audit: perf CRIT C1/C2; Iron Law #3) — done as rank-n **axis slicing** (reshape to `{2,…,2}`, static control/target slices, concat) after a spike showed dense contraction regresses CX/CCX on BinaryBackend (plan: calcfast-reshape-kernels)
-- [x] Vectorise measurement probability and state collapse: `lib/qx/simulation.ex` host loop `for i <- 0..(2^n - 1), Nx.to_number(state[i])` runs once per shot (~1 M host syncs at 1024 shots × n=10) (audit: perf CRIT C3; Iron Law #5) — `Qx.CalcFast.qubit_probabilities/3` + `collapse/5` (one sync, static slices) (plan: vectorise-measurement)
-- [x] Replace `2^n × 2^n` matrix materialisation in SWAP / iSWAP / CP / CY / CRx / CRy / CRz: `lib/qx/simulation.ex` + the host-loop matrix builders in `lib/qx/gates.ex`. Currently OOM above n≈10 (4.3 GB at n=14) (audit: perf HIGH) — **`Qx.Simulation` path done** (plan: calcfast-reshape-kernels: all these gates + CZ now go through `Qx.CalcFast` slicing kernels). Closed 2026-11-14: the dead `Qx.Gates.toffoli/4` is deleted. The hidden `Qx.Register` (`swap`/`iswap`/controlled) still calls the `Qx.Gates` n-qubit builders, which four test files also use as reference oracles; that goes with the 1.0 calc-engine removal and no user-reachable path builds a `2^n × 2^n` matrix
-- [x] Replace host-side `2^n` Elixir-list construction in `Qx.StateInit` and in `Qx.ResultBuilder.build_probability_tensor` (`List.replace_at` over 2^n list). Scope to whatever survives the v0.11 StateInit/Math tier decision — don't optimise functions being deprecated (audit: perf HIGH; Iron Law #5) — `Qx.StateInit.basis_state/3` and `Qx.ResultBuilder.build_probability_tensor/2` scatter onto a zero tensor with `Nx.indexed_put`; 2^20 basis state 227 ms → 4.7 ms. The `@deprecated` `StateInit` builders are left as they are (plan: host-side-state-lists)
-- [x] Vectorise sample generation: `Enum.scan` cumulative distribution + per-shot `Enum.find_index` linear scan is O(shots × 2^n); 100M+ host iterations at 100k shots × n=10 (audit: perf HIGH) — Nx f64 cumulative sum + per-shot binary search in `Qx.Simulation.Sampler` (plan: vectorise-measurement)
-- [x] Cap retained state in `run_with_conditionals`: materialises the full list of `{state, cbits}` for every shot before `Enum.frequencies`; at 100k shots × n=20 holds ~1.6 TB resident before reduce (audit: perf HIGH) — shot loop is now a reduce keeping each shot's classical bits and only the latest state; peak statevector memory no longer grows with shots (plan: conditionals-retained-state)
-- [x] Replace `instructions ++ [new]` quadratic append in `Qx.QuantumCircuit` with prepend + reverse-on-finalise (audit: perf HIGH; also flagged by `usage_rules.elixir`) — instructions are stored newest first in an internal `reversed_instructions` field and reversed on read by `Qx.QuantumCircuit.get_instructions/1` (there is no finalise step); the public `instructions` field is removed. 100,000 gates build in 7.6 ms, was 19.2 s. **Breaking** (plan: circuit-instruction-append)
-- [x] Cap or auto-truncate state-sized rendering above n≈12 qubits, raising a typed `Qx.*Error` instead: the three VegaLite chart builders (`lib/qx/draw/vega_lite.ex`), the histogram data build in `lib/qx/draw.ex`, and the 2^n-row table build in `Qx.Draw.Tables`. Rescoped 2026-07-05: the unbounded SVG chart renderer named by the audit was deleted in the v0.10 Draw rework, which shrank this item (audit: perf CRIT C4) — the draw functions raise `Qx.DrawSizeError` above `2^max_qubits` bars/rows (default 12), with a per-call `max_qubits:` override; `Qx.draw_counts/2` is capped on distinct outcomes. **Breaking** (plan: draw-state-size-cap)
-- [x] Replace `:math.pow(2, n) |> trunc/1` with `Integer.pow(2, n)` (or `Bitwise.bsl(1, n)`) across `state_init.ex`, `quantum_circuit.ex`, `simulation.ex`, `gates.ex`, `validation.ex`. Exact integer math (audit: perf LOW) — 13 sites `Integer.pow`, `Qx.Validation.valid_register?/2` uses `Bitwise.bsl`; `simulation.ex` had no such call left (plan: host-side-state-lists)
-- [x] Security: bump `mint` 1.9.1 → 1.9.3 (branch: `fix/mint-advisories`) — clears three advisories that reached the **shipped** tree via `req → finch → mint`: `CVE-2026-58229` (HIGH, unbounded HTTP/1 header + chunked-trailer accumulation → memory-exhaustion DoS), `CVE-2026-59246` (MEDIUM, zero-length HTTP/2 CONTINUATION frames bypass the header-block size cap), `CVE-2026-59249` (MEDIUM, sign-tolerant chunk-size parser → response smuggling on pooled connections). All client-side, and `Qx.Hardware.Ibm` is a live HTTP client, so they were reachable by consumers of published `qx_sim`. 1.9.2 is insufficient — only 1.9.3 fixes `59249`. `scripts/audit_shipped.sh` goes 1 → 0. Remaining `cowlib`/`plug` advisories are test-only and correctly not gated. Audit record: `.claude/deps-audit/last-run.json`
-- [x] Security: bump `mint` 1.9.3 → 1.11.0 and `hpax` 1.0.4 → 1.1.0 (branch: `fix/mint-advisories-nov`). Six advisories published against mint 1.9.3 after the July bump (two HIGH: `CVE-2026-82728`, `CVE-2026-91043`; four MEDIUM: `CVE-2026-82729`, `CVE-2026-82672`, `CVE-2026-92103`, `CVE-2026-94194`), all fixed as of 1.10.2 per the advisories (1.10.2 is a backport released a day after 1.11.0). The shipped-deps audit step had been failing in CI on `main`, which also blocks the release workflow. `scripts/audit_shipped.sh` goes 1 → 0
-- [x] Reject a measurement inside a `c_if` block: `Qx.c_if/4` raises `Qx.ConditionalError` and OpenQASM import returns `Qx.QasmUnsupportedError`. The block was accepted and the measurement skipped at run time, so its classical bit stayed 0. Also deletes the unreachable one-qubit `:measure` dispatch arm in `Qx.Simulation` (Iron Law #9). Found during the 2026-11-14 evaluation of the remaining v0.12 items (branch: `fix/v012-closeout`)
-
----
-
-## v0.13: Visualization
-
-Polish the Bloch renderer and bring every drawing to one visual language.
-
-- [x] Improve Bloch sphere SVG visual quality (qx-w93). Raised stakes since v0.10: the SVG renderer is now the *only* Bloch path (the VegaLite projection was deleted in the Draw rework) and ships as the `Qx.Draw.Image` artifact rendered inline in Livebook (plan: visual-design-guide)
-- [x] Shared draw theme and chart config: one palette, three font stacks and one Vega-Lite config behind every image and chart; all three charts in data blue with a 0 to 1 probability axis (fitted to the data when every bar is under 0.2) and ket labels (plan: visual-design-guide)
-- [x] Circuit diagrams to the Qx visual design guide: quantikz-style wires and boxes coloured by gate family, labels set as mathematics, boxes that widen with their label. Also draws the five gates `Qx.draw_circuit/2` raises on today (`cy`, `crx`, `cry`, `crz`, `phase`) (plan: visual-design-guide)
-- [x] `Qx.draw_circuit/2` options: `title:` and `style: :mono` for a colour-free diagram (plan: visual-design-guide)
+Last updated: 2026-11-21. v0.12 (Simulation Refactor & Performance)
+and v0.13 (Visualization) have shipped: 0.12.0 on 2026-11-15, 0.13.0 and
+0.13.1 on 2026-11-21. Their scope is in `CHANGELOG.md`, per the
+shipped-milestone convention above. Next up: algorithms (v0.14), noise
+(v0.15) and more hardware (v0.16). The API consistency review's
+yardstick is `spec/api-design-principles.md`; its findings and triage
+buckets are in `.claude/plans/api-consistency-review/findings.md`.
 
 ---
 
@@ -143,7 +105,7 @@ These have no commitment and no scheduled version. They may move up, move down, 
   convention), plus gate-position metadata from the circuit renderer so the
   highlight can sync with `step.index`; (3) the interactive Kino widget in
   `kino_qx`, consuming the published Qx release (workspace §4). The renderer
-  fits the v0.13 visualization theme if pulled forward.
+  would fit a visualization-themed release if pulled forward.
 - Symbolic / algebraic simulation (exact fractions, no floating point)
 - Circuit-level visualization improvements (multi-qubit gate boxes, measurement symbols)
 - Cirq circuit import adapter (Qiskit/IBM Quantum import already covered by OpenQASM 3.0)
