@@ -142,22 +142,6 @@ defmodule Qx.FormatTest do
       assert result == "0.707|00⟩ + 0.707|10⟩"
     end
 
-    test "respects custom threshold" do
-      amplitudes = [
-        {"|0⟩", C.new(0.999, 0.0), 0.998},
-        {"|1⟩", C.new(0.045, 0.0), 0.002}
-      ]
-
-      # With default threshold, both show
-      result1 = Format.dirac_notation(amplitudes)
-      assert result1 =~ "|0⟩"
-      assert result1 =~ "|1⟩"
-
-      # With higher threshold, only first shows
-      result2 = Format.dirac_notation(amplitudes, threshold: 0.01)
-      assert result2 == "0.999|0⟩"
-    end
-
     test "respects custom precision" do
       amplitudes = [
         {"|0⟩", C.new(0.707107, 0.0), 0.5},

@@ -85,7 +85,7 @@ defmodule Qx.Draw.Tables do
     |> Enum.zip(probabilities)
     |> Enum.with_index()
     |> Enum.filter(fn {{_amp, prob}, _index} ->
-      not hide_zeros or prob > 1.0e-10
+      not hide_zeros or not Qx.Format.negligible?(prob)
     end)
     |> Enum.map(fn {{amplitude, probability}, index} ->
       basis_state = Qx.Format.basis_state(index, num_qubits)

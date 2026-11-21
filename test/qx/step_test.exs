@@ -169,14 +169,13 @@ defmodule Qx.StepTest do
     end
   end
 
-  describe "Inspect fallback below the probability threshold" do
+  describe "Inspect of a wide uniform state" do
     test "renders the largest terms instead of a misleading 0.000 term" do
-      # All probabilities sit below the 1.0e-6 display threshold (the
-      # n=20 uniform-superposition regime, miniaturised): the fallback
-      # must show the top terms, not "0.000|00>".
-      # 9.0e-4 amplitude: probability 8.1e-7 stays under the 1.0e-6
-      # display threshold, while the amplitude still renders non-zero
-      # ("0.001") at 3-decimal precision.
+      # The n=20 uniform-superposition regime, miniaturised: every
+      # probability is 8.1e-7. That is far above the display noise floor
+      # (1.0e-10, `Qx.Format.negligible?/1`), and a 9.0e-4 amplitude prints
+      # as "0.001" at 3-decimal precision, so the terms are shown, not
+      # "0.000|00>".
       tiny = Complex.new(9.0e-4, 0.0)
       state = Nx.tensor([tiny, tiny, tiny, tiny], type: :c64)
 

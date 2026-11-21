@@ -97,3 +97,15 @@ the threshold.
   what float32 can deliver); together: check every fixed epsilon
   against BOTH the float width and the problem-size scaling
 - Iron Law #8: tolerance targets must be feasible at runtime float width
+
+## Update 2026-11-21
+
+The top-k fallback moved out of `Qx.Step` into
+`Qx.Format.significant_terms/2`, so `Qx.Step.show/1` and Dirac notation get
+it too (they had kept the bug). The absolute cut-off itself changed: "zero
+for display" is now `Qx.Format.negligible?/1`, probability at or under
+1.0e-10, chosen from measurement (largest rounding residue 2.3e-13; smallest
+20-qubit uniform probability 9.5e-7). The lesson stands and is sharper: an
+absolute noise threshold is sound only when it sits inside a measured gap
+between residue and the smallest real value at the supported size limit.
+Plan: `.claude/plans/display-tolerance/`.

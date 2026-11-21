@@ -72,6 +72,11 @@ defmodule Qx.Step do
   For steps after a measurement the Dirac string shows the collapsed
   state of that sampled trajectory.
 
+  The Dirac string lists every term worth printing, with no limit, so for
+  a state spread over many basis states it is long: about a million terms
+  for a uniform state on 20 qubits. `inspect/1` gives a one-line summary
+  of at most four terms.
+
   ## Examples
 
       iex> qc = Qx.create_circuit(2) |> Qx.h(0) |> Qx.cx(0, 1)
@@ -114,12 +119,12 @@ defimpl Inspect, for: Qx.Step do
   #   #Qx.Step<1: cx(0, 1)  0.707|00⟩ + 0.707|11⟩>
   #   #Qx.Step<4: measure q0 → c0 ⇒ |11⟩  cbits: [1, 1]>
   #   #Qx.Step<6: c_if(c1==1) x(2) taken  |111⟩  cbits: [1, 1, 0]>
-  # Dirac strings truncate to the first 4 non-zero terms (+ …).
+  # Dirac strings truncate to the first 4 terms worth printing (+ …);
+  # `Qx.Format.significant_terms/2` decides which those are.
 
   alias Qx.{Format, Step}
 
   @max_dirac_terms 4
-  @prob_threshold 1.0e-6
 
   def inspect(%Step{} = step, _opts) do
     "#Qx.Step<#{step.index}: #{describe(step)}#{cbits(step)}>"
@@ -152,25 +157,9 @@ defimpl Inspect, for: Qx.Step do
 
   defp dirac(%Step{} = step) do
     terms = Step.basis_terms(step)
-    significant = Enum.filter(terms, fn {_basis, _amp, prob} -> prob > @prob_threshold end)
+    {shown, cut?} = Format.significant_terms(terms, max: @max_dirac_terms)
 
-    case Enum.split(significant, @max_dirac_terms) do
-      # Wide uniform superpositions (n >= 20) put every term below the
-      # threshold; show the largest ones instead of a misleading 0.000.
-      {[], _} -> terms |> top_terms() |> truncated_dirac(terms)
-      {shown, []} -> Format.dirac_notation(shown)
-      {shown, _rest} -> Format.dirac_notation(shown) <> " + …"
-    end
-  end
-
-  defp top_terms(terms) do
-    terms
-    |> Enum.sort_by(fn {_basis, _amp, prob} -> -prob end)
-    |> Enum.take(@max_dirac_terms)
-  end
-
-  defp truncated_dirac(shown, all_terms) do
-    rendered = Format.dirac_notation(shown, threshold: 0.0)
-    if length(all_terms) > length(shown), do: rendered <> " + …", else: rendered
+    rendered = Format.dirac_notation(shown)
+    if cut?, do: rendered <> " + …", else: rendered
   end
 end

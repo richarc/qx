@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The one-line state strings of `Qx.steps/2` output and `Qx.Step.show/1`
+  now print an amplitude between 0.0005 and 0.001 (as `0.001` at the
+  default three decimals). Before, a term with probability under 1.0e-6 was
+  left out. Rounding residue is still left out, and nothing that printed
+  before has gone. An imaginary part under 1.0e-5 is no longer printed
+  (the cut was 1.0e-6): `1.0+0.000005i` prints as `1.000`.
+
+### Fixed
+
+- `Qx.Step.show/1` described a uniform state on 20 qubits as
+  `0.000|00…0⟩`: every one of its probabilities (9.5e-7) was under the
+  display cut-off. The state table, `Qx.Step` and the Dirac strings now
+  share one definition of "zero for display", set well below any amplitude
+  a 20-qubit state can hold.
+
 ## [0.13.0] - 2026-11-21
 
 ### Added
