@@ -106,6 +106,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   state within 1e-5 of a pole now reads φ = 0. A state that is not
   normalised is drawn by its direction (`[0.5, 0.5]` is on the equator;
   before, it was drawn at θ = 0.67π).
+- In Livebook, a probability chart with more than 16 bars
+  (`Qx.draw/2`, `Qx.draw_histogram/2`) drew only its grid lines.
+  Livebook's chart theme adds an axis tick that has no value, and the
+  expression that shortens the ket labels failed on it. The label
+  expressions now check that the tick has a value.
 - A title containing a character XML does not allow (a NUL byte, most
   other control characters, bytes that are not UTF-8) produced an SVG that
   no XML parser reads. Such characters are left out of the title.

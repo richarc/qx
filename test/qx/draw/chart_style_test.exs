@@ -199,7 +199,7 @@ defmodule Qx.Draw.ChartStyleTest do
 
       # Counts data holds bare bit strings, so the axis writes them as kets.
       axis = x_encoding(spec(:counts, 16))["axis"]
-      assert axis["labelExpr"] == "'|' + datum.value + '⟩'"
+      assert axis["labelExpr"] == "isString(datum.value) ? '|' + datum.value + '⟩' : ''"
       refute Map.has_key?(axis, "labelAngle")
     end
 
@@ -208,7 +208,7 @@ defmodule Qx.Draw.ChartStyleTest do
         axis = x_encoding(spec(function, 32))["axis"]
 
         assert axis["labelAngle"] == -90
-        assert axis["labelExpr"] == "slice(datum.value, 1, -1)"
+        assert axis["labelExpr"] == "isString(datum.value) ? slice(datum.value, 1, -1) : ''"
         refute Map.has_key?(axis, "values")
       end
 
@@ -230,6 +230,32 @@ defmodule Qx.Draw.ChartStyleTest do
       axis = x_encoding(spec(:counts, 65))["axis"]
       assert length(axis["values"]) == 17
       assert Enum.take(axis["values"], 2) == ["00000000", "00000100"]
+    end
+  end
+
+  describe "label expressions under a host theme" do
+    # Livebook renders every chart with its own theme merged under the
+    # spec's config, and that theme sets axisBand.tickExtra, which adds a
+    # tick that has no value. An expression that slices or joins the
+    # value without checking it fails there, and the chart draws empty.
+    test "every label expression checks that the tick has a value" do
+      expressions =
+        for function <- [:plot, :histogram, :counts],
+            bars <- [2, 16, 17, 64, 128],
+            expression = x_encoding(spec(function, bars))["axis"]["labelExpr"],
+            do: {function, bars, expression}
+
+      # Kets are shortened above 16 bars (plot and histogram at 17, 64 and
+      # 128); bit strings are made kets at 16 or fewer (counts at 2 and 16).
+      assert length(expressions) == 8
+
+      for {function, bars, expression} <- expressions do
+        assert String.starts_with?(expression, "isString(datum.value) ? "),
+               "#{function} at #{bars} bars: #{expression}"
+
+        assert String.ends_with?(expression, " : ''"),
+               "#{function} at #{bars} bars: #{expression}"
+      end
     end
   end
 

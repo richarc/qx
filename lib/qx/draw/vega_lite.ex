@@ -189,12 +189,18 @@ if Code.ensure_loaded?(VegaLite) do
     defp label_form(:kets, bars) when bars <= @ket_limit, do: []
 
     defp label_form(:kets, _bars),
-      do: [label_expr: "slice(datum.value, 1, -1)", label_angle: -90]
+      do: [label_expr: label_expr("slice(datum.value, 1, -1)"), label_angle: -90]
 
     defp label_form(:bit_strings, bars) when bars <= @ket_limit,
-      do: [label_expr: "'|' + datum.value + '⟩'"]
+      do: [label_expr: label_expr("'|' + datum.value + '⟩'")]
 
     defp label_form(:bit_strings, _bars), do: [label_angle: -90]
+
+    # A host can add a tick that has no value: Livebook's chart theme sets
+    # `axisBand.tickExtra`. An expression that slices or joins a missing
+    # value fails in Vega and the whole chart draws empty, so every label
+    # expression checks the value first.
+    defp label_expr(expression), do: "isString(datum.value) ? #{expression} : ''"
 
     defp thinned_values(_data, bars, _x_field) when bars <= @thin_limit, do: []
 
