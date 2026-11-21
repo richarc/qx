@@ -1,7 +1,8 @@
 defmodule Qx.Draw.BlochStyleTest do
   @moduledoc """
   The Bloch sphere follows the Bloch sphere sheet of the Qx visual design
-  guide: a shaded body with a firm outline, three great circles split into
+  guide, with one departure: the shaded body has no outline, its edge is
+  the darker rim of the shading. Three great circles are split into
   a solid near half and a dashed far half, ink axes, and one accent-coloured
   state vector whose head shows whether it points toward or away from the
   reader (plan: visual-design-guide).
@@ -144,8 +145,8 @@ defmodule Qx.Draw.BlochStyleTest do
 
   # -- body ------------------------------------------------------------
 
-  describe "body and outline" do
-    test "a radial-gradient body under an ink silhouette of 1.5" do
+  describe "body and edge" do
+    test "a radial-gradient body whose edge is shading alone, with no outline" do
       svg = svg(general())
 
       assert [gradient] = elements(svg, "radialGradient")
@@ -154,26 +155,29 @@ defmodule Qx.Draw.BlochStyleTest do
       assert Enum.map(elements(svg, "stop"), &{&1["offset"], &1["stop-color"]}) == [
                {"0", "#FFFFFF"},
                {"0.6", "#EEF1F5"},
-               {"1", "#CBD3DD"}
+               {"0.86", "#CBD3DD"},
+               {"1", "#A9B1BD"}
              ]
 
       assert [body] = svg |> part("body") |> elements("circle")
       assert body["fill"] == "url(##{gradient["id"]})"
 
-      assert [outline] = svg |> part("silhouette") |> elements("circle")
-      assert outline["fill"] == "none" and outline["stroke"] == @ink
-      assert outline["stroke-width"] == "1.5"
-      assert {outline["cx"], outline["cy"], outline["r"]} == {body["cx"], body["cy"], body["r"]}
+      refute Map.has_key?(body, "stroke")
+
+      # No line is drawn round the sphere: the darker rim of the gradient
+      # is its edge. The only circle of the sphere's radius is the body.
+      refute "silhouette" in parts(svg)
+      assert [^body] = Enum.filter(elements(svg, "circle"), &(&1["r"] == body["r"]))
     end
 
     test "the radius is 33.5% of the size" do
-      assert [%{"r" => "134"}] = svg(general()) |> part("silhouette") |> elements("circle")
+      assert [%{"r" => "134"}] = svg(general()) |> part("body") |> elements("circle")
 
       assert [%{"r" => "80.4"}] =
-               svg(general(), size: 240) |> part("silhouette") |> elements("circle")
+               svg(general(), size: 240) |> part("body") |> elements("circle")
 
       assert [%{"r" => "201"}] =
-               svg(general(), size: 600) |> part("silhouette") |> elements("circle")
+               svg(general(), size: 600) |> part("body") |> elements("circle")
     end
 
     test "a tinted equatorial plane" do
@@ -220,9 +224,9 @@ defmodule Qx.Draw.BlochStyleTest do
       assert length(elements(svg, "polyline")) == 8
     end
 
-    test "each near half joins its far half at both ends, on the silhouette" do
+    test "each near half joins its far half at both ends, on the edge of the body" do
       svg = svg(general())
-      [%{"cx" => cx, "cy" => cy, "r" => r}] = svg |> part("silhouette") |> elements("circle")
+      [%{"cx" => cx, "cy" => cy, "r" => r}] = svg |> part("body") |> elements("circle")
 
       near = svg |> part("near") |> elements("polyline") |> Enum.map(&points/1)
       far = svg |> part("far") |> elements("polyline") |> Enum.map(&points/1)
@@ -234,7 +238,7 @@ defmodule Qx.Draw.BlochStyleTest do
         assert List.last(near_half) == List.first(far_half)
 
         # The halves meet where the circle turns away from the reader,
-        # which is on the outline.
+        # which is on the edge of the body.
         [x, y] = List.first(near_half)
         distance = :math.sqrt((x - num(cx)) ** 2 + (y - num(cy)) ** 2)
         assert_in_delta distance, num(r), 0.2
@@ -257,7 +261,7 @@ defmodule Qx.Draw.BlochStyleTest do
 
     test "the shaft is a 3-wide accent line on a 6-wide paper halo, from the centre" do
       svg = svg(general())
-      [%{"cx" => cx, "cy" => cy}] = svg |> part("silhouette") |> elements("circle")
+      [%{"cx" => cx, "cy" => cy}] = svg |> part("body") |> elements("circle")
 
       assert [halo, shaft] = svg |> part("vector") |> elements("line")
       assert halo["stroke"] == @paper and halo["stroke-width"] == "6"
@@ -268,7 +272,7 @@ defmodule Qx.Draw.BlochStyleTest do
 
     test "the arrowhead's point touches the surface" do
       svg = svg(plus_i())
-      [%{"cx" => cx, "cy" => cy, "r" => r}] = svg |> part("silhouette") |> elements("circle")
+      [%{"cx" => cx, "cy" => cy, "r" => r}] = svg |> part("body") |> elements("circle")
 
       # |i⟩ lies along y, which projects to 0.866 right and 0.155 down.
       assert [_, tip_x, tip_y] = Regex.run(~r/^M([\d.]+) ([\d.]+)L/, arrowhead(svg)["d"])
@@ -403,7 +407,7 @@ defmodule Qx.Draw.BlochStyleTest do
 
     test "axis letters are italic in the mathematics voice, placed by the camera" do
       svg = svg(general())
-      [%{"cx" => cx, "cy" => cy}] = svg |> part("silhouette") |> elements("circle")
+      [%{"cx" => cx, "cy" => cy}] = svg |> part("body") |> elements("circle")
 
       assert [{x, "x"}, {y, "y"}, {z, "z"}] = texts(part(svg, "axes"))
 
@@ -434,7 +438,7 @@ defmodule Qx.Draw.BlochStyleTest do
 
     test "|0⟩ is labelled above the centre and |1⟩ below" do
       svg = svg(general())
-      [%{"cy" => cy}] = svg |> part("silhouette") |> elements("circle")
+      [%{"cy" => cy}] = svg |> part("body") |> elements("circle")
       [{zero, "|0⟩"}, {one, "|1⟩"} | _] = texts(part(svg, "labels"))
 
       assert num(zero["y"]) < num(cy)
@@ -567,8 +571,8 @@ defmodule Qx.Draw.BlochStyleTest do
       assert part(untitled, "title") == nil
 
       # Without a title the sphere is centred; with one it sits 6 lower.
-      assert [%{"cy" => "200"}] = untitled |> part("silhouette") |> elements("circle")
-      assert [%{"cy" => "206"}] = svg |> part("silhouette") |> elements("circle")
+      assert [%{"cy" => "200"}] = untitled |> part("body") |> elements("circle")
+      assert [%{"cy" => "206"}] = svg |> part("body") |> elements("circle")
     end
 
     test "a title that needs escaping yields well-formed XML" do

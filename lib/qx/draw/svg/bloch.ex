@@ -13,7 +13,7 @@ defmodule Qx.Draw.SVG.Bloch do
   # drawn pale or dashed.
   #
   # The drawing is grouped into `<g data-part="...">` elements, back to
-  # front: body, plane, far, axes-hidden, shadow, arcs, near, silhouette,
+  # front: body, plane, far, axes-hidden, shadow, arcs, near,
   # labels, vector, centre, axes, title, readout.
 
   alias Qx.Draw.SVG.Markup
@@ -41,7 +41,6 @@ defmodule Qx.Draw.SVG.Bloch do
   @radius_ratio 0.335
   @title_shift 6
 
-  @silhouette_stroke 1.5
   @near_stroke 1.1
   @far_stroke 1.0
   @axis_stroke 1.25
@@ -192,7 +191,7 @@ defmodule Qx.Draw.SVG.Bloch do
   SVG string with complete Bloch sphere visualization.
 
   ## Features
-  - A shaded body with an ink outline
+  - A shaded body with no outline: the darker rim of the shading is its edge
   - Three great circles, the near half solid and the far half dashed
   - Ink axes: solid outside the sphere, pale inside or behind it
   - State labels (|0⟩, |1⟩, |+⟩, |−⟩, |i⟩, |−i⟩)
@@ -232,7 +231,6 @@ defmodule Qx.Draw.SVG.Bloch do
       group("shadow", shadow(state, view)),
       group("arcs", arcs(state, view)),
       group("near", great_circle_halves(:near, view)),
-      group("silhouette", [silhouette(view)]),
       group("labels", state_labels(view)),
       group("vector", vector(state, view)),
       group("centre", centre(state, view)),
@@ -279,7 +277,8 @@ defmodule Qx.Draw.SVG.Bloch do
       ~s(<radialGradient id="#{id}" cx="36%" cy="30%" r="75%">),
       ~s(<stop offset="0" stop-color="#{Theme.color(:paper)}"/>),
       ~s(<stop offset="0.6" stop-color="#{Theme.color(:sphere_mid)}"/>),
-      ~s(<stop offset="1" stop-color="#{Theme.color(:sphere_edge)}"/>),
+      ~s(<stop offset="0.86" stop-color="#{Theme.color(:sphere_edge)}"/>),
+      ~s(<stop offset="1" stop-color="#{Theme.color(:back)}"/>),
       "</radialGradient>",
       "</defs>"
     ]
@@ -288,12 +287,6 @@ defmodule Qx.Draw.SVG.Bloch do
   defp body(gradient_id, view) do
     ~s(<circle cx="#{num(view.cx)}" cy="#{num(view.cy)}" r="#{num(view.radius)}" ) <>
       ~s|fill="url(##{gradient_id})"/>|
-  end
-
-  defp silhouette(view) do
-    ~s(<circle cx="#{num(view.cx)}" cy="#{num(view.cy)}" r="#{num(view.radius)}" ) <>
-      ~s(fill="none" stroke="#{Theme.color(:ink)}" ) <>
-      ~s(stroke-width="#{stroke(@silhouette_stroke, view)}"/>)
   end
 
   # The equatorial plane, tinted, so the equator reads as a disc seen at
@@ -408,11 +401,11 @@ defmodule Qx.Draw.SVG.Bloch do
 
   # The stretches of an axis between the points where its visibility can
   # change: where it leaves the sphere (|t| = 1) and where it comes out
-  # from behind the outline.
+  # from behind the edge of the sphere.
   defp axis_pieces(axis) do
-    outline = 1 / max(screen_length(axis), @epsilon)
+    edge = 1 / max(screen_length(axis), @epsilon)
 
-    [@axis_start, -outline, -1.0, 1.0, outline, @axis_end]
+    [@axis_start, -edge, -1.0, 1.0, edge, @axis_end]
     |> Enum.filter(&(&1 >= @axis_start and &1 <= @axis_end))
     |> Enum.sort()
     |> Enum.dedup()
